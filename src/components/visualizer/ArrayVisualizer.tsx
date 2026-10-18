@@ -73,8 +73,14 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           </div>
         )}
 
-        {bars.map(b => (
-          <Bar key={`bar-${b.index}`} visual={b} heightPercent={heightFor(b.value)} compact={compact} />
+        {bars.map((b, i) => (
+          <Bar
+            key={`bar-${b.index}`}
+            visual={b}
+            heightPercent={heightFor(b.value)}
+            compact={compact}
+            edge={bars.length < 2 ? undefined : i === 0 ? 'start' : i === bars.length - 1 ? 'end' : undefined}
+          />
         ))}
       </div>
 

@@ -238,3 +238,25 @@ describe('Size dropdown reflects the actual input size', () => {
     expect(st().steps[0].state).toHaveLength(12);
   });
 });
+
+// CI regression (small phone, 16 values): a pointer chip wider than its bar must not hang past the chart edge. The
+// first/last bars pin their pointer row to the outer edge (pixel geometry is covered by e2e/tests/responsive.spec.ts).
+describe('pointer chip alignment at the chart edges', () => {
+  const aligns = (html: string) => [...html.matchAll(/data-chip-align="([a-z]+)"/g)].map(m => m[1]);
+
+  it('the first bar aligns its chip to the start, the last to the end, every other bar centres it', () => {
+    st().setAlgorithm('binary-search');
+    const { steps } = st();
+    const k = steps.findIndex(s => s.pointers && Object.keys(s.pointers).length > 0);
+    const html = renderStep('binary-search', steps, k);
+    const n = parseBars(html).length;
+    expect(n).toBeGreaterThan(2);
+    expect(aligns(html)).toEqual(['start', ...Array(n - 2).fill('center'), 'end']);
+  });
+
+  it('a single bar keeps its chip centred', () => {
+    st().setAlgorithm('linear-search');
+    const step = { ...st().steps[0], state: [7], indices: [0], pointers: { i: 0 } };
+    expect(aligns(renderStep('linear-search', [step], 0))).toEqual(['center']);
+  });
+});

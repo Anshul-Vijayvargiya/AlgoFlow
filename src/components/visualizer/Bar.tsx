@@ -8,6 +8,8 @@ interface BarProps {
   heightPercent: number;
   /** denser layout for longer arrays */
   compact?: boolean;
+  /** first or last bar of the chart: its pointer chip must not extend past that chart edge */
+  edge?: 'start' | 'end';
 }
 
 interface RoleStyle {
@@ -92,7 +94,7 @@ const ROLE_STYLES: Record<BarRole, RoleStyle> = {
   },
 };
 
-export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false }) => {
+export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false, edge }) => {
   const { index, value, role, inRange, pointers } = visual;
   const style = ROLE_STYLES[role];
   const dim = !inRange && role === 'default';
@@ -144,15 +146,23 @@ export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false
         </span>
       </div>
 
-      {/* pointer row: fixed height so bars never jump when pointers appear/disappear */}
-      <div className="h-5 mt-1 flex items-start justify-center">
+      {/* pointer row: fixed height so bars never jump when pointers appear/disappear. A chip can be wider than a
+          narrow bar (16 values on a phone): centred, it would hang over both sides, which on the first/last bar means
+          past the chart edge. On edge bars the row is pinned to the outer edge and the min-w-full wrapper keeps the
+          chip centred while it fits, so a wider chip only grows inward, whatever the font. */}
+      <div
+        className={`w-full h-5 mt-1 flex items-start ${edge === 'start' ? 'justify-start' : edge === 'end' ? 'justify-end' : 'justify-center'}`}
+        data-chip-align={edge ?? 'center'}
+      >
         {pointers.length > 0 && (
-          <span
-            className="text-[9px] font-mono font-bold leading-none px-1 py-0.5 rounded bg-cyan-900/60 border border-cyan-600/60 text-cyan-200 whitespace-nowrap"
-            data-pointer-chip
-          >
-            ▲{pointers.join('·')}
-          </span>
+          <div className="min-w-full shrink-0 flex justify-center">
+            <span
+              className="text-[9px] font-mono font-bold leading-none px-1 py-0.5 rounded bg-cyan-900/60 border border-cyan-600/60 text-cyan-200 whitespace-nowrap"
+              data-pointer-chip
+            >
+              ▲{pointers.join('·')}
+            </span>
+          </div>
         )}
       </div>
     </div>
