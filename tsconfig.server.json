@@ -1,0 +1,17 @@
+{
+  // Server type check: `npm run typecheck:server` (scripts/typecheckServer.ts compares the result with
+  // server/typecheck-baseline.json). Deliberately NOT referenced from tsconfig.json: `tsc -b` would fail on the
+  // pre-existing server errors until they are fixed.
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node", "vite/client"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["server/**/*.ts"]
+}

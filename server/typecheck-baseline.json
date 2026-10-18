@@ -1,0 +1,156 @@
+{
+  "description": "Pre-existing server type errors accepted by `npm run typecheck:server` (scripts/typecheckServer.ts). Matched on file + code + message; may only shrink. Remove entries by fixing the errors, then run with --update.",
+  "total": 56,
+  "errors": [
+    {
+      "file": "server/routes/adminRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'toLowerCase' does not exist on type 'string | string[]'.",
+      "count": 4
+    },
+    {
+      "file": "server/routes/adminRoutes.ts",
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "count": 4
+    },
+    {
+      "file": "server/routes/noteRoutes.ts",
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "count": 6
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property '_id' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property '_id' does not exist on type 'never'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'code' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'createdAt' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'language' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'memoryMb' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'memoryMb' does not exist on type 'never'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'message' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'passed' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'passed' does not exist on type 'never'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'problemId' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'runtimeMs' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'runtimeMs' does not exist on type 'never'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'status' does not exist on type '(ISubmission & Required<{ _id: ObjectId; }> & { __v: number; }) | Omit<ISubmission & Required<{ _id: ObjectId; }> & { ...; }, never> | Pick<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'status' does not exist on type 'never'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'toLowerCase' does not exist on type 'string | string[]'.",
+      "count": 6
+    },
+    {
+      "file": "server/routes/problemRoutes.ts",
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "count": 7
+    },
+    {
+      "file": "server/routes/progressRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'problemId' does not exist on type '(Document<unknown, {}, ISubmission, {}, DefaultSchemaOptions> & ISubmission & Required<{ _id: ObjectId; }> & { ...; } & { ...; }) | (Document<...> & ((((Omit<...> & Required<...>) | (Pick<...> & ... 1 more ... & Required<...>)) & { ...; }) & { ...; })) | Omit<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/progressRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'status' does not exist on type '(Document<unknown, {}, IProgressTrack, {}, DefaultSchemaOptions> & IProgressTrack & Required<{ _id: ObjectId; }> & { ...; } & { ...; }) | (Document<...> & ((((Omit<...> & Required<...>) | (Pick<...> & ... 1 more ... & Required<...>)) & { ...; }) & { ...; })) | Omit<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/progressRoutes.ts",
+      "code": "TS2339",
+      "message": "Property 'topic' does not exist on type '(Document<unknown, {}, IProgressTrack, {}, DefaultSchemaOptions> & IProgressTrack & Required<{ _id: ObjectId; }> & { ...; } & { ...; }) | (Document<...> & ((((Omit<...> & Required<...>) | (Pick<...> & ... 1 more ... & Required<...>)) & { ...; }) & { ...; })) | Omit<...>'.",
+      "count": 1
+    },
+    {
+      "file": "server/routes/progressRoutes.ts",
+      "code": "TS2769",
+      "message": "No overload matches this call.",
+      "count": 9
+    },
+    {
+      "file": "server/tests/authRoutes.test.ts",
+      "code": "TS2339",
+      "message": "Property 'find' does not exist on type 'string'.",
+      "count": 2
+    }
+  ]
+}

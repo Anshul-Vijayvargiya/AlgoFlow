@@ -1,0 +1,86 @@
+/**
+ * AlgorithmRegistry — The single source of truth for ALL algorithm definitions.
+ *
+ * Each algorithm definition owns its:
+ *  - id, name, category, description, complexity
+ *  - code (all 4 languages)
+ *  - lineMap (codeRef → line number per language)
+ *  - generateSteps(input, params) → ExecutionStep[]
+ *
+ * FAIL-SAFE: If an algorithm is not in this registry, the visualizer never falls back
+ * to another algorithm. See buildExecution.ts for how the failure kinds are reported.
+ */
+import type { AlgorithmId, AlgorithmDefinition, ProgrammingLanguage } from '../types/algorithm';
+import { bubbleSortDefinition } from './algorithms/bubbleSort';
+import { selectionSortDefinition } from './algorithms/selectionSort';
+import { insertionSortDefinition } from './algorithms/insertionSort';
+import { linearSearchDefinition } from './algorithms/linearSearch';
+import { binarySearchDefinition } from './algorithms/binarySearch';
+import { mergeSortDefinition } from './algorithms/mergeSort';
+import { quickSortDefinition } from './algorithms/quickSort';
+import { twoPointerDefinition } from './algorithms/twoPointer';
+
+// ─── Registry ──────────────────────────────────────────────────────────────────
+const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
+
+function register(def: AlgorithmDefinition) {
+  REGISTRY.set(def.id, def);
+}
+
+register(bubbleSortDefinition);
+register(selectionSortDefinition);
+register(insertionSortDefinition);
+register(linearSearchDefinition);
+register(binarySearchDefinition);
+register(mergeSortDefinition);
+register(quickSortDefinition);
+register(twoPointerDefinition);
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+/** Returns the full algorithm definition or undefined if not implemented. */
+export function getAlgorithmDefinition(id: AlgorithmId): AlgorithmDefinition | undefined {
+  return REGISTRY.get(id);
+}
+
+/**
+ * Resolves a codeRef to a 1-based line number for the given language.
+ * Returns null when the step has no codeRef OR the codeRef is not present in the
+ * language's line map. It never guesses a line: callers must handle null explicitly
+ * (the code panel shows an "unmapped step" state instead of highlighting line 1).
+ */
+export function resolveCodeRef(
+  def: AlgorithmDefinition,
+  lang: ProgrammingLanguage,
+  codeRef: string | undefined
+): number | null {
+  if (!codeRef) return null;
+  const line = def.lineMap[lang]?.[codeRef];
+  return typeof line === 'number' ? line : null;
+}
+
+/**
+ * Returns the source code string for the given algorithm and language.
+ * Returns null if the algorithm is not implemented or the language is unavailable.
+ * NEVER falls back to another algorithm's code.
+ */
+export function getAlgorithmCode(
+  id: AlgorithmId,
+  lang: ProgrammingLanguage
+): string | null {
+  const def = REGISTRY.get(id);
+  if (!def) return null;
+  return def.code[lang] || null;
+}
+
+/** Returns all registered algorithm definitions (for sidebar/navigation). */
+export function getAllAlgorithms(): AlgorithmDefinition[] {
+  return Array.from(REGISTRY.values());
+}
+
+/** Returns algorithm definitions for a given category. */
+export function getAlgorithmsByCategory(
+  category: AlgorithmDefinition['category']
+): AlgorithmDefinition[] {
+  return Array.from(REGISTRY.values()).filter(d => d.category === category);
+}

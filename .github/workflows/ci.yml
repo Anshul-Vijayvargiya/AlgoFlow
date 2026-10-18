@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# No secrets are used anywhere in this workflow: unit tests mock the database models and the E2E suite runs the
+# front end against its built-in mock API (VITE_USE_MOCK_API) with every /api request blocked.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Unit tests, types, lint, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      # server/ is not covered by tsc -b; fails only on errors that are not in server/typecheck-baseline.json
+      - run: npm run typecheck:server
+      - run: npm run lint
+      - name: Build (deployable configuration)
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: /api
+      - name: Verify the build is a deployable production artifact
+        run: npm run verify:artifact -- dist
+      # Negative control: an e2e (mock API) build must be rejected by the artifact check
+      - name: E2E build must fail artifact verification
+        run: |
+          VITE_USE_MOCK_API=true npx vite build --mode e2e --outDir "$RUNNER_TEMP/e2e-check/dist-e2e"
+          if npm run verify:artifact -- "$RUNNER_TEMP/e2e-check/dist-e2e" > "$RUNNER_TEMP/e2e-verify.log" 2>&1; then
+            echo "::error::verify:artifact accepted an e2e build"; exit 1
+          fi
+          grep -q "built with --mode e2e" "$RUNNER_TEMP/e2e-verify.log" || { cat "$RUNNER_TEMP/e2e-verify.log"; exit 1; }
+      # Negative control for the build guard (src/config/deployment.ts): a mock-API build must never succeed
+      - name: Mock-API production build must fail
+        run: |
+          if VITE_USE_MOCK_API=true VITE_API_BASE_URL=/api npx vite build --outDir "$RUNNER_TEMP/mock-build" > "$RUNNER_TEMP/mock-build.log" 2>&1; then
+            echo "::error::vite build succeeded with VITE_USE_MOCK_API=true"; exit 1
+          fi
+          # it must fail because of the guard, not for an unrelated reason
+          grep -q "VITE_USE_MOCK_API=true is not allowed" "$RUNNER_TEMP/mock-build.log" || { cat "$RUNNER_TEMP/mock-build.log"; exit 1; }
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E tests (Chromium, full suite)
+        run: npm run e2e
+      - name: Upload report and traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-chromium
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  e2e-cross:
+    name: Playwright E2E (Firefox, WebKit, mobile emulation)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run E2E tests (Firefox, WebKit, Pixel 7 and iPhone 14 emulation)
+        run: npm run e2e:cross
+      - name: Upload report and traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-cross
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
