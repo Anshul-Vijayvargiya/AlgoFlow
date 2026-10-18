@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { useVisualizerStore } from '../../../store/useVisualizerStore';
 import { getAlgorithmDefinition } from '../../../engine/AlgorithmRegistry';
-import { SizeSelect } from '../ExecutionControls';
+import { ExecutionControls, SizeSelect } from '../ExecutionControls';
 import { getSizeOptions } from '../sizeOptions';
 import type { AlgorithmId } from '../../../types/algorithm';
 import { parseBars, renderStep, rolesOf } from './visualTestUtils';
@@ -258,5 +258,21 @@ describe('pointer chip alignment at the chart edges', () => {
     st().setAlgorithm('linear-search');
     const step = { ...st().steps[0], state: [7], indices: [0], pointers: { i: 0 } };
     expect(aligns(renderStep('linear-search', [step], 0))).toEqual(['center']);
+  });
+});
+
+// CI regression (WebKit axe scans): a text button re-enabled after being disabled (opacity 0.4) must not animate its
+// opacity, or it is briefly drawn at 2.85:1 contrast while already enabled. Classes are static, so the initial-state
+// server render is enough here; the axe scans in e2e/tests/a11y-scan.spec.ts cover the rendered result.
+describe('playback text buttons do not animate opacity when re-enabled', () => {
+  const classOf = (html: string, label: string) => new RegExp(`aria-label="${label}"[^>]*class="([^"]*)"|class="([^"]*)"[^>]*aria-label="${label}"`).exec(html);
+
+  it.each(['Previous step', 'Next step', 'Randomize'])('%s uses transition-colors, never transition-all/opacity', label => {
+    const m = classOf(renderToStaticMarkup(<ExecutionControls />), label);
+    expect(m, `button "${label}" rendered`).not.toBeNull();
+    const cls = (m![1] ?? m![2]).split(/\s+/);
+    expect(cls).toContain('disabled:opacity-40');
+    expect(cls).toContain('transition-colors');
+    expect(cls.some(c => c === 'transition-all' || c === 'transition-opacity' || c === 'transition')).toBe(false);
   });
 });

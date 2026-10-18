@@ -79,11 +79,14 @@ export const ExecutionControls: React.FC = () => {
           <RotateCcw className="w-4 h-4" />
         </button>
 
+        {/* Text buttons that get re-enabled use transition-colors, not transition-all: animating opacity from the
+            disabled 0.4 meant a just-enabled button was briefly drawn at 2.85:1 contrast (axe color-contrast, WCAG
+            1.4.3), which the CI WebKit runner sampled. Enabling is now instant; hover colours still animate. */}
         <button
           onClick={previousStep}
           aria-label="Previous step"
           disabled={currentStepIndex === 0 || isPlaying}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Previous</span>
@@ -115,7 +118,7 @@ export const ExecutionControls: React.FC = () => {
           onClick={nextStep}
           aria-label="Next step"
           disabled={currentStepIndex >= totalSteps - 1 || isPlaying}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <span className="hidden sm:inline">Next</span>
           <ChevronRight className="w-4 h-4" />
@@ -141,7 +144,7 @@ export const ExecutionControls: React.FC = () => {
           onClick={randomizeArray}
           aria-label="Randomize"
           disabled={isPlaying}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 transition-all"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 transition-colors"
           title="Randomize Array"
         >
           <Shuffle className="w-3.5 h-3.5 text-cyan-400" />
