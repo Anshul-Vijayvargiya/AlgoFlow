@@ -18,6 +18,7 @@ import { linearSearchDefinition } from './algorithms/linearSearch';
 import { binarySearchDefinition } from './algorithms/binarySearch';
 import { mergeSortDefinition } from './algorithms/mergeSort';
 import { quickSortDefinition } from './algorithms/quickSort';
+import { heapSortDefinition } from './algorithms/heapSort';
 import { twoPointerDefinition } from './algorithms/twoPointer';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ register(linearSearchDefinition);
 register(binarySearchDefinition);
 register(mergeSortDefinition);
 register(quickSortDefinition);
+register(heapSortDefinition);
 register(twoPointerDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────

@@ -6,8 +6,8 @@ code, and a plain-language explanation of what just happened.
 
 ## Features
 
-- **Visualizer**: step through, play or pause eight implemented algorithms on your own input:
-  - sorting: bubble, selection, insertion, merge and quick sort;
+- **Visualizer**: step through, play or pause nine implemented algorithms on your own input:
+  - sorting: bubble, selection, insertion, merge, quick and heap sort;
   - searching: linear and binary search;
   - the two-pointer pair-sum technique.
 

@@ -89,7 +89,7 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     name: 'Heap Sort',
     category: 'SORTING',
     subtitle: 'Builds max-heap and extracts elements in sorted order.',
-    implemented: false,
+    implemented: true,
   },
 
   // ─── SEARCHING (implemented) ────────────────────────────

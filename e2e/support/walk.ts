@@ -10,7 +10,7 @@ import {
   type ProgrammingLanguage,
 } from './engineTrace';
 
-const POINTER_LABEL: Record<string, string> = { minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins' };
+const POINTER_LABEL: Record<string, string> = { minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins', largest: 'max' };
 
 export interface WalkResult {
   steps: ExecutionStep[];

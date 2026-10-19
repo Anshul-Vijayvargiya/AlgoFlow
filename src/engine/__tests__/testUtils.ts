@@ -37,6 +37,7 @@ export const SORT_IDS = [
   'insertion-sort',
   'merge-sort',
   'quick-sort',
+  'heap-sort',
 ] as const;
 
 export function def(id: string): AlgorithmDefinition {

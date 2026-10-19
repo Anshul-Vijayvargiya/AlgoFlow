@@ -99,7 +99,7 @@ describe('deriveStepVisuals — only the bars the step names are emphasized (all
   });
 
   it('a bar shown as sorted always holds its final value, in every sorting algorithm (audit M1)', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort'] as AlgorithmId[]) {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort'] as AlgorithmId[]) {
       for (const input of INPUTS) {
         const steps = getAlgorithmDefinition(id)!.generateSteps([...input]);
         const final = steps[steps.length - 1].state;
@@ -123,7 +123,7 @@ describe('deriveStepVisuals — only the bars the step names are emphasized (all
 
 describe('deriveStepVisuals — pointers follow the current step', () => {
   it('every in-range pointer is drawn exactly once on its own index; the rest are off-array', () => {
-    const label = (n: string) => ({ minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins' } as Record<string, string>)[n] ?? n;
+    const label = (n: string) => ({ minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins', largest: 'max' } as Record<string, string>)[n] ?? n;
     for (const d of ALL) {
       for (const input of INPUTS) {
         const steps = d.generateSteps([...input]);
@@ -209,7 +209,7 @@ describe('deriveOutcome — final-state classification comes from the trace', ()
     const i = steps.length - 1;
     return { v: visuals(id, steps[i], steps, i), outcome: deriveOutcome(steps, i) };
   };
-  const SORTS: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort'];
+  const SORTS: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort'];
 
   it('no outcome before the final step', () => {
     for (const d of ALL) {

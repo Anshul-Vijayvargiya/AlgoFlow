@@ -112,6 +112,27 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'place-pivot': /swap\(arr\[i \+ 1\],\s*arr\[high\]\)|int temp = arr\[i \+ 1\]|arr\[i \+ 1\],\s*arr\[high\]\s*=/,
     'return-pivot': /return i \+ 1/,
   },
+  'heap-sort': {
+    // n = len(arr) / int n = arr.size() / arr.length; in C n is a parameter of the signature
+    'init-n': /\bn = (arr\.size\(\)|arr\.length|len\(arr\))|void heapSort\(int arr\[\], int n\)/,
+    // Python returns arr; the C, C++ and Java heapSort functions are void and end without a return statement
+    'fn-exit': /^\s*return arr\s*$|void heap_?sort\(/i,
+    'build-loop': /for\s*\(\s*int i = n \/ 2 - 1; i >= 0; i--\)|for i in range\(n \/\/ 2 - 1, -1, -1\):/,
+    'call-build': /\bheapify\(arr, n, i\)/,
+    'extract-loop': /for\s*\(\s*int i = n - 1; i > 0; i--\)|for i in range\(n - 1, 0, -1\):/,
+    'extract-swap': /swap\(arr\[0\],\s*arr\[i\]\)|int temp = arr\[0\];|arr\[0\],\s*arr\[i\]\s*=/,
+    'call-extract': /\bheapify\(arr, i, 0\)/,
+    'set-largest': /\blargest = i\b/,
+    'set-left': /\bl = 2 \* i \+ 1\b/,
+    'set-right': /\br = 2 \* i \+ 2\b/,
+    'check-left': /\bif\s*\(?\s*l < n (&&|and) arr\[l\] > arr\[largest\]/,
+    'take-left': /\blargest = l\b/,
+    'check-right': /\bif\s*\(?\s*r < n (&&|and) arr\[r\] > arr\[largest\]/,
+    'take-right': /\blargest = r\b/,
+    'check-swap': /\bif\s*\(?\s*largest != i\b/,
+    'do-swap': /swap\(arr\[i\],\s*arr\[largest\]\)|int temp = arr\[i\];|arr\[i\],\s*arr\[largest\]\s*=/,
+    'call-recurse': /\bheapify\(arr, n, largest\)/,
+  },
   'two-pointer': {
     'fn-entry': /two.?sum.?sorted/i,
     'init-pointers': /\bleft\b.*\bright\b.*=/,

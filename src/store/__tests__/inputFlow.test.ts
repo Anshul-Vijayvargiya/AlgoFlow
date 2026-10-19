@@ -74,7 +74,7 @@ describe('generators never reorder the user\'s array', () => {
   });
 
   it('every sorting algorithm sorts a COPY: the caller\'s array is untouched, even with negatives/duplicates', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort'] as AlgorithmId[]) {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort'] as AlgorithmId[]) {
       const user = [3, -1, 3, 0, -8, 2];
       const copy = [...user];
       const steps = getAlgorithmDefinition(id)!.generateSteps(user);
@@ -162,7 +162,7 @@ describe('applyInput — regenerates safely', () => {
   });
 
   it('works for empty and single-element arrays for every algorithm', () => {
-    const ids: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'linear-search', 'binary-search', 'two-pointer'];
+    const ids: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort', 'linear-search', 'binary-search', 'two-pointer'];
     for (const id of ids) {
       st().setAlgorithm(id);
       const t = getAlgorithmDefinition(id)!.inputSpec?.target ? 3 : null;
@@ -252,7 +252,7 @@ describe('switching algorithms with a custom array', () => {
 
   it('retains the custom array across an unimplemented algorithm', () => {
     st().applyInput([8, 6, 7], null);
-    st().setAlgorithm('heap-sort');
+    st().setAlgorithm('jump-search');
     expect(st().executionStatus).toBe('unimplemented');
     expect(st().array).toEqual([8, 6, 7]);
     st().setAlgorithm('bubble-sort');

@@ -87,12 +87,13 @@ const RANK: Record<BarRole, number> = {
 };
 
 /** Order pointer labels appear in when several share an index. */
-const POINTER_ORDER = ['low', 'l', 'left', 'i', 'j', 'j+1', 'minIdx', 'mid', 'm', 'k', 'pi', 'pivotIndex', 'inserted', 'right', 'r', 'high'];
+const POINTER_ORDER = ['low', 'l', 'left', 'i', 'j', 'j+1', 'minIdx', 'mid', 'm', 'k', 'pi', 'pivotIndex', 'inserted', 'right', 'r', 'largest', 'high'];
 
 export const POINTER_LABELS: Record<string, string> = {
   minIdx: 'min',
   pivotIndex: 'pivot',
   inserted: 'ins',
+  largest: 'max',
 };
 
 export const pointerLabel = (name: string) => POINTER_LABELS[name] ?? name;

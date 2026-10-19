@@ -18,12 +18,13 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'insertion-sort': { id: 'insertion-sort', label: 'Insertion Sort', heading: 'Insertion Sort' },
   'merge-sort': { id: 'merge-sort', label: 'Merge Sort', heading: 'Merge Sort' },
   'quick-sort': { id: 'quick-sort', label: 'Quick Sort', heading: 'Quick Sort' },
+  'heap-sort': { id: 'heap-sort', label: 'Heap Sort', heading: 'Heap Sort' },
   'linear-search': { id: 'linear-search', label: 'Linear Search', heading: 'Linear Search' },
   'binary-search': { id: 'binary-search', label: 'Binary Search', heading: 'Binary Search' },
   'two-pointer': { id: 'two-pointer', label: 'Two Pointer', heading: 'Two Pointer Technique' },
 };
 
-export const SORT_IDS: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort'];
+export const SORT_IDS: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort'];
 
 export const definition = (id: AlgorithmId) => {
   const d = getAlgorithmDefinition(id);

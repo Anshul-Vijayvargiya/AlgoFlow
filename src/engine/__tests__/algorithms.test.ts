@@ -208,7 +208,7 @@ describe('execution-step consistency (all registered algorithms)', () => {
   });
 
   it('swap-based sorts keep the array a permutation of the input at every step', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'quick-sort'] as const) {
+    for (const id of ['bubble-sort', 'selection-sort', 'quick-sort', 'heap-sort'] as const) {
       for (const input of SORT_INPUTS) {
         for (const s of def(id).generateSteps([...input])) {
           expect(sameMultiset(s.state, input), `${id} ${JSON.stringify(input)} step ${s.id}`).toBe(true);
@@ -228,7 +228,7 @@ describe('execution-step consistency (all registered algorithms)', () => {
   });
 
   it('pointers agree with variables of the same name (all algorithms)', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search', 'merge-sort', 'quick-sort', 'two-pointer']) {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search', 'merge-sort', 'quick-sort', 'heap-sort', 'two-pointer']) {
       for (const input of inputsFor(id)) {
         for (const s of def(id).generateSteps([...input])) {
           for (const [k, v] of Object.entries(s.pointers ?? {})) {

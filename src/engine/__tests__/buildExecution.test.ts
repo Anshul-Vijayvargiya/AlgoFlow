@@ -19,7 +19,7 @@ describe('buildExecution — failure kinds are distinct', () => {
   });
 
   it('unimplemented: a known id explicitly marked implemented:false', () => {
-    const r = buildExecution('heap-sort', [3, 1, 2]);
+    const r = buildExecution('jump-search', [3, 1, 2]);
     expect(r.status).toBe('unimplemented');
     expect(r.steps).toHaveLength(1);
     expect(r.steps[0].actionLabel).toBe('Not Implemented');
@@ -123,7 +123,7 @@ describe('visualizer store — failure states are explicit', () => {
   });
 
   it('unimplemented algorithm: status unimplemented, no error, single stub step', () => {
-    st().setAlgorithm('heap-sort');
+    st().setAlgorithm('jump-search');
     expect(st().executionStatus).toBe('unimplemented');
     expect(st().executionError).toBeNull();
     expect(st().steps).toHaveLength(1);

@@ -5,7 +5,7 @@ import type { UiState } from '../support/visualizerApp';
 
 
 const ALL = Object.keys(ALGORITHMS) as AlgorithmId[];
-const LABEL: Record<string, string> = { minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins' };
+const LABEL: Record<string, string> = { minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins', largest: 'max' };
 
 /** Bar/pointer/buffer/outcome rendering rules from the visualizer contract, checked against every observed step. */
 function renderingProblems(id: AlgorithmId, observed: UiState[], steps: ReturnType<typeof import('../support/engineTrace').engineSteps>): string[] {

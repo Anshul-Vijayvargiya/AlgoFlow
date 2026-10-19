@@ -127,7 +127,7 @@ describe('final-state styling', () => {
   });
 
   it('empty arrays: no bars (so nothing nonexistent can be shown as sorted) and an explicit status', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort'] as AlgorithmId[]) {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort'] as AlgorithmId[]) {
       const steps = getAlgorithmDefinition(id)!.generateSteps([]);
       for (let i = 0; i < steps.length; i++) {
         const html = renderStep(id, steps, i);
@@ -148,7 +148,7 @@ describe('final-state styling', () => {
 });
 
 describe('Previous / Next / Reset restore the exact visual state', () => {
-  for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'linear-search', 'binary-search', 'two-pointer'] as AlgorithmId[]) {
+  for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort', 'linear-search', 'binary-search', 'two-pointer'] as AlgorithmId[]) {
     it(`${id}: forward render at every step equals the render after stepping back to it, and Reset equals step 0`, () => {
       st().setAlgorithm(id);
       const total = st().steps.length;
@@ -205,7 +205,7 @@ describe('changing algorithms never preserves stale visual state', () => {
   });
 
   it('switching to an unimplemented algorithm leaves no bars to render', () => {
-    st().setAlgorithm('heap-sort');
+    st().setAlgorithm('jump-search');
     expect(st().executionStatus).toBe('unimplemented');
     expect(st().steps[0].state).toEqual([]);
     expect(parseBars(current())).toEqual([]);
@@ -240,7 +240,7 @@ describe('Size dropdown reflects the actual input size', () => {
   });
 
   it('every algorithm\'s default size is the selected option, and equals the trace length of the array', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'linear-search', 'binary-search', 'two-pointer'] as AlgorithmId[]) {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort', 'linear-search', 'binary-search', 'two-pointer'] as AlgorithmId[]) {
       st().setAlgorithm(id);
       expect(st().arraySize, id).toBe(st().array.length);
       expect(st().steps[0].state, id).toHaveLength(st().arraySize);

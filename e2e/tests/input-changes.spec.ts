@@ -117,9 +117,9 @@ test.describe('switching between algorithms with different input requirements', 
       await app.expectStep(1);
     });
 
-    await test.step('→ Heap Sort (not implemented): explicit unavailable state, no bars; the array survives the round trip', async () => {
-      await app.page.getByRole('button', { name: /^Heap Sort/ }).click();
-      await expect(app.heading).toHaveText('Heap Sort');
+    await test.step('→ Jump Search (not implemented): explicit unavailable state, no bars; the array survives the round trip', async () => {
+      await app.page.getByRole('button', { name: /^Jump Search/ }).click();
+      await expect(app.heading).toHaveText('Jump Search');
       await expect(app.bars).toHaveCount(0);
       await expect(app.page.getByText(/IN DEVELOPMENT/i)).toBeVisible();
       await app.selectAlgorithm('bubble-sort');

@@ -156,7 +156,7 @@ describe('validateAlgorithmInput', () => {
   });
   it('Linear Search and the sorts accept any order', () => {
     expect(validateAlgorithmInput(def('linear-search'), [9, 1, 8], 1).ok).toBe(true);
-    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort']) {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort']) {
       expect(validateAlgorithmInput(def(id), [9, 1, 8, 1, -4], null).ok, id).toBe(true);
       expect(validateAlgorithmInput(def(id), [], null).ok, id).toBe(true);
     }

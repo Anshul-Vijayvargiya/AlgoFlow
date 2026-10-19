@@ -71,8 +71,8 @@ test.describe('axe-core WCAG 2.1 A/AA scan of reachable visualizer states', () =
   });
 
   test('unimplemented algorithm card', async ({ app, page }) => {
-    await page.getByRole('button', { name: /^Heap Sort/ }).click();
-    await expect(app.heading).toHaveText('Heap Sort');
+    await page.getByRole('button', { name: /^Jump Search/ }).click();
+    await expect(app.heading).toHaveText('Jump Search');
     expect(await violations(page)).toEqual([]);
   });
 });

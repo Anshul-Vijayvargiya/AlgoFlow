@@ -303,6 +303,12 @@ describe('multi-line swaps highlight every statement of the swap (audit L3-B)', 
     ['quick-sort', 'place-pivot',
       { c: ['int temp = arr[i + 1];', 'arr[i + 1] = arr[high];', 'arr[high] = temp;'], java: ['int temp = arr[i + 1];', 'arr[i + 1] = arr[high];', 'arr[high] = temp;'] },
       { cpp: 'swap(arr[i + 1], arr[high]);', python: 'arr[i + 1], arr[high] = arr[high], arr[i + 1]' }],
+    ['heap-sort', 'do-swap',
+      { c: ['int temp = arr[i];', 'arr[i] = arr[largest];', 'arr[largest] = temp;'], java: ['int temp = arr[i];', 'arr[i] = arr[largest];', 'arr[largest] = temp;'] },
+      { cpp: 'swap(arr[i], arr[largest]);', python: 'arr[i], arr[largest] = arr[largest], arr[i]' }],
+    ['heap-sort', 'extract-swap',
+      { c: ['int temp = arr[0];', 'arr[0] = arr[i];', 'arr[i] = temp;'], java: ['int temp = arr[0];', 'arr[0] = arr[i];', 'arr[i] = temp;'] },
+      { cpp: 'swap(arr[0], arr[i]);', python: 'arr[0], arr[i] = arr[i], arr[0]' }],
   ];
 
   for (const [id, ref, multi, single] of SWAPS) {
@@ -315,7 +321,7 @@ describe('multi-line swaps highlight every statement of the swap (audit L3-B)', 
   }
 
   it('every statement of a C/Java swap in these listings is highlighted by some step', () => {
-    for (const id of ['bubble-sort', 'selection-sort', 'quick-sort']) {
+    for (const id of ['bubble-sort', 'selection-sort', 'quick-sort', 'heap-sort']) {
       for (const lang of ['c', 'java'] as const) {
         const covered = new Set<number>();
         for (const input of [defById(id as never).defaultInput, [3, 1, 2], [2, 1]]) {
