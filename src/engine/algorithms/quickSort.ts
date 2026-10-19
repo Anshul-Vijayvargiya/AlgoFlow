@@ -429,5 +429,12 @@ def quick_sort(arr, low, high):
     },
   },
 
+  // C and Java swap through a temporary over three lines (int temp = …; a = b; b = temp;); C++ calls swap() and
+  // Python uses a tuple assignment on one line. The single swap step (already post-swap) highlights all three.
+  lineSpans: {
+    c: { 'swap-smaller': 3, 'place-pivot': 3 },
+    java: { 'swap-smaller': 3, 'place-pivot': 3 },
+  },
+
   generateSteps: generateQuickSortSteps,
 };

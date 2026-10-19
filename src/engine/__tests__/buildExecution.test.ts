@@ -160,7 +160,7 @@ describe('visualizer store — failure states are explicit', () => {
     });
     expect(st().resolveCurrentLine()).toBeNull();
     useVisualizerStore.setState({ steps: real, currentStepIndex: 0 });
-    expect(st().resolveCurrentLine()).toBe(bubble.lineMap.cpp['fn-entry']);
+    expect(st().resolveCurrentLine()).toBe(bubble.lineMap.cpp['init-n']);
   });
 
   it('language switch keeps steps and position; only the resolved line changes', () => {

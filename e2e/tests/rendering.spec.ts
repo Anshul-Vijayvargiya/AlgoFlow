@@ -21,6 +21,7 @@ function renderingProblems(id: AlgorithmId, observed: UiState[], steps: ReturnTy
       if (b.role === 'min' && e.pointers?.minIdx !== b.index) problems.push(`${at}: bar ${b.index} is min but minIdx=${e.pointers?.minIdx}`);
       if (b.role === 'insert' && e.pointers?.inserted !== b.index) problems.push(`${at}: bar ${b.index} is insert but inserted=${e.pointers?.inserted}`);
       if (b.role === 'sorted' && !(e.sortedIndices ?? []).includes(b.index)) problems.push(`${at}: bar ${b.index} is sorted but not in sortedIndices`);
+      if (b.role === 'prefix' && !(e.sortedPrefixIndices ?? []).includes(b.index)) problems.push(`${at}: bar ${b.index} is prefix but not in sortedPrefixIndices`);
       if (!b.inRange && b.role !== 'default') problems.push(`${at}: dimmed bar ${b.index} has role ${b.role}`);
     }
     if (e.type === 'swap') {

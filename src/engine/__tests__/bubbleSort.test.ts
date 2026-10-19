@@ -124,8 +124,12 @@ describe('Bubble Sort trace — matches the displayed (non-optimized) implementa
         }
       });
 
-      it('every step has a codeRef that resolves in all four languages', () => {
+      it('every step has a codeRef that resolves in all four languages (the explanation-only "sorted" step has none)', () => {
         for (const s of steps) {
+          if (s.type === 'sorted') {
+            expect(s.codeRef, `step ${s.id}`).toBeUndefined();
+            continue;
+          }
           expect(s.codeRef, `step ${s.id}`).toBeTruthy();
           for (const lang of LANGUAGES) expect(bubble.lineMap[lang][s.codeRef!], `${lang}/${s.codeRef}`).toBeGreaterThan(0);
         }
@@ -214,5 +218,59 @@ describe('Bubble Sort trace — matches the displayed (non-optimized) implementa
         expect(steps.filter(s => s.type === 'return')).toHaveLength(0);
       }
     });
+  });
+});
+
+// Audit L2: the panel shows comparedValues as "Comparing: a vs b". A swap compares nothing; the comparison that led to
+// it (arr[j] > arr[j+1], in the original order) belongs to the compare / if-greater steps before it.
+describe('Bubble Sort swap steps do not show a comparison (audit L2)', () => {
+  const inputs = [...REQUIRED_INPUTS.map(([, a]) => a), [8, 3, 5, 1, 6], ...randomArrays(80, 8, 41)];
+
+  it('swap steps carry no comparedValues', () => {
+    for (const input of inputs) {
+      for (const s of trace(input).filter(x => x.type === 'swap')) {
+        expect(s.comparedValues, `${JSON.stringify(input)} step ${s.id} (${s.message})`).toBeUndefined();
+      }
+    }
+  });
+
+  it('the comparison before each swap keeps the pre-swap values in their original order (larger first)', () => {
+    for (const input of inputs) {
+      const steps = trace(input);
+      steps.forEach((s, k) => {
+        if (s.type !== 'swap') return;
+        const [compare, condition] = [steps[k - 2], steps[k - 1]];
+        const [a, b] = s.indices!;
+        const before = { val1: compare.state[a], val2: compare.state[b] };
+        expect(compare.type).toBe('compare');
+        expect(condition.codeRef).toBe('if-greater');
+        expect(compare.comparedValues).toEqual(before);
+        expect(condition.comparedValues).toEqual(before);
+        expect(before.val1).toBeGreaterThan(before.val2);
+        // the swap really exchanged them
+        expect([s.state[a], s.state[b]]).toEqual([before.val2, before.val1]);
+      });
+    }
+  });
+
+  it('[2, 1]: the whole trace is unchanged except the swap step; its explanation names the larger value moving right', () => {
+    const steps = trace([2, 1]);
+    expect(steps.map(s => [s.type, s.message, s.comparedValues ?? null])).toEqual([
+      ['init', 'Initialize bubbleSort — array of 2 elements', null],
+      ['loop-condition', 'Outer loop: i=0 < 1 → true  (Pass 1)', null],
+      ['loop-condition', 'Inner loop: j=0 < 1 → true', null],
+      ['compare', 'Compare arr[0]=2 and arr[1]=1', { val1: 2, val2: 1 }],
+      ['condition', '2 > 1 is TRUE — swap', { val1: 2, val2: 1 }],
+      ['swap', 'Swapped arr[0] ↔ arr[1]  (now: 1, 2)', null],
+      ['increment', 'j++ → j=1', null],
+      ['loop-condition', 'Inner loop: j=1 < 1 → false — pass 1 complete', null],
+      ['sorted', 'Element 2 locked at index 1 (sorted)', null],
+      ['increment', 'i++ → i=1', null],
+      ['loop-condition', 'Outer loop: i=1 < 1 → false — all passes complete', null],
+      ['complete', 'Bubble Sort complete — array fully sorted!', null],
+    ]);
+    const swap = steps.find(s => s.type === 'swap')!;
+    expect(swap.explanation).toBe('Values swapped. The larger element 2 moves right toward its sorted position.');
+    expect(`${swap.message} ${swap.explanation}`).not.toMatch(/compar/i);
   });
 });

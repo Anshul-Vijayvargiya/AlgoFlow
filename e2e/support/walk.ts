@@ -61,12 +61,22 @@ export async function walkAndCompareWithEngine(
     if (s.currentAction !== e.message) problems.push(`${at}: current action "${s.currentAction}" != "${e.message}"`);
     if (s.message !== e.message) problems.push(`${at}: step message "${s.message}" != "${e.message}"`);
     if (s.explanation !== (e.explanation ?? '')) problems.push(`${at}: explanation "${s.explanation}" != "${e.explanation}"`);
+    // the TRUE/FALSE badge is read right after the step changes, when a lingering previous result would still show
+    const wantResult = e.result === 'true' ? 'TRUE' : e.result === 'false' ? 'FALSE' : null;
+    if (s.result !== wantResult) problems.push(`${at}: result badge "${s.result}" != "${wantResult}"`);
 
-    const line = expectedLine(id, lang, e);
-    if (!s.activeLine || s.activeLine.n !== line.n || s.activeLine.text !== line.text) {
-      problems.push(`${at}: highlighted line ${JSON.stringify(s.activeLine)} != ${line.n} "${line.text}"`);
-    } else if (!intentPattern(id, e).test(s.activeLine.text)) {
-      problems.push(`${at}: highlighted line "${s.activeLine.text}" does not match the intended operation ${intentPattern(id, e)}`);
+    if (!e.codeRef) {
+      // explanation-only step (e.g. "element locked"): no statement runs, so no line may be highlighted
+      if (s.activeLine) problems.push(`${at}: explanation-only step highlights line ${JSON.stringify(s.activeLine)}`);
+      if (!s.noStatement) problems.push(`${at}: code panel does not say that no statement runs`);
+    } else {
+      const line = expectedLine(id, lang, e);
+      if (!s.activeLine || s.activeLine.n !== line.n || s.activeLine.text !== line.text) {
+        problems.push(`${at}: highlighted line ${JSON.stringify(s.activeLine)} != ${line.n} "${line.text}"`);
+      } else if (!intentPattern(id, e).test(s.activeLine.text)) {
+        problems.push(`${at}: highlighted line "${s.activeLine.text}" does not match the intended operation ${intentPattern(id, e)}`);
+      }
+      if (s.noStatement) problems.push(`${at}: code panel says no statement runs, but the step maps to a line`);
     }
     if (s.unmapped) problems.push(`${at}: UI reports an unmapped step`);
 

@@ -40,7 +40,7 @@ describe('bar heights with negative values', () => {
     expect(html).toContain('value -1');
     expect(parseBars(html)).toHaveLength(4);
     // the shortest bar is the minimum (-8): find heights in order of appearance
-    const heights = [...html.matchAll(/style="height:([\d.]+)%"/g)].map(m => Number(m[1]));
+    const heights = [...html.matchAll(/style="height:([\d.]+)%[;"]/g)].map(m => Number(m[1]));
     expect(heights).toHaveLength(4);
     expect(Math.min(...heights)).toBe(heights[2]);
   });

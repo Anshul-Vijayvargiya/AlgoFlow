@@ -20,9 +20,11 @@
  *  pointers.minIdx                 min              current minimum candidate (Selection Sort)
  *  pointers.inserted               insert           insertion position (Insertion Sort)
  *  extraInfo.pivotIndex            pivot            Quick Sort pivot — wins over compare so the pivot stays visible
- *  sortedIndices                   sorted | found   locked-in bars; shown as "found" when the run is a successful search
+ *  sortedIndices                   sorted | found   locked-in bars (final position); shown as "found" when the run is a
+ *                                                   successful search
+ *  sortedPrefixIndices             prefix           sorted relative to each other but not final (Insertion Sort's prefix)
  *
- *  Priority when several apply: found > swap > pivot > compare > min/insert > assign > focus > sorted.
+ *  Priority when several apply: found > swap > pivot > compare > min/insert > assign > focus > sorted / prefix.
  *
  *  Bars outside the current working range (extraInfo.subRange, else pointers low/high, else
  *  left/right) are dimmed, but locked (sorted/found) bars never are.
@@ -35,6 +37,7 @@ import type { ExecutionStep } from '../../types/algorithm';
 export type BarRole =
   | 'default'
   | 'sorted'
+  | 'prefix'
   | 'focus'
   | 'assign'
   | 'min'
@@ -71,6 +74,8 @@ export interface StepVisuals {
 const RANK: Record<BarRole, number> = {
   default: 0,
   sorted: 1,
+  // never on the same bar as sorted (the two index lists are disjoint)
+  prefix: 1,
   focus: 2,
   assign: 3,
   min: 4,
@@ -136,6 +141,7 @@ export function deriveStepVisuals(
   // locked bars
   const lockedRole: BarRole = options.outcome === 'found' ? 'found' : 'sorted';
   for (const i of step.sortedIndices ?? []) raise(i, lockedRole);
+  for (const i of step.sortedPrefixIndices ?? []) raise(i, 'prefix');
 
   // event bars
   const typeRole = step.type === 'sorted' ? undefined : ROLE_BY_TYPE[step.type];
@@ -183,6 +189,15 @@ export function deriveStepVisuals(
 
   return { bars, offArray, range };
 }
+
+/**
+ * How long a bar animates to its new height / colour (ms). 300 ms at the default speed and slower; when playback is
+ * faster, 60% of the step interval, so the bars always reach the current step's state before the next step replaces
+ * it. Playback timing itself is never changed.
+ */
+export const BAR_TRANSITION_MS = 300;
+export const barTransitionMs = (stepIntervalMs?: number) =>
+  stepIntervalMs === undefined ? BAR_TRANSITION_MS : Math.min(BAR_TRANSITION_MS, Math.round(stepIntervalMs * 0.6));
 
 /**
  * Bar height (% of the plot area) for a value. Non-negative arrays keep proportional heights

@@ -67,7 +67,8 @@ export const insertionSortDefinition: AlgorithmDefinition = {
 
   lineMap: {
     cpp: {
-      'fn-entry': 1,
+      'init-n': 2,
+      'fn-exit': 1,
       'outer-loop': 3,
       'pick-key': 4,
       'init-j': 5,
@@ -77,7 +78,9 @@ export const insertionSortDefinition: AlgorithmDefinition = {
       'insert-key': 10,
     },
     c: {
-      'fn-entry': 1,
+      // the statement that sets n (in C, n is a parameter, so the signature)
+      'init-n': 1,
+      'fn-exit': 1,
       'outer-loop': 2,
       'pick-key': 3,
       'init-j': 4,
@@ -87,7 +90,8 @@ export const insertionSortDefinition: AlgorithmDefinition = {
       'insert-key': 9,
     },
     java: {
-      'fn-entry': 2,
+      'init-n': 3,
+      'fn-exit': 2,
       'outer-loop': 4,
       'pick-key': 5,
       'init-j': 6,
@@ -97,7 +101,8 @@ export const insertionSortDefinition: AlgorithmDefinition = {
       'insert-key': 11,
     },
     python: {
-      'fn-entry': 1,
+      'init-n': 1,
+      'fn-exit': 9,
       'outer-loop': 2,
       'pick-key': 3,
       'init-j': 4,
@@ -112,17 +117,19 @@ export const insertionSortDefinition: AlgorithmDefinition = {
     const arr = [...input];
     const n = arr.length;
     const steps: ExecutionStep[] = [];
-    // Index 0 is trivially sorted — but only if the array has an element at index 0.
-  const sortedIndices: number[] = n > 0 ? [0] : [];
+    // Index 0 is trivially a sorted prefix — but only if the array has an element at index 0. The prefix is sorted
+    // relative to itself only (a later key can shift it), so it is reported as sortedPrefixIndices, never as
+    // sortedIndices (final positions): nothing is final until the outer loop ends.
+    const sortedPrefix: number[] = n > 0 ? [0] : [];
     let id = 0;
 
     steps.push({
       id: id++,
       type: 'init',
-      codeRef: 'fn-entry',
+      codeRef: 'init-n',
       state: [...arr],
       variables: { n },
-      sortedIndices: [...sortedIndices],
+      sortedPrefixIndices: [...sortedPrefix],
       message: `Initialize insertionSort — array of ${n} elements`,
       explanation:
         n > 0
@@ -139,7 +146,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
         state: [...arr],
         variables: { i, n },
         pointers: { i },
-        sortedIndices: [...sortedIndices],
+        sortedPrefixIndices: [...sortedPrefix],
         result: 'true',
         message: `Outer loop: i=${i} < ${n} → true`,
         explanation: `Processing element at index ${i} (value ${arr[i]}).`,
@@ -156,7 +163,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
         variables: { i, key },
         pointers: { i },
         indices: [i],
-        sortedIndices: [...sortedIndices],
+        sortedPrefixIndices: [...sortedPrefix],
         message: `key = arr[${i}] = ${key}`,
         explanation: `Saving element ${key} as the key to insert into the sorted portion.`,
         actionLabel: 'Pick key',
@@ -171,7 +178,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
         state: [...arr],
         variables: { i, key, j },
         pointers: { i, j },
-        sortedIndices: [...sortedIndices],
+        sortedPrefixIndices: [...sortedPrefix],
         message: `j = i - 1 = ${j}`,
         explanation: `Comparing key ${key} with sorted elements starting from index ${j}.`,
         actionLabel: 'j = i-1',
@@ -188,7 +195,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
           pointers: { i, j },
           indices: [j],
           comparedValues: { val1: arr[j], val2: key },
-          sortedIndices: [...sortedIndices],
+          sortedPrefixIndices: [...sortedPrefix],
           result: condTrue ? 'true' : 'false',
           message: `while j=${j}≥0 && arr[${j}]=${arr[j]} > key=${key} → TRUE`,
           explanation: `${arr[j]} > ${key}. Shifting ${arr[j]} right to make space.`,
@@ -204,7 +211,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
           variables: { 'arr[j+1]': arr[j + 1], j: j + 1 },
           pointers: { i, j: j + 1 },
           indices: [j + 1],
-          sortedIndices: [...sortedIndices],
+          sortedPrefixIndices: [...sortedPrefix],
           message: `arr[${j + 1}] = arr[${j}] = ${arr[j + 1]}  (shift right)`,
           explanation: `Moved ${arr[j + 1]} from index ${j} to ${j + 1}.`,
           actionLabel: 'Shift Right',
@@ -218,7 +225,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
           state: [...arr],
           variables: { j, key },
           pointers: { i, j },
-          sortedIndices: [...sortedIndices],
+          sortedPrefixIndices: [...sortedPrefix],
           message: `j-- → j=${j}`,
           explanation: `Moving pointer j left.`,
           actionLabel: 'j--',
@@ -233,7 +240,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
         state: [...arr],
         variables: { j, key },
         pointers: { i, j },
-        sortedIndices: [...sortedIndices],
+        sortedPrefixIndices: [...sortedPrefix],
         result: 'false',
         message: `while condition FALSE — ${whyFalse}`,
         explanation: `Insertion position found at index ${j + 1}.`,
@@ -241,7 +248,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
       });
 
       arr[j + 1] = key;
-      sortedIndices.push(i);
+      sortedPrefix.push(i);
 
       steps.push({
         id: id++,
@@ -251,7 +258,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
         variables: { insertPos: j + 1, key },
         pointers: { inserted: j + 1 },
         indices: [j + 1],
-        sortedIndices: [...sortedIndices],
+        sortedPrefixIndices: [...sortedPrefix],
         message: `arr[${j + 1}] = key = ${key}  (inserted)`,
         explanation: `Key ${key} inserted at index ${j + 1}. Subarray [0..${i}] is now sorted.`,
         actionLabel: 'Insert key',
@@ -274,7 +281,7 @@ export const insertionSortDefinition: AlgorithmDefinition = {
     steps.push({
       id: id++,
       type: 'complete',
-      codeRef: 'fn-entry',
+      codeRef: 'fn-exit',
       state: [...arr],
       sortedIndices: Array.from({ length: n }, (_, i) => i),
       message: 'Insertion Sort complete — array fully sorted!',

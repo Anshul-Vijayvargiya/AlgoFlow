@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getAllAlgorithms } from '../AlgorithmRegistry';
+import { buildExecution } from '../buildExecution';
 import type { ExecutionStep } from '../../types/algorithm';
 import {
   EDGE_INPUTS,
@@ -256,6 +257,23 @@ describe('execution-step consistency (all registered algorithms)', () => {
     expect(falseStep.pointers!.j).toBe(-1);
   });
 
+  it('a bar in sortedIndices already holds its final sorted value and never changes afterwards (all sorts)', () => {
+    for (const id of SORT_IDS) {
+      for (const input of SORT_INPUTS) {
+        const final = sortedCopy(input);
+        const lockedValue = new Map<number, number>();
+        for (const s of def(id).generateSteps([...input])) {
+          for (const i of s.sortedIndices ?? []) {
+            const where = `${id} ${JSON.stringify(input)} step ${s.id} (${s.codeRef}) index ${i}`;
+            expect(s.state[i], `${where}: marked sorted but not at its final value`).toBe(final[i]);
+            if (lockedValue.has(i)) expect(s.state[i], `${where}: changed after being marked sorted`).toBe(lockedValue.get(i));
+            lockedValue.set(i, s.state[i]);
+          }
+        }
+      }
+    }
+  });
+
   it('every algorithm: an empty array produces no highlighted/sorted indices and no undefined/NaN text (audit P2-3)', () => {
     for (const d of getAllAlgorithms()) {
       for (const params of [undefined, { target: 5 }]) {
@@ -264,9 +282,110 @@ describe('execution-step consistency (all registered algorithms)', () => {
           expect(s.state, `${d.id} step ${s.id}`).toEqual([]);
           expect(s.indices ?? [], `${d.id} step ${s.id} indices`).toEqual([]);
           expect(s.sortedIndices ?? [], `${d.id} step ${s.id} sortedIndices`).toEqual([]);
+          expect(s.sortedPrefixIndices ?? [], `${d.id} step ${s.id} sortedPrefixIndices`).toEqual([]);
           expect(s.buffers ?? [], `${d.id} step ${s.id} buffers`).toEqual([]);
         }
       }
     }
   });
+});
+
+// Audit M1: sortedIndices means "in its final position". Insertion Sort's growing prefix is only sorted relative to
+// itself (later keys shift it), so it is reported separately as sortedPrefixIndices.
+describe('final positions vs Insertion Sort\'s sorted prefix (audit M1)', () => {
+  const prefixUpTo = (i: number) => Array.from({ length: i }, (_, k) => k);
+
+  it('Insertion Sort: the initial prefix is not marked as a final position', () => {
+    const [init] = def('insertion-sort').generateSteps([6, 2, 8, 4, 3]);
+    expect(init.sortedIndices ?? []).toEqual([]);
+    expect(init.sortedPrefixIndices).toEqual([0]);
+  });
+
+  it('Insertion Sort: nothing is final until the outer loop ends; until then the prefix is [0..i-1]', () => {
+    for (const input of SORT_INPUTS.filter(a => a.length > 0)) {
+      const steps = def('insertion-sort').generateSteps([...input]);
+      const loopEnd = steps.findIndex(s => s.codeRef === 'outer-loop' && s.result === 'false');
+      steps.forEach((s, k) => {
+        const where = `${JSON.stringify(input)} step ${k} (${s.codeRef})`;
+        if (k < loopEnd) {
+          expect(s.sortedIndices ?? [], where).toEqual([]);
+          const i = typeof s.pointers?.i === 'number' ? s.pointers.i : undefined;
+          const prefix = s.sortedPrefixIndices ?? [];
+          // the prefix is contiguous from 0; it grows by one only on the insert-key step of pass i
+          expect(prefix, where).toEqual(prefixUpTo(prefix.length));
+          if (i !== undefined) expect(prefix.length, where).toBe(i);
+        } else {
+          expect(s.sortedIndices, where).toEqual(prefixUpTo(input.length));
+          expect(s.sortedPrefixIndices ?? [], where).toEqual([]);
+        }
+      });
+    }
+  });
+
+  it('only Insertion Sort reports a sorted prefix', () => {
+    for (const d of getAllAlgorithms().filter(a => a.id !== 'insertion-sort')) {
+      for (const input of SORT_INPUTS) {
+        for (const s of d.generateSteps([...input], { target: 5 })) expect(s.sortedPrefixIndices, `${d.id} step ${s.id}`).toBeUndefined();
+      }
+    }
+  });
+
+  it('Bubble Sort and Selection Sort lock exactly the same final positions as before', () => {
+    const lockSequence = (id: 'bubble-sort' | 'selection-sort', input: number[]) => {
+      const seq: number[][] = [];
+      for (const s of def(id).generateSteps([...input])) {
+        const cur = s.sortedIndices ?? [];
+        if (JSON.stringify(seq.at(-1)) !== JSON.stringify(cur)) seq.push(cur);
+      }
+      return seq;
+    };
+    expect(lockSequence('bubble-sort', [8, 3, 5, 1, 6])).toEqual([[], [4], [4, 3], [4, 3, 2], [4, 3, 2, 1], [0, 1, 2, 3, 4]]);
+    expect(lockSequence('bubble-sort', [3, 3, 1, 2])).toEqual([[], [3], [3, 2], [3, 2, 1], [0, 1, 2, 3]]);
+    expect(lockSequence('selection-sort', [7, 4, 1, 8, 2])).toEqual([[], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3], [0, 1, 2, 3, 4]]);
+    expect(lockSequence('selection-sort', [3, 3, 1, 2])).toEqual([[], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]]);
+  });
+});
+
+// Audit L-1: Linear and Binary Search only treated an OMITTED target as "use the default", so a direct call with
+// target: null searched for null (Binary Search's `<` even coerced it to 0). null is now rejected explicitly; the
+// app never passes it (the store validates the target first), and buildExecution reports it as a generator error.
+describe('Linear and Binary Search: target null is rejected, every number is kept (audit L-1)', () => {
+  const SEARCHES = ['linear-search', 'binary-search'] as const;
+  const targetOf = (steps: ExecutionStep[]) => steps[0].variables!.target;
+  const foundAt = (steps: ExecutionStep[]) => steps.find(s => s.type === 'found')?.indices?.[0];
+
+  for (const id of SEARCHES) {
+    describe(id, () => {
+      it('target: null throws a clear error instead of searching for null (or for 0)', () => {
+        expect(() => def(id).generateSteps([0, 1, 2], { target: null })).toThrow(/target.*null/i);
+      });
+
+      it('through buildExecution, null becomes an explicit generator error with no steps', () => {
+        const r = buildExecution(id, [0, 1, 2], undefined, { target: null });
+        expect(r.status).toBe('generator-error');
+        expect(r.steps).toEqual([]);
+      });
+
+      it('an omitted target keeps the existing default (the middle element; 0 for an empty array)', () => {
+        expect(targetOf(def(id).generateSteps([1, 3, 5, 7, 9]))).toBe(5);
+        expect(targetOf(def(id).generateSteps([1, 3, 5, 7]))).toBe(5);
+        expect(targetOf(def(id).generateSteps([]))).toBe(0);
+        expect(targetOf(def(id).generateSteps([1, 3, 5], {}))).toBe(3);
+      });
+
+      it('target 0 is searched for as 0 and found where it is', () => {
+        const steps = def(id).generateSteps([-3, -1, 0, 4, 9], { target: 0 });
+        expect(targetOf(steps)).toBe(0);
+        expect(foundAt(steps)).toBe(2);
+        expect(steps[0].message).toContain('target = 0');
+      });
+
+      it('an ordinary numeric target is unchanged (found and not found)', () => {
+        expect(foundAt(def(id).generateSteps([1, 3, 5, 7, 9], { target: 7 }))).toBe(3);
+        const miss = def(id).generateSteps([1, 3, 5, 7, 9], { target: 4 });
+        expect(targetOf(miss)).toBe(4);
+        expect(miss.some(s => s.type === 'not-found')).toBe(true);
+      });
+    });
+  }
 });

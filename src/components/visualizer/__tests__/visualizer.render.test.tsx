@@ -75,6 +75,25 @@ describe('rendered bars (real ArrayVisualizer + real traces)', () => {
   });
 });
 
+describe('Insertion Sort prefix vs finished bars (audit M1)', () => {
+  it('the initial prefix bar is announced as "sorted so far", never as sorted', () => {
+    const steps = getAlgorithmDefinition('insertion-sort')!.generateSteps([6, 2, 8, 4, 3]);
+    const html = renderStep('insertion-sort', steps, 0);
+    expect(rolesOf(parseBars(html), 'prefix')).toEqual([0]);
+    expect(rolesOf(parseBars(html), 'sorted')).toEqual([]);
+    expect(html).toContain('aria-label="Index 0, value 6, sorted so far"');
+    expect(html).not.toMatch(/aria-label="[^"]*, sorted(,|")/);
+  });
+
+  it('a Bubble Sort bar in its final place is still announced as sorted', () => {
+    const steps = getAlgorithmDefinition('bubble-sort')!.generateSteps([8, 3, 5, 1, 6]);
+    const locked = steps.findIndex(s => s.type === 'sorted');
+    const html = renderStep('bubble-sort', steps, locked);
+    expect(rolesOf(parseBars(html), 'sorted')).toEqual([4]);
+    expect(html).toContain('aria-label="Index 4, value 8, sorted"');
+  });
+});
+
 describe('final-state styling', () => {
   it('sorted array: all bars sorted + "Array sorted" status', () => {
     st().setAlgorithm('merge-sort');

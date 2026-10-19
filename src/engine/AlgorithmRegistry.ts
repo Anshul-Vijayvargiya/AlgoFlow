@@ -60,6 +60,23 @@ export function resolveCodeRef(
 }
 
 /**
+ * The inclusive range of lines a codeRef highlights: `lineLeads` lines before its mapped line (default 0) through
+ * `lineSpans` lines from it (default 1). The range always contains what resolveCodeRef returns, and is null in
+ * exactly the same cases.
+ */
+export function resolveCodeRange(
+  def: AlgorithmDefinition,
+  lang: ProgrammingLanguage,
+  codeRef: string | undefined
+): { start: number; end: number } | null {
+  const line = resolveCodeRef(def, lang, codeRef);
+  if (line === null) return null;
+  const lead = def.lineLeads?.[lang]?.[codeRef!] ?? 0;
+  const span = def.lineSpans?.[lang]?.[codeRef!] ?? 1;
+  return { start: line - lead, end: line + span - 1 };
+}
+
+/**
  * Returns the source code string for the given algorithm and language.
  * Returns null if the algorithm is not implemented or the language is unavailable.
  * NEVER falls back to another algorithm's code.

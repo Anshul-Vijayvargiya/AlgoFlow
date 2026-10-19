@@ -11,7 +11,7 @@ const LANGUAGE_LABELS: Record<string, string> = {
 };
 
 export const CodePanel: React.FC = () => {
-  const { selectedAlgorithm, selectedLanguage, steps, currentStepIndex, resolveCurrentLine } =
+  const { selectedAlgorithm, selectedLanguage, steps, currentStepIndex, resolveCurrentLine, resolveCurrentRange } =
     useVisualizerStore();
 
   const activeLineRef = useRef<HTMLDivElement>(null);
@@ -19,6 +19,10 @@ export const CodePanel: React.FC = () => {
   const def = getAlgorithmDefinition(selectedAlgorithm);
   const currentStep = steps[currentStepIndex];
   const activeCodeLine = resolveCurrentLine();
+  // A statement may span several lines in one language (e.g. a C/Java swap through a temporary, or C's out-parameter
+  // writes before `return true;`): every line of it is highlighted, while aria-current, the scroll target and
+  // "← HERE" stay on the step's mapped line.
+  const activeRange = resolveCurrentRange();
   // A step that names a codeRef the line map does not contain is a data defect, not "line 1".
   const isUnmappedStep = Boolean(currentStep?.codeRef) && activeCodeLine === null;
   const stepType = currentStep?.type ?? 'init';
@@ -80,7 +84,10 @@ export const CodePanel: React.FC = () => {
           <span>
             {!sourceCode
               ? 'Unavailable'
-              : isUnmappedStep
+              : currentStep && !currentStep.codeRef
+                ? // an explanation-only step (e.g. "element locked"): deliberately no line, unlike an unmapped codeRef
+                  'No statement runs at this step'
+                : isUnmappedStep
                 ? 'Unmapped step'
                 : activeCodeLine === null
                   ? `${codeLines.length} lines`
@@ -111,19 +118,21 @@ export const CodePanel: React.FC = () => {
             {codeLines.map((lineText, idx) => {
               const lineNum = idx + 1;
               const isActive = activeCodeLine !== null && lineNum === activeCodeLine;
-              const highlightClass = isActive ? getHighlightClass() : '';
+              const inActiveRange = activeRange !== null && lineNum >= activeRange.start && lineNum <= activeRange.end;
+              const highlightClass = inActiveRange ? getHighlightClass() : '';
 
               return (
                 <div
                   key={idx}
                   ref={isActive ? activeLineRef : undefined}
                   data-line={lineNum}
+                  data-active={inActiveRange ? 'true' : undefined}
                   aria-current={isActive ? 'step' : undefined}
                   className={`flex items-start gap-3 px-2 py-[3px] rounded transition-colors duration-150 ${highlightClass}`}
                 >
                   <span
                     className={`w-6 text-right select-none text-[11px] shrink-0 pt-[1px] ${
-                      isActive ? 'text-cyan-300 font-bold' : 'text-slate-400'
+                      inActiveRange ? 'text-cyan-300 font-bold' : 'text-slate-400'
                     }`}
                   >
                     {lineNum}

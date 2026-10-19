@@ -89,8 +89,14 @@ export interface ExecutionStep {
   /** For 'compare' / 'condition' steps */
   comparedValues?: { val1: number; val2: number };
 
-  /** Indices that are permanently sorted / found */
+  /** Indices that are permanently sorted (already in their final position) / found */
   sortedIndices?: number[];
+
+  /**
+   * Indices that are sorted relative to each other but NOT yet in their final position (Insertion Sort's growing
+   * prefix: a later key can still shift them). Never overlaps sortedIndices; shown as "sorted so far".
+   */
+  sortedPrefixIndices?: number[];
 
   /** The condition result for loop/condition steps */
   result?: 'true' | 'false';
@@ -178,6 +184,20 @@ export interface AlgorithmDefinition {
 
   /** Maps codeRef → line number per language */
   lineMap: AlgorithmLineMap;
+
+  /**
+   * How many consecutive lines a codeRef's statement occupies in a language, starting at its lineMap line; omitted
+   * means 1. For statements written over several lines in one language only, e.g. a C/Java swap through a temporary
+   * (3 lines) where C++ calls swap() and Python uses a tuple assignment (1 line). The trace is unaffected.
+   */
+  lineSpans?: Partial<Record<ProgrammingLanguage, Record<string, number>>>;
+
+  /**
+   * How many lines directly BEFORE a codeRef's mapped line belong to the same step in a language; omitted means 0.
+   * The mapped line keeps its role (aria-current, "← HERE"), e.g. C's out-parameter writes just before
+   * `return true;`, where the other languages return the pair in one statement.
+   */
+  lineLeads?: Partial<Record<ProgrammingLanguage, Record<string, number>>>;
 
   /**
    * Names of `pointers` entries that are positions in the displayed array and should be drawn under

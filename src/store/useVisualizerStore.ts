@@ -20,7 +20,7 @@
  */
 import { create } from 'zustand';
 import type { AlgorithmId, ExecutionStep, ProgrammingLanguage } from '../types/algorithm';
-import { getAlgorithmDefinition, resolveCodeRef } from '../engine/AlgorithmRegistry';
+import { getAlgorithmDefinition, resolveCodeRange, resolveCodeRef } from '../engine/AlgorithmRegistry';
 import { buildExecution } from '../engine/buildExecution';
 import type { ExecutionBuild, ExecutionFailure } from '../engine/buildExecution';
 import { MAX_ARRAY_SIZE, sortedCopy, validateAlgorithmInput } from '../engine/inputParsing';
@@ -67,6 +67,7 @@ interface VisualizerState {
 
   /** Resolves the current step's codeRef to a line number; null when the step has no valid mapping */
   resolveCurrentLine: () => number | null;
+  resolveCurrentRange: () => { start: number; end: number } | null;
 
   setAlgorithm: (id: AlgorithmId) => void;
   setLanguage: (lang: ProgrammingLanguage) => void;
@@ -186,6 +187,16 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       const def = getAlgorithmDefinition(selectedAlgorithm);
       if (!def) return null;
       return resolveCodeRef(def, selectedLanguage, step.codeRef);
+    },
+
+    /** Same resolution as resolveCurrentLine, as the inclusive line range the statement occupies (see lineSpans). */
+    resolveCurrentRange: () => {
+      const { selectedAlgorithm, selectedLanguage, steps, currentStepIndex } = get();
+      const step = steps[currentStepIndex];
+      if (!step?.codeRef) return null;
+      const def = getAlgorithmDefinition(selectedAlgorithm);
+      if (!def) return null;
+      return resolveCodeRange(def, selectedLanguage, step.codeRef);
     },
 
     /**

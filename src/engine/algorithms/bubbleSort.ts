@@ -10,7 +10,7 @@ function generateSteps(input: number[]): ExecutionStep[] {
   steps.push({
     id: id++,
     type: 'init',
-    codeRef: 'fn-entry',
+    codeRef: 'init-n',
     state: [...arr],
     variables: { n },
     message: `Initialize bubbleSort — array of ${n} elements`,
@@ -99,7 +99,8 @@ function generateSteps(input: number[]): ExecutionStep[] {
           pointers: { i, j, 'j+1': j + 1 },
           indices: [j, j + 1],
           sortedIndices: [...sortedIndices],
-          comparedValues: { val1: arr[j], val2: arr[j + 1] },
+          // No comparedValues: a swap compares nothing. The comparison that led here (v1 > v2, in the original
+          // order) is on the compare and if-greater steps; the post-swap pair would read as the reverse of it.
           message: `Swapped arr[${j}] ↔ arr[${j + 1}]  (now: ${arr[j]}, ${arr[j + 1]})`,
           explanation: `Values swapped. The larger element ${v1} moves right toward its sorted position.`,
           actionLabel: 'Swap',
@@ -139,7 +140,7 @@ function generateSteps(input: number[]): ExecutionStep[] {
     steps.push({
       id: id++,
       type: 'sorted',
-      codeRef: 'outer-loop',
+      // No codeRef: this step explains why the bar is final; no statement runs (the code panel highlights nothing)
       state: [...arr],
       variables: { sortedIndex: n - i - 1, value: arr[n - i - 1] },
       indices: [n - i - 1],
@@ -183,7 +184,7 @@ function generateSteps(input: number[]): ExecutionStep[] {
   steps.push({
     id: id++,
     type: 'complete',
-    codeRef: 'fn-entry',
+    codeRef: 'fn-exit',
     state: [...arr],
     sortedIndices: allIdx,
     message: 'Bubble Sort complete — array fully sorted!',
@@ -259,7 +260,8 @@ export const bubbleSortDefinition: AlgorithmDefinition = {
 
   lineMap: {
     cpp: {
-      'fn-entry': 1,
+      'init-n': 2,
+      'fn-exit': 1,
       'outer-loop': 3,
       'inner-loop': 4,
       'compare-adjacent': 5,
@@ -267,7 +269,9 @@ export const bubbleSortDefinition: AlgorithmDefinition = {
       'do-swap': 6,
     },
     c: {
-      'fn-entry': 1,
+      // the statement that sets n (in C, n is a parameter, so the signature)
+      'init-n': 1,
+      'fn-exit': 1,
       'outer-loop': 2,
       'inner-loop': 3,
       'compare-adjacent': 4,
@@ -275,7 +279,8 @@ export const bubbleSortDefinition: AlgorithmDefinition = {
       'do-swap': 5,
     },
     java: {
-      'fn-entry': 2,
+      'init-n': 3,
+      'fn-exit': 2,
       'outer-loop': 4,
       'inner-loop': 5,
       'compare-adjacent': 6,
@@ -283,13 +288,21 @@ export const bubbleSortDefinition: AlgorithmDefinition = {
       'do-swap': 7,
     },
     python: {
-      'fn-entry': 1,
+      'init-n': 2,
+      'fn-exit': 7,
       'outer-loop': 3,
       'inner-loop': 4,
       'compare-adjacent': 5,
       'if-greater': 5,
       'do-swap': 6,
     },
+  },
+
+  // C and Java swap through a temporary over three lines (int temp = …; a = b; b = temp;); C++ calls swap() and
+  // Python uses a tuple assignment on one line. The single swap step (already post-swap) highlights all three.
+  lineSpans: {
+    c: { 'do-swap': 3 },
+    java: { 'do-swap': 3 },
   },
 
   generateSteps,

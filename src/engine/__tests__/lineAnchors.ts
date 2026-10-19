@@ -9,7 +9,10 @@ const FOR_J = /for\s*\(?\s*(int\s+)?j\b/;
 
 export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
   'bubble-sort': {
-    'fn-entry': /bubble.?sort/i,
+    // n = len(arr) / int n = arr.size() / arr.length; in C n is a parameter of the signature
+    'init-n': /\bn = (arr\.size\(\)|arr\.length|len\(arr\))|bubble_?sort\w*\(int arr\[\], int n\)/i,
+    // Python returns arr; the C, C++ and Java functions are void and end without a return statement
+    'fn-exit': /^\s*return arr\s*$|void bubble_?sort\w*\(/i,
     'outer-loop': FOR_I,
     'inner-loop': FOR_J,
     'compare-adjacent': /if\s*\(?\s*arr\[j\]\s*>\s*arr\[j \+ 1\]/,
@@ -17,7 +20,10 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'do-swap': /swap\(arr\[j\],\s*arr\[j \+ 1\]\)|int temp = arr\[j\]|arr\[j\],\s*arr\[j \+ 1\]\s*=/,
   },
   'selection-sort': {
-    'fn-entry': /selection.?sort/i,
+    // n = len(arr) / int n = arr.size() / arr.length; in C n is a parameter of the signature
+    'init-n': /\bn = (arr\.size\(\)|arr\.length|len\(arr\))|selection_?sort\w*\(int arr\[\], int n\)/i,
+    // Python returns arr; the C, C++ and Java functions are void and end without a return statement
+    'fn-exit': /^\s*return arr\s*$|void selection_?sort\w*\(/i,
     'outer-loop': FOR_I,
     'set-min': /min_?idx\s*=\s*i\b/i,
     'inner-loop': FOR_J,
@@ -27,7 +33,10 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'do-swap': /swap\(arr\[i\],\s*arr\[minIdx\]\)|int temp = arr\[i\]|arr\[i\],\s*arr\[min_idx\]\s*=/,
   },
   'insertion-sort': {
-    'fn-entry': /insertion.?sort/i,
+    // n = len(arr) / int n = arr.size() / arr.length; in C n is a parameter of the signature, and the Insertion Sort Python listing never names n
+    'init-n': /\bn = (arr\.size\(\)|arr\.length|len\(arr\))|insertion_?sort\w*\(int arr\[\], int n\)|def insertion_sort\(arr\):/i,
+    // Python returns arr; the C, C++ and Java functions are void and end without a return statement
+    'fn-exit': /^\s*return arr\s*$|void insertion_?sort\w*\(/i,
     'outer-loop': FOR_I,
     'pick-key': /key = arr\[i\]/,
     'init-j': /\bj = i - 1/,
@@ -66,8 +75,9 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'call-left': /merge_?sort\(arr, l, mid\)/i,
     'call-right': /merge_?sort\(arr, mid \+ 1, r\)/i,
     'call-merge': /\bmerge\(arr, l, mid, r\)/,
-    'make-left': /vector<int> left\b|int\[\] left\b|\bleft = arr\[|L\[i\] = arr\[/,
-    'make-right': /vector<int> right\b|int\[\] right\b|\bright = arr\[|R\[j\] = arr\[/,
+    // C: the buffer's size statement opens its size / declare / copy range (see lineSpans)
+    'make-left': /vector<int> left\b|int\[\] left\b|\bleft = arr\[|\bint n1 = m - l \+ 1;/,
+    'make-right': /vector<int> right\b|int\[\] right\b|\bright = arr\[|\bint n2 = r - m;/,
     'init-merge': /\bi = 0, j = 0, k = l|\bi, j, k = 0, 0, l/,
     'merge-loop': /while\s*\(?\s*i < (left\.size\(\)|left\.length|n1|len\(left\)) (&&|and) j </,
     'compare-halves': /if\s*\(?\s*(left|L)\[i\]\s*<=\s*(right|R)\[j\]/,
@@ -77,6 +87,15 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'copy-remaining-left': /arr\[k\+\+\]\s*=\s*(left|L)\[i\+\+\]|arr\[k\] = left\[i\]/,
     'right-loop': /while\s*\(?\s*j < (right\.size\(\)|right\.length|n2|len\(right\))\)?\s*(arr\[|:)/,
     'copy-remaining-right': /arr\[k\+\+\]\s*=\s*(right|R)\[j\+\+\]|arr\[k\] = right\[j\]/,
+    // Python: the update's own line; C, C++, Java: the post-increment inside arr[k++] = L[i++]
+    'advance-i': /\bi\+\+|^\s*i \+= 1\s*$/,
+    'advance-k-after-left': /\bk\+\+|^\s*k \+= 1\s*$/,
+    'advance-j': /\bj\+\+|^\s*j \+= 1\s*$/,
+    'advance-k-after-right': /\bk\+\+|^\s*k \+= 1\s*$/,
+    'advance-i-rest': /\bi\+\+|^\s*i \+= 1\s*$/,
+    'advance-k-left-rest': /\bk\+\+|^\s*k \+= 1\s*$/,
+    'advance-j-rest': /\bj\+\+|^\s*j \+= 1\s*$/,
+    'advance-k-right-rest': /\bk\+\+|^\s*k \+= 1\s*$/,
   },
   'quick-sort': {
     'fn-entry': /(void|def)\s+quick_?sort\s*\(/i,
@@ -96,7 +115,10 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
   'two-pointer': {
     'fn-entry': /two.?sum.?sorted/i,
     'init-pointers': /\bleft\b.*\bright\b.*=/,
+    'while-condition': /\bwhile \(?left < right\)?/,
     'calc-sum': /(sum|current_sum) = arr\[left\] \+ arr\[right\]/,
+    'check-equal': /\bif \(?(sum|current_sum) == target\b/,
+    'check-less': /\b(if|elif) \(?(sum|current_sum) < target\b/,
     'return-pair': /\breturn\b/,
     'increment-left': /\bleft(\+\+| \+= 1)/,
     'decrement-right': /\bright(--| -= 1)/,

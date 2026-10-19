@@ -78,7 +78,8 @@ export const selectionSortDefinition: AlgorithmDefinition = {
 
   lineMap: {
     cpp: {
-      'fn-entry': 1,
+      'init-n': 2,
+      'fn-exit': 1,
       'outer-loop': 3,
       'set-min': 4,
       'inner-loop': 5,
@@ -88,7 +89,9 @@ export const selectionSortDefinition: AlgorithmDefinition = {
       'do-swap': 11,
     },
     c: {
-      'fn-entry': 1,
+      // the statement that sets n (in C, n is a parameter, so the signature)
+      'init-n': 1,
+      'fn-exit': 1,
       'outer-loop': 2,
       'set-min': 3,
       'inner-loop': 4,
@@ -98,7 +101,8 @@ export const selectionSortDefinition: AlgorithmDefinition = {
       'do-swap': 10,
     },
     java: {
-      'fn-entry': 2,
+      'init-n': 3,
+      'fn-exit': 2,
       'outer-loop': 4,
       'set-min': 5,
       'inner-loop': 6,
@@ -108,7 +112,8 @@ export const selectionSortDefinition: AlgorithmDefinition = {
       'do-swap': 12,
     },
     python: {
-      'fn-entry': 1,
+      'init-n': 2,
+      'fn-exit': 10,
       'outer-loop': 3,
       'set-min': 4,
       'inner-loop': 5,
@@ -117,6 +122,13 @@ export const selectionSortDefinition: AlgorithmDefinition = {
       'check-swap': 8,
       'do-swap': 9,
     },
+  },
+
+  // C and Java swap through a temporary over three lines (int temp = …; a = b; b = temp;); C++ calls swap() and
+  // Python uses a tuple assignment on one line. The single swap step (already post-swap) highlights all three.
+  lineSpans: {
+    c: { 'do-swap': 3 },
+    java: { 'do-swap': 3 },
   },
 
   generateSteps(input: number[]): ExecutionStep[] {
@@ -129,7 +141,7 @@ export const selectionSortDefinition: AlgorithmDefinition = {
     steps.push({
       id: id++,
       type: 'init',
-      codeRef: 'fn-entry',
+      codeRef: 'init-n',
       state: [...arr],
       variables: { n },
       message: `Initialize selectionSort — array of ${n} elements`,
@@ -272,7 +284,7 @@ export const selectionSortDefinition: AlgorithmDefinition = {
       steps.push({
         id: id++,
         type: 'sorted',
-        codeRef: 'outer-loop',
+        // No codeRef: this step explains why the bar is final; no statement runs (the code panel highlights nothing)
         state: [...arr],
         variables: { sortedIndex: i, value: arr[i] },
         indices: [i],
@@ -281,14 +293,44 @@ export const selectionSortDefinition: AlgorithmDefinition = {
         explanation: `Index ${i} is in its final sorted position.`,
         actionLabel: 'Element Sorted',
       });
+
+      // The for-loop's i++ runs at the end of every pass, before the condition is checked again
+      steps.push({
+        id: id++,
+        type: 'increment',
+        codeRef: 'outer-loop',
+        state: [...arr],
+        variables: { i: i + 1 },
+        pointers: { i: i + 1 },
+        sortedIndices: [...sortedIndices],
+        message: `i++ → i=${i + 1}`,
+        explanation: `Starting next outer loop pass.`,
+        actionLabel: 'i++',
+      });
     }
+
+    // The condition is checked once more and fails, which ends the loop. i is n-1 after the last i++ when n >= 2;
+    // for n <= 1 the loop body never ran, so the very first check (i = 0) is the failing one.
+    const finalI = Math.max(0, n - 1);
+    steps.push({
+      id: id++,
+      type: 'loop-condition',
+      codeRef: 'outer-loop',
+      state: [...arr],
+      variables: { i: finalI, 'n-1': n - 1 },
+      result: 'false',
+      sortedIndices: [...sortedIndices],
+      message: `Outer loop: i=${finalI} < ${n - 1} → false — all passes complete`,
+      explanation: `Outer loop condition is false. Every position but the last has been filled with its minimum, so the last element is in place too.`,
+      actionLabel: 'Outer Loop End',
+    });
 
     sortedIndices.push(n - 1);
     const allIdx = Array.from({ length: n }, (_, i) => i);
     steps.push({
       id: id++,
       type: 'complete',
-      codeRef: 'fn-entry',
+      codeRef: 'fn-exit',
       state: [...arr],
       sortedIndices: allIdx,
       message: 'Selection Sort complete — array fully sorted!',

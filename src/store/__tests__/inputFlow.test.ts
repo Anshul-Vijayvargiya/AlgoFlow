@@ -404,3 +404,24 @@ describe('playback regression', () => {
     expect(vi.isMockFunction(console.error)).toBe(false);
   });
 });
+
+// Audit R2: the target the user applies is exactly the target the trace uses and displays, including 0.
+describe('Two Pointer: applied target and trace target agree (audit R2)', () => {
+  it('target 0: the store keeps 0, the trace searches for 0 and finds the pair', () => {
+    st().setAlgorithm('two-pointer');
+    expect(st().applyInput([-3, 1, 3], 0)).toEqual({ ok: true });
+    expect(st().target).toBe(0);
+    expect(st().steps[0].variables!.target).toBe(0);
+    expect(st().steps[0].message).toBe('Initialize Two-Pointer Pair Sum — target sum = 0');
+    expect(st().steps.find(s => s.type === 'found')!.indices).toEqual([0, 2]);
+  });
+
+  it('a missing target is rejected before the generator runs; the previous trace stays', () => {
+    st().setAlgorithm('two-pointer');
+    st().applyInput([-3, 1, 3], 0);
+    const before = st().steps;
+    expect(st().applyInput([-3, 1, 3], null)).toEqual({ ok: false, canSortCopy: false, message: 'Enter a value for "Target sum".' });
+    expect(st().steps).toBe(before);
+    expect(st().target).toBe(0);
+  });
+});

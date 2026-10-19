@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ExecutionStep } from '../../types/algorithm';
 import { Bar } from './Bar';
-import { barHeightPercent, deriveStepVisuals, pointerLabel } from './barVisuals';
+import { barHeightPercent, barTransitionMs, deriveStepVisuals, pointerLabel } from './barVisuals';
 import type { Outcome } from './barVisuals';
 import { CheckCircle2, SearchX, Flag, Inbox } from 'lucide-react';
 
@@ -11,6 +11,8 @@ interface ArrayVisualizerProps {
   positionPointers?: string[];
   /** derived from the trace by deriveOutcome(); only set on the final step */
   outcome?: Outcome | null;
+  /** current playback interval (ms per step); bar animations are kept shorter than it (see barTransitionMs) */
+  stepIntervalMs?: number;
 }
 
 const OUTCOME_TEXT: Record<Outcome, { text: string; tone: string; Icon: React.ElementType }> = {
@@ -40,7 +42,9 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   currentStep,
   positionPointers,
   outcome = null,
+  stepIntervalMs,
 }) => {
+  const transitionMs = barTransitionMs(stepIntervalMs);
   const { bars, offArray } = deriveStepVisuals(currentStep, { positionPointers, outcome });
   const state = currentStep.state;
   const compact = state.length > 10;
@@ -79,6 +83,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
             visual={b}
             heightPercent={heightFor(b.value)}
             compact={compact}
+            transitionMs={transitionMs}
             edge={bars.length < 2 ? undefined : i === 0 ? 'start' : i === bars.length - 1 ? 'end' : undefined}
           />
         ))}

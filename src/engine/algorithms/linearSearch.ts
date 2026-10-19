@@ -102,6 +102,9 @@ export const linearSearchDefinition: AlgorithmDefinition = {
   generateSteps: (input: number[], params?: Record<string, unknown>) => {
     const arr = [...input];
     const n = arr.length;
+    // null is not "no target": reject it rather than search for null. The app validates the target before calling, so
+    // only a direct caller can get here; buildExecution reports the throw as a generator error.
+    if (params?.target === null) throw new TypeError('Linear Search: target is null; pass a number or omit it.');
     const target =
       params?.target !== undefined
         ? (params.target as number)

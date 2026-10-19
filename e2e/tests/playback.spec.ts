@@ -138,6 +138,95 @@ test.describe('playback controls on a custom trace', () => {
     }
   });
 
+  test('a swap highlights all three lines of the C/Java temp swap, and the single swap line in C++/Python', async ({ app }) => {
+    const array = [2, 1];
+    await app.selectAlgorithm('bubble-sort');
+    await app.enterAndVisualize(array);
+    const swap = engineSteps('bubble-sort', array).findIndex(s => s.type === 'swap');
+    await app.advance(swap);
+    await app.expectStep(swap + 1);
+
+    const expected: [Parameters<typeof app.setLanguage>[0], string[]][] = [
+      ['c', ['int temp = arr[j];', 'arr[j] = arr[j + 1];', 'arr[j + 1] = temp;']],
+      ['java', ['int temp = arr[j];', 'arr[j] = arr[j + 1];', 'arr[j + 1] = temp;']],
+      ['cpp', ['swap(arr[j], arr[j + 1]);']],
+      ['python', ['arr[j], arr[j + 1] = arr[j + 1], arr[j]']],
+    ];
+    for (const [lang, lines] of expected) {
+      await app.setLanguage(lang);
+      const highlighted = app.page.locator('[data-line][data-active="true"] pre');
+      await expect(highlighted, lang).toHaveText(lines);
+      // assistive technology and the scroll target still point at the statement's first line
+      await expect(app.page.locator('[data-line][aria-current="step"] pre'), lang).toHaveText(lines[0]);
+    }
+  });
+
+  // Audit R1: at 100 ms per step a fixed 300 ms height animation outlived its step. The animation now fits inside the
+  // step interval, and reduced-motion users get no transition at all.
+  test('bar animations fit inside one playback step and respect prefers-reduced-motion', async ({ app }) => {
+    await app.selectAlgorithm('insertion-sort');
+    await app.enterAndVisualize([9, 8, 7, 6, 5]);
+    const barTransition = () =>
+      app.page.locator('[data-bar-index] div[style*="height"]').first().evaluate(el => {
+        const cs = getComputedStyle(el);
+        return { property: cs.transitionProperty, duration: cs.transitionDuration };
+      });
+
+    expect(await barTransition()).toEqual({ property: 'height, background-color, box-shadow', duration: '0.3s' }); // default 700 ms
+    await app.speedSlider.fill('1200'); // fastest: 100 ms per step
+    await expect(app.speedSlider).toHaveAttribute('aria-valuetext', '100 ms per step');
+    expect(await barTransition()).toEqual({ property: 'height, background-color, box-shadow', duration: '0.06s' });
+
+    await app.page.emulateMedia({ reducedMotion: 'reduce' });
+    expect((await barTransition()).property).toBe('none');
+    await app.page.emulateMedia({ reducedMotion: 'no-preference' });
+  });
+
+  // Audit M-1: the result badge used AnimatePresence mode="wait", so after a TRUE→FALSE (or FALSE→TRUE) change the
+  // previous result stayed on screen for its exit animation (measured up to ~300 ms, i.e. most of a fast step).
+  for (const speedMs of [700, 100]) {
+    test(`during playback at ${speedMs} ms per step, the result badge never shows another step's result`, async ({ app }) => {
+      const array = [2, 5, 8, 12, 15, 19, 24];
+      const target = 27; // check-equal FALSE → check-less TRUE pairs: the result flips between consecutive steps
+      await app.selectAlgorithm('two-pointer');
+      await app.enterAndVisualize(array, target);
+      await app.speedSlider.fill(String(1300 - speedMs));
+      await expect(app.speedSlider).toHaveAttribute('aria-valuetext', `${speedMs} ms per step`);
+      const steps = engineSteps('two-pointer', array, target);
+      const expected = steps.map(s => (s.result === 'true' ? 'TRUE' : s.result === 'false' ? 'FALSE' : null));
+      const flips = expected.filter((r, i) => i > 0 && r && expected[i - 1] && r !== expected[i - 1]).length;
+      expect(flips, 'the trace exercises consecutive opposite results').toBeGreaterThan(0);
+
+      // sample every animation frame: the step on screen and the badge(s) on screen
+      await app.page.evaluate(() => {
+        const w = window as unknown as { __frames: { step: number; badges: string[] }[]; __stop?: boolean };
+        w.__frames = [];
+        const tick = () => {
+          const m = document.querySelector('[data-testid="step-counter"]')?.textContent?.match(/(\d+)\s*\/\s*\d+/);
+          const badges = [...document.querySelectorAll('[data-testid="step-result"]')].map(b => b.textContent?.trim() ?? '');
+          if (m) w.__frames.push({ step: Number(m[1]), badges });
+          if (!w.__stop) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      await app.playButton.click();
+      // the whole run takes steps × speed; wait for it explicitly (the default 5 s expect timeout is shorter at 700 ms)
+      await expect(app.stepCounter).toHaveAttribute('data-step', String(steps.length), { timeout: steps.length * speedMs + 10_000 });
+      const frames = await app.page.evaluate(() => {
+        const w = window as unknown as { __frames: { step: number; badges: string[] }[]; __stop?: boolean };
+        w.__stop = true;
+        return w.__frames;
+      });
+
+      const wrong = frames.filter(f => f.badges.join('+') !== (expected[f.step - 1] ?? ''));
+      expect(frames.filter(f => expected[f.step - 1]).length, 'frames with a result were sampled').toBeGreaterThan(0);
+      expect(
+        wrong.slice(0, 5).map(f => `step ${f.step}: shows [${f.badges}] expected ${expected[f.step - 1]}`),
+        `${wrong.length} of ${frames.length} frames show a badge that does not match the step`
+      ).toEqual([]);
+    });
+  }
+
   test('with no trace (input needs attention) the playback controls are disabled', async ({ app }) => {
     await app.selectAlgorithm('bubble-sort');
     await app.enterAndVisualize([5, 1, 4, 2]);

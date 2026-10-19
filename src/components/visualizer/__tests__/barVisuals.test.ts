@@ -28,6 +28,7 @@ describe('deriveStepVisuals — only the bars the step names are emphasized (all
             const where = `${d.id} ${JSON.stringify(input)} step ${i} (${s.type}/${s.codeRef}) bar ${b.index} role ${b.role}`;
             if (['focus', 'assign', 'compare', 'swap', 'found'].includes(b.role)) expect(named.has(b.index), where).toBe(true);
             if (b.role === 'sorted') expect(s.sortedIndices ?? [], where).toContain(b.index);
+            if (b.role === 'prefix') expect(s.sortedPrefixIndices ?? [], where).toContain(b.index);
             if (b.role === 'min') expect(s.pointers?.minIdx, where).toBe(b.index);
             if (b.role === 'insert') expect(s.pointers?.inserted, where).toBe(b.index);
             if (b.role === 'pivot') expect(s.extraInfo?.pivotIndex, where).toBe(b.index);
@@ -88,6 +89,27 @@ describe('deriveStepVisuals — only the bars the step names are emphasized (all
 
     r = at('merge-sort', [2, 1], s => s.codeRef === 'copy-right');
     expect(rolesWhere(r.v, 'assign')).toEqual(r.s.indices); // merge write position
+  });
+
+  it('Insertion Sort: the initial prefix bar is a sorted prefix, not a finished (sorted) bar (audit M1)', () => {
+    const steps = getAlgorithmDefinition('insertion-sort')!.generateSteps([6, 2, 8, 4, 3]);
+    const v = visuals('insertion-sort', steps[0], steps, 0);
+    expect(rolesWhere(v, 'sorted')).toEqual([]);
+    expect(rolesWhere(v, 'prefix')).toEqual([0]);
+  });
+
+  it('a bar shown as sorted always holds its final value, in every sorting algorithm (audit M1)', () => {
+    for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort'] as AlgorithmId[]) {
+      for (const input of INPUTS) {
+        const steps = getAlgorithmDefinition(id)!.generateSteps([...input]);
+        const final = steps[steps.length - 1].state;
+        steps.forEach((s, i) => {
+          for (const b of visuals(id, s, steps, i).bars) {
+            if (b.role === 'sorted') expect(b.value, `${id} ${JSON.stringify(input)} step ${i} bar ${b.index}`).toBe(final[b.index]);
+          }
+        });
+      }
+    }
   });
 
   it('the "sorted" step adds no event highlight; locked bars come from sortedIndices', () => {
@@ -253,7 +275,9 @@ describe('Merge Sort buffers are represented structurally, not by unrelated bars
   const steps = getAlgorithmDefinition('merge-sort')!.generateSteps([2, 3, 1, 0]);
 
   it('every merge step from init-merge on carries both buffers with a cursor', () => {
-    const refs = ['init-merge', 'merge-loop', 'compare-halves', 'copy-left', 'copy-right', 'left-loop', 'copy-remaining-left', 'right-loop', 'copy-remaining-right'];
+    const refs = ['init-merge', 'merge-loop', 'compare-halves', 'copy-left', 'copy-right', 'left-loop', 'copy-remaining-left', 'right-loop', 'copy-remaining-right',
+      'advance-i', 'advance-k-after-left', 'advance-j', 'advance-k-after-right', 'advance-i-rest', 'advance-k-left-rest', 'advance-j-rest', 'advance-k-right-rest'];
+    expect(steps.some(s => s.codeRef === 'advance-k-after-left')).toBe(true);
     for (const s of steps.filter(x => refs.includes(x.codeRef!))) {
       expect(s.buffers?.map(b => b.name), `${s.codeRef}`).toEqual(['left', 'right']);
     }

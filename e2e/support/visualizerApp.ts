@@ -17,6 +17,8 @@ export interface UiState {
   message: string | null;
   explanation: string | null;
   comparing: string | null;
+  /** the TRUE / FALSE result badge of the explanation panel, or null when the step has no result */
+  result: string | null;
   activeLine: { n: number; text: string } | null;
   bars: BarState[];
   outcome: { kind: string; text: string } | null;
@@ -38,6 +40,8 @@ export interface UiState {
   playLabel: 'Play' | 'Pause' | null;
   playDisabled: boolean | null;
   unmapped: boolean;
+  /** the code panel says the current step runs no statement (an explanation-only step) */
+  noStatement: boolean;
   errorCard: string | null;
 }
 
@@ -262,6 +266,7 @@ export class VisualizerApp {
         message: text('[data-testid="step-message"]'),
         explanation: text('[data-testid="step-explanation"]'),
         comparing: text('[data-testid="comparing-values"]'),
+        result: text('[data-testid="step-result"]'),
         activeLine: active ? { n: Number(active.dataset.line), text: active.querySelector('pre')?.textContent?.trim() ?? '' } : null,
         bars,
         outcome: outcome ? { kind: outcome.dataset.outcomeKind ?? '', text: outcome.textContent?.trim() ?? '' } : null,
@@ -291,6 +296,7 @@ export class VisualizerApp {
         playLabel: play ? (play.textContent!.trim().startsWith('Play') ? 'Play' : 'Pause') : null,
         playDisabled: play?.disabled ?? null,
         unmapped: document.body.innerText.includes('Unmapped step'),
+        noStatement: document.body.innerText.includes('No statement runs at this step'),
         errorCard: alertCards[0]?.textContent?.trim() ?? null,
       } as UiState;
       };

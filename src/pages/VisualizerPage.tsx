@@ -15,7 +15,7 @@ import { getAlgorithmDefinition } from '../engine/AlgorithmRegistry';
 import { Play, Code2, Menu, X, Sparkles } from 'lucide-react';
 
 export const VisualizerPage: React.FC = () => {
-  const { selectedAlgorithm, steps, currentStepIndex, executionError, executionStatus, inputIssue, isPlaying } = useVisualizerStore();
+  const { selectedAlgorithm, steps, currentStepIndex, executionError, executionStatus, inputIssue, isPlaying, speed } = useVisualizerStore();
   const algorithmMeta = getAlgorithmById(selectedAlgorithm);
   const def = getAlgorithmDefinition(selectedAlgorithm);
   const currentStep = steps[currentStepIndex] || steps[0];
@@ -191,6 +191,7 @@ export const VisualizerPage: React.FC = () => {
                         currentStep={currentStep}
                         positionPointers={def?.positionPointers}
                         outcome={outcome}
+                        stepIntervalMs={speed}
                       />
                     )}
                     {executionStatus === 'invalid-input' && (

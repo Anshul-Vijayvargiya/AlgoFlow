@@ -1,10 +1,11 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { MessageSquare, ArrowRightLeft, Target, Layers, Variable, CheckCircle, XCircle } from 'lucide-react';
 
 export const ExplanationPanel: React.FC = () => {
   const { steps, currentStepIndex } = useVisualizerStore();
+  const reduceMotion = useReducedMotion();
   const currentStep = steps[currentStepIndex];
 
   if (!currentStep) return null;
@@ -56,26 +57,28 @@ export const ExplanationPanel: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* No AnimatePresence / exit animation: with mode="wait" the previous step's TRUE/FALSE stayed on screen
+              for its whole exit (up to ~300 ms, longer than a fast step). A new result replaces the old one in the same
+              render; only its entrance is animated, briefly, and not at all for users who prefer reduced motion. */}
           {result && (
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={result}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className={`flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${
-                  result === 'true'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                }`}
-              >
-                {result === 'true'
-                  ? <CheckCircle className="w-3 h-3" />
-                  : <XCircle className="w-3 h-3" />
-                }
-                {result === 'true' ? 'TRUE' : 'FALSE'}
-              </motion.span>
-            </AnimatePresence>
+            <motion.span
+              key={result}
+              data-testid="step-result"
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.12 }}
+              className={`flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${
+                result === 'true'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              }`}
+            >
+              {result === 'true'
+                ? <CheckCircle className="w-3 h-3" />
+                : <XCircle className="w-3 h-3" />
+              }
+              {result === 'true' ? 'TRUE' : 'FALSE'}
+            </motion.span>
           )}
           <span className={`text-xs font-mono font-semibold px-3 py-1 rounded-full border ${badgeColor}`}>
             {actionLabel}

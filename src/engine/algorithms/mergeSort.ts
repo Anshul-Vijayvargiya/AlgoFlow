@@ -102,6 +102,25 @@ function generateMergeSortSteps(input: number[]): ExecutionStep[] {
       { name: 'right', values: [...right], cursor: j },
     ];
     const vars = () => ({ i, j, k, left: fmt(left), right: fmt(right), stack: stackStr() });
+    // One step per index update, emitted after the variable changed. Python writes each on its own line
+    // (`i += 1`, `k += 1`); C, C++ and Java map them to the `arr[k++] = L[i++]` statement that performs them.
+    const ADVANCE_TEXT = {
+      i: 'i walks to the next element of the left buffer.',
+      j: 'j walks to the next element of the right buffer.',
+      k: 'k moves to the next write position in arr.',
+    };
+    const advance = (codeRef: string, name: 'i' | 'j' | 'k') =>
+      emit({
+        type: 'increment',
+        codeRef,
+        variables: vars(),
+        pointers: { k },
+        buffers: bufs(),
+        extraInfo: { subRange: [l, r] },
+        message: `${name}++ → ${name} = ${{ i, j, k }[name]}`,
+        explanation: ADVANCE_TEXT[name],
+        actionLabel: `${name}++`,
+      });
 
     emit({
       type: 'assign',
@@ -174,7 +193,9 @@ function generateMergeSortSteps(input: number[]): ExecutionStep[] {
           actionLabel: 'Place left',
         });
         i++;
+        advance('advance-i', 'i');
         k++;
+        advance('advance-k-after-left', 'k');
       } else {
         arr[k] = right[j];
         emit({
@@ -190,7 +211,9 @@ function generateMergeSortSteps(input: number[]): ExecutionStep[] {
           actionLabel: 'Place right',
         });
         j++;
+        advance('advance-j', 'j');
         k++;
+        advance('advance-k-after-right', 'k');
       }
     }
 
@@ -226,7 +249,9 @@ function generateMergeSortSteps(input: number[]): ExecutionStep[] {
         actionLabel: 'Remaining left',
       });
       i++;
+      advance('advance-i-rest', 'i');
       k++;
+      advance('advance-k-left-rest', 'k');
     }
 
     // while (j < right.size()) arr[k++] = right[j++];
@@ -261,7 +286,9 @@ function generateMergeSortSteps(input: number[]): ExecutionStep[] {
         actionLabel: 'Remaining right',
       });
       j++;
+      advance('advance-j-rest', 'j');
       k++;
+      advance('advance-k-right-rest', 'k');
     }
 
     stack.pop();
@@ -395,9 +422,11 @@ void mergeSort(vector<int>& arr, int l, int r) {
     merge(arr, l, mid, r);
 }`,
     c: `void merge(int arr[], int l, int m, int r) {
-    int n1 = m - l + 1, n2 = r - m;
-    int L[n1], R[n2];
+    int n1 = m - l + 1;
+    int L[n1];
     for (int i = 0; i < n1; i++) L[i] = arr[l + i];
+    int n2 = r - m;
+    int R[n2];
     for (int j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
     int i = 0, j = 0, k = l;
     while (i < n1 && j < n2) {
@@ -486,26 +515,42 @@ def merge_sort(arr, l, r):
       'copy-remaining-left': 9,
       'right-loop': 10,
       'copy-remaining-right': 10,
+      'advance-i': 6,
+      'advance-k-after-left': 6,
+      'advance-j': 7,
+      'advance-k-after-right': 7,
+      'advance-i-rest': 9,
+      'advance-k-left-rest': 9,
+      'advance-j-rest': 10,
+      'advance-k-right-rest': 10,
     },
     c: {
-      'fn-entry': 15,
-      'base-case': 16,
-      'base-return': 16,
-      'split-range': 17,
-      'call-left': 18,
-      'call-right': 19,
-      'call-merge': 20,
-      'make-left': 4,
+      'fn-entry': 17,
+      'base-case': 18,
+      'base-return': 18,
+      'split-range': 19,
+      'call-left': 20,
+      'call-right': 21,
+      'call-merge': 22,
+      'make-left': 2,
       'make-right': 5,
-      'init-merge': 6,
-      'merge-loop': 7,
-      'compare-halves': 8,
-      'copy-left': 8,
-      'copy-right': 9,
-      'left-loop': 11,
-      'copy-remaining-left': 11,
-      'right-loop': 12,
-      'copy-remaining-right': 12,
+      'init-merge': 8,
+      'merge-loop': 9,
+      'compare-halves': 10,
+      'copy-left': 10,
+      'copy-right': 11,
+      'left-loop': 13,
+      'copy-remaining-left': 13,
+      'right-loop': 14,
+      'copy-remaining-right': 14,
+      'advance-i': 10,
+      'advance-k-after-left': 10,
+      'advance-j': 11,
+      'advance-k-after-right': 11,
+      'advance-i-rest': 13,
+      'advance-k-left-rest': 13,
+      'advance-j-rest': 14,
+      'advance-k-right-rest': 14,
     },
     java: {
       'fn-entry': 2,
@@ -526,6 +571,14 @@ def merge_sort(arr, l, r):
       'copy-remaining-left': 18,
       'right-loop': 19,
       'copy-remaining-right': 19,
+      'advance-i': 15,
+      'advance-k-after-left': 15,
+      'advance-j': 16,
+      'advance-k-after-right': 16,
+      'advance-i-rest': 18,
+      'advance-k-left-rest': 18,
+      'advance-j-rest': 19,
+      'advance-k-right-rest': 19,
     },
     python: {
       'fn-entry': 22,
@@ -546,7 +599,20 @@ def merge_sort(arr, l, r):
       'copy-remaining-left': 14,
       'right-loop': 17,
       'copy-remaining-right': 18,
+      'advance-i': 8,
+      'advance-k-after-left': 12,
+      'advance-j': 11,
+      'advance-k-after-right': 12,
+      'advance-i-rest': 15,
+      'advance-k-left-rest': 16,
+      'advance-j-rest': 19,
+      'advance-k-right-rest': 20,
     },
+  },
+
+  // C sizes, declares and fills each buffer in three statements; C++, Java and Python create a buffer in one.
+  lineSpans: {
+    c: { 'make-left': 3, 'make-right': 3 },
   },
 
   generateSteps: generateMergeSortSteps,

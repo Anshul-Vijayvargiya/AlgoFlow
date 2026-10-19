@@ -4,7 +4,11 @@ function generateTwoPointerSteps(input: number[], params?: Record<string, unknow
   // Used exactly as given. The technique requires ascending input; the UI validates that and never sorts silently.
   const arr = [...input];
   const n = arr.length;
-  const target = (params?.target as number) ?? (arr[0] + arr[n - 1] || 10);
+  // A passed target is always used as given, including 0 (the UI validates it before calling). Without one, the
+  // fallback is the endpoint sum, so the first pair matches; it may be 0. An empty array has no endpoints: 10.
+  // null is not "no target": reject it, as Linear and Binary Search do, rather than fall back to another target.
+  if (params?.target === null) throw new TypeError('Two Pointer: target is null; pass a number or omit it.');
+  const target = (params?.target as number | undefined) ?? (n > 0 ? arr[0] + arr[n - 1] : 10);
   const steps: ExecutionStep[] = [];
   let id = 0;
 
@@ -42,28 +46,62 @@ function generateTwoPointerSteps(input: number[], params?: Record<string, unknow
     actionLabel: 'Init Pointers',
   });
 
-  while (left < right) {
+  // Every check the displayed code executes is its own step, in order: the loop condition (including the final FALSE
+  // that ends the loop), then `sum == target`, then — only when that is false — `sum < target`.
+  for (;;) {
+    const loopTrue = left < right;
+    const inArray = (k: number) => k >= 0 && k < n;
+    steps.push({
+      id: id++,
+      type: 'loop-condition',
+      codeRef: 'while-condition',
+      state: [...arr],
+      variables: { left, right, target },
+      pointers: { left, right },
+      indices: [...new Set([left, right])].filter(inArray),
+      result: loopTrue ? 'true' : 'false',
+      message: `while left(${left}) < right(${right}) → ${loopTrue ? 'true' : 'false'}`,
+      explanation: loopTrue
+        ? `The pointers have not met, so there is still a pair to check.`
+        : `The pointers have met or crossed, so every possible pair has been ruled out. The loop ends.`,
+      actionLabel: loopTrue ? 'While TRUE' : 'While FALSE',
+    });
+    if (!loopTrue) break;
+
     const currentSum = arr[left] + arr[right];
 
     steps.push({
       id: id++,
-      type: 'compare',
+      type: 'assign',
       codeRef: 'calc-sum',
       state: [...arr],
       variables: { left, right, 'arr[left]': arr[left], 'arr[right]': arr[right], currentSum, target },
       pointers: { left, right },
       indices: [left, right],
-      comparedValues: { val1: currentSum, val2: target },
-      message: `Sum arr[${left}] (${arr[left]}) + arr[${right}] (${arr[right]}) = ${currentSum}  (target = ${target})`,
-      explanation: currentSum === target
-        ? `Sum equals target ${target}! Pair found at indices [${left}, ${right}].`
-        : currentSum < target
-        ? `Sum ${currentSum} < ${target} → Move left pointer right to increase sum.`
-        : `Sum ${currentSum} > ${target} → Move right pointer left to decrease sum.`,
-      actionLabel: 'Check Sum',
+      message: `sum = arr[${left}] + arr[${right}] = ${arr[left]} + ${arr[right]} = ${currentSum}`,
+      explanation: `Adds the values at the two pointers. It is compared with the target ${target} next.`,
+      actionLabel: 'Compute Sum',
     });
 
-    if (currentSum === target) {
+    const isMatch = currentSum === target;
+    steps.push({
+      id: id++,
+      type: 'condition',
+      codeRef: 'check-equal',
+      state: [...arr],
+      variables: { left, right, currentSum, target },
+      pointers: { left, right },
+      indices: [left, right],
+      comparedValues: { val1: currentSum, val2: target },
+      result: isMatch ? 'true' : 'false',
+      message: `sum(${currentSum}) == target(${target}) → ${isMatch ? 'TRUE — pair found' : 'FALSE'}`,
+      explanation: isMatch
+        ? `The sum equals the target, so the pair at indices [${left}, ${right}] is returned.`
+        : `The sum is not the target, so the code checks which pointer to move.`,
+      actionLabel: isMatch ? 'Condition TRUE' : 'Condition FALSE',
+    });
+
+    if (isMatch) {
       found = true;
       steps.push({
         id: id++,
@@ -79,7 +117,27 @@ function generateTwoPointerSteps(input: number[], params?: Record<string, unknow
         actionLabel: 'Pair Found',
       });
       break;
-    } else if (currentSum < target) {
+    }
+
+    const isLess = currentSum < target;
+    steps.push({
+      id: id++,
+      type: 'condition',
+      codeRef: 'check-less',
+      state: [...arr],
+      variables: { left, right, currentSum, target },
+      pointers: { left, right },
+      indices: [left, right],
+      comparedValues: { val1: currentSum, val2: target },
+      result: isLess ? 'true' : 'false',
+      message: `sum(${currentSum}) < target(${target}) → ${isLess ? 'TRUE — move left' : 'FALSE — move right'}`,
+      explanation: isLess
+        ? `The sum is too small. Moving left to a larger value (the array is ascending) increases it.`
+        : `The sum is too large. Moving right to a smaller value decreases it.`,
+      actionLabel: isLess ? 'Condition TRUE' : 'Condition FALSE',
+    });
+
+    if (isLess) {
       left++;
       steps.push({
         id: id++,
@@ -208,11 +266,16 @@ export const twoPointerDefinition: AlgorithmDefinition = {
   },
 
   lineMap: {
+    // C++ and Java write `if (sum == target) return …;` and `if (sum < target) left++;` on one line each, so the
+    // condition and the statement it guards share that line there.
     cpp: {
       'fn-entry': 1,
       'init-pointers': 2,
+      'while-condition': 3,
       'calc-sum': 4,
+      'check-equal': 5,
       'return-pair': 5,
+      'check-less': 6,
       'increment-left': 6,
       'decrement-right': 7,
       'return-none': 9,
@@ -220,8 +283,11 @@ export const twoPointerDefinition: AlgorithmDefinition = {
     c: {
       'fn-entry': 1,
       'init-pointers': 2,
+      'while-condition': 3,
       'calc-sum': 4,
+      'check-equal': 5,
       'return-pair': 7,
+      'check-less': 9,
       'increment-left': 9,
       'decrement-right': 10,
       'return-none': 12,
@@ -229,8 +295,11 @@ export const twoPointerDefinition: AlgorithmDefinition = {
     java: {
       'fn-entry': 2,
       'init-pointers': 3,
+      'while-condition': 4,
       'calc-sum': 5,
+      'check-equal': 6,
       'return-pair': 6,
+      'check-less': 7,
       'increment-left': 7,
       'decrement-right': 8,
       'return-none': 10,
@@ -238,12 +307,21 @@ export const twoPointerDefinition: AlgorithmDefinition = {
     python: {
       'fn-entry': 1,
       'init-pointers': 2,
+      'while-condition': 3,
       'calc-sum': 4,
+      'check-equal': 5,
       'return-pair': 6,
+      'check-less': 7,
       'increment-left': 8,
       'decrement-right': 10,
       'return-none': 11,
     },
+  },
+
+  // C writes the pair to its out-parameters on the line before `return true;`; the match step covers both, and its
+  // mapped line stays on the return. C++, Java and Python return the pair in one statement.
+  lineLeads: {
+    c: { 'return-pair': 1 },
   },
 
   generateSteps: generateTwoPointerSteps,

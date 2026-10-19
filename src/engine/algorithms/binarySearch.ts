@@ -129,6 +129,9 @@ export const binarySearchDefinition: AlgorithmDefinition = {
     const arr = [...input];
     const isSorted = arr.every((v, i) => i === 0 || arr[i - 1] <= v);
     const n = arr.length;
+    // null is not "no target": reject it rather than search for it (`arr[mid] < null` would compare against 0). The app
+    // validates the target before calling, so only a direct caller can get here; buildExecution reports the throw.
+    if (params?.target === null) throw new TypeError('Binary Search: target is null; pass a number or omit it.');
     const target =
       params?.target !== undefined
         ? (params.target as number)

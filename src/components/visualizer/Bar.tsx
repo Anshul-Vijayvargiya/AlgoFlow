@@ -1,6 +1,7 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { BarVisual, BarRole } from './barVisuals';
+import { BAR_TRANSITION_MS } from './barVisuals';
 
 interface BarProps {
   visual: BarVisual;
@@ -10,6 +11,8 @@ interface BarProps {
   compact?: boolean;
   /** first or last bar of the chart: its pointer chip must not extend past that chart edge */
   edge?: 'start' | 'end';
+  /** height / colour animation length (ms); kept shorter than the playback step (see barTransitionMs) */
+  transitionMs?: number;
 }
 
 interface RoleStyle {
@@ -35,6 +38,15 @@ const ROLE_STYLES: Record<BarRole, RoleStyle> = {
     glow: 'shadow-[0_0_12px_rgba(16,185,129,0.3)]',
     badge: '',
     label: 'sorted',
+  },
+  // Sorted only relative to its neighbours, not final: a muted fill with a dashed outline, so it never reads as the
+  // solid green of a finished bar (and the accessible name says so, not colour alone)
+  prefix: {
+    gradient: 'from-emerald-900/60 via-slate-700/70 to-slate-800/80 border-emerald-400/70 border-dashed',
+    text: 'text-emerald-200/90',
+    glow: '',
+    badge: '',
+    label: 'sorted so far',
   },
   focus: {
     gradient: 'from-cyan-400/60 via-sky-500/50 to-slate-800/80 border-cyan-300',
@@ -94,8 +106,11 @@ const ROLE_STYLES: Record<BarRole, RoleStyle> = {
   },
 };
 
-export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false, edge }) => {
+export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false, edge, transitionMs = BAR_TRANSITION_MS }) => {
   const { index, value, role, inRange, pointers } = visual;
+  // Users who prefer reduced motion get the final state at once: CSS transitions are off (motion-reduce:) and the
+  // badge appears without its entrance animation.
+  const reduceMotion = useReducedMotion();
   const style = ROLE_STYLES[role];
   const dim = !inRange && role === 'default';
   const name =
@@ -114,7 +129,7 @@ export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false
       data-pointers={pointers.join(',')}
       data-value={value}
       data-height={heightPercent.toFixed(1)}
-      className={`flex flex-col items-center h-full flex-1 max-w-[56px] ${compact ? 'min-w-[12px] sm:min-w-[16px]' : 'min-w-[28px]'} relative group transition-opacity duration-200 ${
+      className={`flex flex-col items-center h-full flex-1 max-w-[56px] ${compact ? 'min-w-[12px] sm:min-w-[16px]' : 'min-w-[28px]'} relative group transition-opacity duration-200 motion-reduce:transition-none ${
         dim ? 'opacity-40' : 'opacity-100'
       }`}
     >
@@ -123,18 +138,18 @@ export const Bar: React.FC<BarProps> = ({ visual, heightPercent, compact = false
         <div className="relative mb-1.5 flex flex-col items-center">
           {style.badge && (
             <motion.span
-              initial={{ opacity: 0, y: 5, scale: 0.8 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 5, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               className="absolute bottom-full mb-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/90 border border-slate-700 tracking-wider text-slate-200 z-10 shadow-lg"
             >
               {style.badge}
             </motion.span>
           )}
-          <span className={`${compact ? 'text-[9px] sm:text-xs' : 'text-xs'} font-mono transition-colors ${style.text}`}>{value}</span>
+          <span className={`${compact ? 'text-[9px] sm:text-xs' : 'text-xs'} font-mono transition-colors motion-reduce:transition-none ${style.text}`}>{value}</span>
         </div>
         <div
-          style={{ height: `${heightPercent}%` }}
-          className={`w-full rounded-t-xl bg-gradient-to-t border-t border-x ${style.gradient} ${style.glow} transition-[height,background-color,box-shadow] duration-300 flex flex-col justify-between items-center py-2 relative overflow-hidden`}
+          style={{ height: `${heightPercent}%`, transitionDuration: `${transitionMs}ms` }}
+          className={`w-full rounded-t-xl bg-gradient-to-t border-t border-x ${style.gradient} ${style.glow} transition-[height,background-color,box-shadow] motion-reduce:transition-none flex flex-col justify-between items-center py-2 relative overflow-hidden`}
         >
           <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
         </div>
