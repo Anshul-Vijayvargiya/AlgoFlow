@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, Response } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import { User } from '../models/User';
-import { Problem } from '../models/Problem';
+import { Problem, IProblem } from '../models/Problem';
 import { Submission } from '../models/Submission';
 import { ActivityLog } from '../models/ActivityLog';
 import { AdminAuditLog } from '../models/AdminAuditLog';
@@ -13,17 +13,18 @@ const router = Router();
 
 const updateStatusSchema = z.object({
   status: z.enum(['active', 'suspended'], {
-    errorMap: () => ({ message: 'Status must be active or suspended' }),
+    error: 'Status must be active or suspended',
   }),
 });
 
 const updateRoleSchema = z.object({
   role: z.enum(['USER', 'ADMIN', 'SUPER_ADMIN'], {
-    errorMap: () => ({ message: 'Role must be USER, ADMIN, or SUPER_ADMIN' }),
+    error: 'Role must be USER, ADMIN, or SUPER_ADMIN',
   }),
 });
 
-const problemInputSchema = z.object({
+// Field rules shared by the create and update schemas, so the two cannot drift apart
+const problemFields = {
   problemId: z
     .string()
     .trim()
@@ -33,41 +34,98 @@ const problemInputSchema = z.object({
   title: z.string().trim().min(2).max(150),
   difficulty: z.enum(['Easy', 'Medium', 'Hard']),
   category: z.string().trim().min(2).max(50),
-  tags: z.array(z.string().trim()).optional(),
+  tags: z.array(z.string().trim()),
   description: z.string().min(10),
-  constraints: z.array(z.string().trim()).optional(),
-  examples: z
-    .array(
-      z.object({
-        input: z.string(),
-        output: z.string(),
-        explanation: z.string().optional(),
-      })
-    )
-    .optional(),
+  constraints: z.array(z.string().trim()),
+  publicationStatus: z.enum(['published', 'draft', 'archived']),
+};
+// "" is a valid input/output/expected value (no stdin, no output); the Problem model stores it as is
+const exampleShape = {
+  input: z.string(),
+  output: z.string(),
+  explanation: z.string().optional(),
+};
+const testCaseShape = {
+  input: z.string(),
+  expected: z.string(),
+  isHidden: z.boolean().optional(),
+};
+const STARTER_LANGUAGES = ['cpp', 'c', 'java', 'python'] as const;
+
+// Strict like the update schema: unknown keys at any level are a 400, not silently dropped
+const problemInputSchema = z.strictObject({
+  problemId: problemFields.problemId,
+  title: problemFields.title,
+  difficulty: problemFields.difficulty,
+  category: problemFields.category,
+  tags: problemFields.tags.optional(),
+  description: problemFields.description,
+  constraints: problemFields.constraints.optional(),
+  examples: z.array(z.strictObject(exampleShape)).optional(),
   starterCode: z
-    .object({
+    .strictObject({
       cpp: z.string().default(''),
       c: z.string().default(''),
       java: z.string().default(''),
       python: z.string().default(''),
     })
     .optional(),
-  testCases: z
-    .array(
-      z.object({
-        input: z.string(),
-        expected: z.string(),
-        isHidden: z.boolean().optional(),
-      })
-    )
-    .min(1, 'At least one testcase is required'),
-  publicationStatus: z.enum(['published', 'draft', 'archived']).default('published'),
+  testCases: z.array(z.strictObject(testCaseShape)).min(1, 'At least one testcase is required'),
+  publicationStatus: problemFields.publicationStatus.default('published'),
 });
+
+// Not problemInputSchema.partial(): that would keep the defaults (any edit would re-publish a draft and blank the
+// other starter languages) and silently strip unknown keys. Strict objects reject unknown, dotted and `$` keys with
+// a 400 instead, and no field has a default. problemId is accepted only so a client can send it back unchanged; the
+// route rejects any other value, because submissions and activity logs reference problems by slug.
+const problemUpdateSchema = z
+  .strictObject({
+    problemId: problemFields.problemId.optional(),
+    title: problemFields.title.optional(),
+    difficulty: problemFields.difficulty.optional(),
+    category: problemFields.category.optional(),
+    tags: problemFields.tags.optional(),
+    description: problemFields.description.optional(),
+    constraints: problemFields.constraints.optional(),
+    examples: z.array(z.strictObject(exampleShape)).optional(),
+    starterCode: z
+      .strictObject({
+        cpp: z.string().optional(),
+        c: z.string().optional(),
+        java: z.string().optional(),
+        python: z.string().optional(),
+      })
+      .optional(),
+    testCases: z.array(z.strictObject(testCaseShape)).min(1, 'At least one testcase is required').optional(),
+    publicationStatus: problemFields.publicationStatus.optional(),
+  })
+  .refine((body) => Object.keys(body).some((key) => key !== 'problemId'), {
+    message: 'At least one field to update is required',
+  });
 
 // Helper: Escape regex
 function escapeRegex(text: string): string {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
+// Helper: Answer an error thrown by a Problem write (create/update) that the client caused. A model rule the Zod
+// schema does not mirror is a 400 (same shape as validateBody) and a duplicate slug is a 409. Returns false for any
+// other error, which the caller rethrows so the error handler sends a masked 500. Only wrap the Problem write itself,
+// so a failure elsewhere (e.g. the audit log) is never reported as a client error.
+function sendProblemWriteError(res: Response, err: any, conflictMessage: string): boolean {
+  if (err?.name === 'ValidationError' || err?.name === 'CastError') {
+    const issues: any[] = err.name === 'ValidationError' ? Object.values(err.errors ?? {}) : [err];
+    res.status(400).json({
+      error: 'Validation failed',
+      details: issues.map((issue) => ({ field: issue.path ?? '', message: issue.message })),
+    });
+    return true;
+  }
+  if (err?.code === 11000) {
+    res.status(409).json({ error: conflictMessage });
+    return true;
+  }
+  return false;
 }
 
 // GET /api/admin/metrics — Platform overview for ADMIN and SUPER_ADMIN
@@ -379,10 +437,17 @@ router.post(
         return;
       }
 
-      const problem = await Problem.create({
-        ...body,
-        problemId,
-      });
+      let problem: IProblem;
+      try {
+        problem = await Problem.create({
+          ...body,
+          problemId,
+        });
+      } catch (err) {
+        // Two creates with the same slug can both pass the check above; the unique index rejects the second (409)
+        if (sendProblemWriteError(res, err, `Problem with slug "${problemId}" already exists.`)) return;
+        throw err;
+      }
 
       await AdminAuditLog.create({
         adminId: req.user!.userId,
@@ -405,16 +470,47 @@ router.put(
   '/problems/:id',
   requireAuth,
   requireRole('ADMIN', 'SUPER_ADMIN'),
+  validateBody(problemUpdateSchema),
   async (req: AuthRequest, res, next) => {
     try {
       const { id } = req.params;
+      const { problemId, starterCode, ...fields } = req.body as z.infer<typeof problemUpdateSchema>;
       const isObjectId = mongoose.isValidObjectId(id);
 
-      const problem = await Problem.findOneAndUpdate(
-        { $or: isObjectId ? [{ _id: id }, { problemId: id.toLowerCase() }] : [{ problemId: id.toLowerCase() }] },
-        { $set: req.body },
-        { new: true, runValidators: true }
-      );
+      const existing = await Problem.findOne({
+        $or: isObjectId ? [{ _id: id }, { problemId: id.toLowerCase() }] : [{ problemId: id.toLowerCase() }],
+      });
+      if (!existing) {
+        res.status(404).json({ error: 'Problem not found.' });
+        return;
+      }
+
+      if (problemId !== undefined && problemId !== existing.problemId) {
+        res.status(400).json({
+          error: 'problemId cannot be changed: submissions and activity logs reference problems by slug.',
+        });
+        return;
+      }
+
+      // Each starter language is set on its own path, so updating one language keeps the others
+      const updates: Record<string, unknown> = { ...fields };
+      for (const language of STARTER_LANGUAGES) {
+        if (starterCode?.[language] !== undefined) {
+          updates[`starterCode.${language}`] = starterCode[language];
+        }
+      }
+
+      let problem: IProblem | null;
+      try {
+        problem = await Problem.findOneAndUpdate(
+          { _id: existing._id },
+          { $set: updates },
+          { new: true, runValidators: true }
+        );
+      } catch (err) {
+        if (sendProblemWriteError(res, err, 'A problem with this slug already exists.')) return;
+        throw err;
+      }
 
       if (!problem) {
         res.status(404).json({ error: 'Problem not found.' });
@@ -425,8 +521,8 @@ router.put(
         adminId: req.user!.userId,
         action: 'PROBLEM_UPDATE',
         targetType: 'PROBLEM',
-        targetId: problem._id ? problem._id.toString() : (problem.problemId || id),
-        details: { problemId: problem.problemId, title: problem.title },
+        targetId: problem._id.toString(),
+        details: { problemId: problem.problemId, title: problem.title, fields: Object.keys(updates) },
         ipAddress: req.ip,
       });
 

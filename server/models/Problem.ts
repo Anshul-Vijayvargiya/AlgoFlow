@@ -42,10 +42,12 @@ const ProblemSchema = new Schema<IProblem>(
     tags: [{ type: String, trim: true }],
     description: { type: String, required: true },
     constraints: [{ type: String }],
+    // input/output/expected may legitimately be "" (a program that reads no stdin or prints nothing). `required`
+    // would reject "", so these default to "" instead; the admin API's Zod schemas still require each key to be sent.
     examples: [
       {
-        input: { type: String, required: true },
-        output: { type: String, required: true },
+        input: { type: String, default: '' },
+        output: { type: String, default: '' },
         explanation: { type: String },
       },
     ],
@@ -57,8 +59,8 @@ const ProblemSchema = new Schema<IProblem>(
     },
     testCases: [
       {
-        input: { type: String, required: true },
-        expected: { type: String, required: true },
+        input: { type: String, default: '' },
+        expected: { type: String, default: '' },
         isHidden: { type: Boolean, default: false },
       },
     ],

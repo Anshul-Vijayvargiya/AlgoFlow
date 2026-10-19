@@ -10,12 +10,12 @@ const router = Router();
 // Zod schema for creating a note
 const createNoteSchema = z.object({
   title: z
-    .string({ required_error: 'Title is required' })
+    .string({ error: (issue) => (issue.input === undefined ? 'Title is required' : undefined) })
     .trim()
     .min(1, 'Title cannot be empty')
     .max(120, 'Title cannot exceed 120 characters'),
   content: z
-    .string({ required_error: 'Content is required' })
+    .string({ error: (issue) => (issue.input === undefined ? 'Content is required' : undefined) })
     .min(1, 'Content cannot be empty')
     .max(10000, 'Content cannot exceed 10,000 characters'),
   algorithmId: z.string().trim().max(100, 'Algorithm ID cannot exceed 100 characters').optional(),

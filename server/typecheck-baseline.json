@@ -1,6 +1,6 @@
 {
   "description": "Pre-existing server type errors accepted by `npm run typecheck:server` (scripts/typecheckServer.ts). Matched on file + code + message; may only shrink. Remove entries by fixing the errors, then run with --update.",
-  "total": 56,
+  "total": 49,
   "errors": [
     {
       "file": "server/routes/adminRoutes.ts",
@@ -12,13 +12,13 @@
       "file": "server/routes/adminRoutes.ts",
       "code": "TS2769",
       "message": "No overload matches this call.",
-      "count": 4
+      "count": 1
     },
     {
       "file": "server/routes/noteRoutes.ts",
       "code": "TS2769",
       "message": "No overload matches this call.",
-      "count": 6
+      "count": 4
     },
     {
       "file": "server/routes/problemRoutes.ts",
@@ -120,7 +120,7 @@
       "file": "server/routes/problemRoutes.ts",
       "code": "TS2769",
       "message": "No overload matches this call.",
-      "count": 7
+      "count": 5
     },
     {
       "file": "server/routes/progressRoutes.ts",

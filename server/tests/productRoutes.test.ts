@@ -147,6 +147,17 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('Validation failed');
+      expect(res.body.details).toContainEqual({ field: 'content', message: 'Content is required' });
+    });
+
+    it('should report a missing note title with its custom message', async () => {
+      const res = await request(app)
+        .post('/api/notes')
+        .set('Cookie', [`algoflow_token=${userToken}`])
+        .send({ content: 'Contents without a title' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.details).toContainEqual({ field: 'title', message: 'Title is required' });
     });
 
     it('should create note with user ownership set from token (not frontend body)', async () => {
@@ -348,6 +359,21 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
           status: 'SUBMITTED',
         })
       );
+    });
+
+    it.each([
+      ['an unsupported language', { language: 'rust', code: 'fn main() {}' }, 'language', 'Language must be one of: cpp, c, java, python'],
+      ['missing source code', { language: 'cpp' }, 'code', 'Source code is required'],
+      ['empty source code', { language: 'cpp', code: '' }, 'code', 'Source code cannot be empty'],
+    ])('should reject a submission with %s using its custom message', async (_label, body, field, message) => {
+      const res = await request(app)
+        .post('/api/problems/two-sum/submit')
+        .set('Cookie', [`algoflow_token=${userToken}`])
+        .send(body);
+
+      expect(res.status).toBe(400);
+      expect(res.body.details).toEqual([{ field, message }]);
+      expect(mockSubmission.create).not.toHaveBeenCalled();
     });
 
     it('should fetch user submission history isolated to current user', async () => {

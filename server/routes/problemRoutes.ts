@@ -13,10 +13,10 @@ const router = Router();
 
 const submitSchema = z.object({
   language: z.enum(['cpp', 'c', 'java', 'python'], {
-    errorMap: () => ({ message: 'Language must be one of: cpp, c, java, python' }),
+    error: 'Language must be one of: cpp, c, java, python',
   }),
   code: z
-    .string({ required_error: 'Source code is required' })
+    .string({ error: (issue) => (issue.input === undefined ? 'Source code is required' : undefined) })
     .min(1, 'Source code cannot be empty')
     .max(50000, 'Source code cannot exceed 50,000 characters'),
 });
