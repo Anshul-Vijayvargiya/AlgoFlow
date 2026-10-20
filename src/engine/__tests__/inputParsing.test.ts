@@ -1,16 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import {
   MAX_ARRAY_SIZE,
+  MAX_LIST_SIZE,
   MAX_VALUE,
   MIN_VALUE,
+  defaultListIndex,
   firstUnsortedIndex,
+  lastListIndex,
   parseArrayInput,
   parseTargetInput,
   sortedCopy,
   validateAlgorithmInput,
   validateDraft,
+  validateListDraft,
 } from '../inputParsing';
-import { getAllAlgorithms } from '../AlgorithmRegistry';
+import { getAllAlgorithms, visualKindOf } from '../AlgorithmRegistry';
+import type { AlgorithmDefinition } from '../../types/algorithm';
 import { def } from './testUtils';
 
 const okArray = (text: string) => {
@@ -131,7 +136,8 @@ describe('algorithm input specs (declared on the real definitions)', () => {
   });
   it('every default input satisfies its own algorithm\'s requirements with its default target', () => {
     for (const d of getAllAlgorithms()) {
-      const v = validateAlgorithmInput(d, d.defaultInput, d.inputSpec?.target?.defaultValue ?? null);
+      const spec = d.inputSpec;
+      const v = validateAlgorithmInput(d, d.defaultInput, (spec?.target ?? spec?.value)?.defaultValue ?? null, spec?.index?.defaultValue ?? null);
       expect(v.ok, d.id).toBe(true);
     }
   });
@@ -187,5 +193,117 @@ describe('validateDraft (what the input panel shows)', () => {
     expect(validateDraft(def('linear-search'), '4, 2, 9', '-2')).toEqual({ ok: true, array: [4, 2, 9], target: -2 });
     expect(validateDraft(def('quick-sort'), '3, 1, 2', 'ignored')).toEqual({ ok: true, array: [3, 1, 2], target: null });
     expect(validateDraft(def('quick-sort'), '', '')).toEqual({ ok: true, array: [], target: null });
+  });
+});
+
+// Linked-list operations (Phase 1 foundations): no list operation is registered yet, so these use minimal stand-in
+// definitions that declare the same input specs the real operations will.
+describe('linked-list input validation (rejected before execution)', () => {
+  type ListDef = Pick<AlgorithmDefinition, 'name' | 'inputSpec' | 'visual'>;
+  const traverse: ListDef = { name: 'Traverse', visual: 'linked-list' };
+  const insertHead: ListDef = { name: 'Insert at Head', visual: 'linked-list', inputSpec: { addsNode: true, value: { label: 'Value', hint: '', defaultValue: 5 } } };
+  const insertAt: ListDef = {
+    name: 'Insert at Index',
+    visual: 'linked-list',
+    inputSpec: { addsNode: true, value: { label: 'Value', hint: '', defaultValue: 5 }, index: { label: 'Index', hint: '', defaultValue: 1, bound: 'insert' } },
+  };
+  const deleteAt: ListDef = { name: 'Delete at Index', visual: 'linked-list', inputSpec: { index: { label: 'Index', hint: '', defaultValue: 0, bound: 'delete' } } };
+  const list = (n: number) => Array.from({ length: n }, (_, k) => k + 1);
+
+  it('lists hold at most 10 nodes; operations that add a node need room for it', () => {
+    expect(MAX_LIST_SIZE).toBe(10);
+    expect(validateAlgorithmInput(traverse, list(10), null).ok).toBe(true);
+    expect(validateAlgorithmInput(traverse, list(11), null)).toEqual({ ok: false, canSortCopy: false, message: 'Too many nodes (11). The visualizer shows at most 10.' });
+    expect(validateAlgorithmInput(insertHead, list(9), 5).ok).toBe(true);
+    const full = validateAlgorithmInput(insertHead, list(10), 5);
+    expect(full.ok).toBe(false);
+    if (!full.ok) expect(full.message).toBe('Too many nodes (10). Insert at Head adds one, and the visualizer shows at most 10, so start with at most 9.');
+  });
+
+  it('empty and single-node lists, duplicates and negatives are valid', () => {
+    for (const a of [[], [7], [3, 3, 3], [-5, 0, -5]]) expect(validateAlgorithmInput(traverse, a, null).ok, JSON.stringify(a)).toBe(true);
+  });
+
+  it('a declared value is required; zero and negatives are values', () => {
+    expect(validateAlgorithmInput(insertHead, [1], null)).toEqual({ ok: false, canSortCopy: false, message: 'Enter a value for "Value".' });
+    expect(validateAlgorithmInput(insertHead, [1], 0).ok).toBe(true);
+    expect(validateAlgorithmInput(insertHead, [1], -7).ok).toBe(true);
+  });
+
+  it('insert index: 0..length (length appends); anything else is rejected with the valid range', () => {
+    for (const i of [0, 1, 3]) expect(validateAlgorithmInput(insertAt, [1, 2, 3], 9, i).ok, `index ${i}`).toBe(true);
+    expect(validateAlgorithmInput(insertAt, [], 9, 0).ok).toBe(true); // inserting into an empty list
+    for (const i of [-1, 4, 100]) {
+      const r = validateAlgorithmInput(insertAt, [1, 2, 3], 9, i);
+      expect(r).toEqual({ ok: false, canSortCopy: false, message: `Index ${i} is out of range. For a list of 3 nodes, insert at 0 to 3 (3 appends at the end).` });
+    }
+    expect(validateAlgorithmInput(insertAt, [1, 2, 3], 9, null)).toEqual({ ok: false, canSortCopy: false, message: 'Enter a value for "Index".' });
+  });
+
+  it('delete index: 0..length-1; an empty list has no index to delete', () => {
+    for (const i of [0, 2]) expect(validateAlgorithmInput(deleteAt, [1, 2, 3], null, i).ok, `index ${i}`).toBe(true);
+    for (const i of [-1, 3]) {
+      expect(validateAlgorithmInput(deleteAt, [1, 2, 3], null, i)).toEqual({ ok: false, canSortCopy: false, message: `Index ${i} is out of range. For a list of 3 nodes, delete at 0 to 2.` });
+    }
+    expect(validateAlgorithmInput(deleteAt, [4], null, 1)).toEqual({ ok: false, canSortCopy: false, message: 'Index 1 is out of range. For a list of 1 node, delete at 0 to 0.' });
+    expect(validateAlgorithmInput(deleteAt, [], null, 0)).toEqual({ ok: false, canSortCopy: false, message: 'The list is empty, so there is no node to delete at index 0.' });
+  });
+
+  it('array algorithms are unaffected: still 16 values, and the index argument is ignored', () => {
+    expect(validateAlgorithmInput(def('bubble-sort'), list(16), null).ok).toBe(true);
+    expect(validateAlgorithmInput(def('bubble-sort'), list(17), null).ok).toBe(false);
+    expect(validateAlgorithmInput(def('bubble-sort'), list(11), null, -5).ok).toBe(true);
+  });
+
+  it('exactly the LINKED_LIST operations are drawn as linked lists; every other algorithm is still an array', () => {
+    for (const d of getAllAlgorithms()) expect(visualKindOf(d), d.id).toBe(d.category === 'LINKED_LIST' ? 'linked-list' : 'array');
+    expect(visualKindOf(undefined)).toBe('array');
+    expect(visualKindOf(traverse)).toBe('linked-list');
+  });
+});
+
+describe('list positions', () => {
+  it('insert accepts 0..length, delete 0..length−1', () => {
+    expect(lastListIndex('insert', 3)).toBe(3);
+    expect(lastListIndex('delete', 3)).toBe(2);
+    expect(lastListIndex('insert', 0)).toBe(0);
+    expect(lastListIndex('delete', 0)).toBe(-1);
+  });
+
+  it('the default position moves into range for short lists; an empty list has nothing to delete', () => {
+    const ins = { defaultValue: 2, bound: 'insert' as const };
+    const del = { defaultValue: 2, bound: 'delete' as const };
+    expect([0, 1, 2, 3, 9].map(n => defaultListIndex(ins, n))).toEqual([0, 1, 2, 2, 2]);
+    expect([0, 1, 2, 3, 9].map(n => defaultListIndex(del, n))).toEqual([null, 0, 1, 2, 2]);
+  });
+});
+
+describe('linked-list form drafts (the same rules as the store, with the field to mark)', () => {
+  it('parses the list, the value and the position', () => {
+    expect(validateListDraft(def('ll-insert-at'), '4, 7, 9', '5', '3')).toEqual({ ok: true, list: [4, 7, 9], value: 5, index: 3 });
+    expect(validateListDraft(def('ll-traverse'), '', '', '')).toEqual({ ok: true, list: [], value: null, index: null });
+    expect(validateListDraft(def('ll-search'), '[1, 2]', '-3', '')).toEqual({ ok: true, list: [1, 2], value: -3, index: null });
+  });
+
+  it('reports the field that is wrong', () => {
+    expect(validateListDraft(def('ll-traverse'), '1, x', '', '')).toMatchObject({ ok: false, field: 'list' });
+    expect(validateListDraft(def('ll-search'), '1, 2', '', '')).toEqual({ ok: false, field: 'value', message: 'Enter a value for "Target value".' });
+    expect(validateListDraft(def('ll-insert-head'), '1', '2.5', '')).toMatchObject({ ok: false, field: 'value', message: expect.stringMatching(/decimal/) });
+    expect(validateListDraft(def('ll-delete-at'), '1, 2', '', '')).toEqual({ ok: false, field: 'index', message: 'Enter a value for "Position".' });
+    expect(validateListDraft(def('ll-delete-at'), '1, 2', '', '2')).toEqual({ ok: false, field: 'index', message: 'Index 2 is out of range. For a list of 2 nodes, delete at 0 to 1.' });
+    expect(validateListDraft(def('ll-insert-at'), '', '1', '1')).toMatchObject({ ok: false, field: 'index' });
+    expect(validateListDraft(def('ll-delete-at'), '', '', '0')).toEqual({ ok: false, field: 'list', message: 'The list is empty, so there is no node to delete at index 0.' });
+  });
+
+  it('the node limit is reported as such, even beyond the array limit', () => {
+    const many = (n: number) => Array.from({ length: n }, (_, k) => k).join(', ');
+    expect(validateListDraft(def('ll-traverse'), many(10), '', '').ok).toBe(true);
+    expect(validateListDraft(def('ll-traverse'), many(11), '', '')).toEqual({ ok: false, field: 'list', message: 'Too many nodes (11). The visualizer shows at most 10.' });
+    expect(validateListDraft(def('ll-traverse'), many(MAX_ARRAY_SIZE + 4), '', '')).toEqual({ ok: false, field: 'list', message: `Too many nodes (${MAX_ARRAY_SIZE + 4}). The visualizer shows at most 10.` });
+    expect(validateListDraft(def('ll-insert-tail'), many(10), '1', '')).toEqual({
+      ok: false,
+      field: 'list',
+      message: 'Too many nodes (10). Insert at Tail adds one, and the visualizer shows at most 10, so start with at most 9.',
+    });
   });
 });

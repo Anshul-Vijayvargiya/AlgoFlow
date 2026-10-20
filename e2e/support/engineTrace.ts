@@ -24,6 +24,34 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'two-pointer': { id: 'two-pointer', label: 'Two Pointer', heading: 'Two Pointer Technique' },
 };
 
+/** Linked-list operations: drawn as nodes, with their own input form (kept apart from ALGORITHMS, whose specs expect bars). */
+export const LIST_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
+  'll-build': { id: 'll-build', label: 'Build Linked List', heading: 'Build Linked List' },
+  'll-traverse': { id: 'll-traverse', label: 'Traverse Linked List', heading: 'Traverse Linked List' },
+  'll-search': { id: 'll-search', label: 'Search Linked List', heading: 'Search Linked List' },
+  'll-insert-head': { id: 'll-insert-head', label: 'Insert at Head', heading: 'Insert at Head' },
+  'll-insert-tail': { id: 'll-insert-tail', label: 'Insert at Tail', heading: 'Insert at Tail' },
+  'll-insert-at': { id: 'll-insert-at', label: 'Insert at Position', heading: 'Insert at Position' },
+  'll-delete-head': { id: 'll-delete-head', label: 'Delete at Head', heading: 'Delete at Head' },
+  'll-delete-tail': { id: 'll-delete-tail', label: 'Delete at Tail', heading: 'Delete at Tail' },
+  'll-delete-at': { id: 'll-delete-at', label: 'Delete at Position', heading: 'Delete at Position' },
+  'reverse-linked-list': { id: 'reverse-linked-list', label: 'Reverse Linked List', heading: 'Reverse Linked List' },
+};
+
+/** The parameters a linked-list operation takes, as the app passes them ({ value } and/or { index }). */
+export interface ListParams {
+  value?: number;
+  index?: number;
+}
+
+export function engineListSteps(id: AlgorithmId, list: number[], params: ListParams = {}): ExecutionStep[] {
+  const d = definition(id);
+  const p: Record<string, unknown> = {};
+  if (d.inputSpec?.value) p.value = params.value ?? d.inputSpec.value.defaultValue;
+  if (d.inputSpec?.index) p.index = params.index;
+  return d.generateSteps([...list], Object.keys(p).length ? p : undefined);
+}
+
 export const SORT_IDS: AlgorithmId[] = ['bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'heap-sort'];
 
 export const definition = (id: AlgorithmId) => {

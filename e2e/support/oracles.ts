@@ -80,3 +80,37 @@ export const isNonDecreasing = (array: number[]): boolean => array.every((v, i) 
 export function isPermutation(a: number[], b: number[]): boolean {
   return a.length === b.length && sortedAscending(a).every((v, i) => v === sortedAscending(b)[i]);
 }
+
+/**
+ * Linked-list operations, computed independently on a plain array: the list read from HEAD after the operation, and
+ * (Search) the first matching position or -1. The engine is never consulted.
+ */
+export function listOracle(id: string, list: number[], params: { value?: number; index?: number }): { list: number[]; found?: number } {
+  const out = [...list];
+  const { value = NaN, index = NaN } = params;
+  switch (id) {
+    case 'll-build':
+    case 'll-traverse':
+      return { list: out };
+    case 'll-search':
+      return { list: out, found: out.indexOf(value) };
+    case 'll-insert-head':
+      return { list: [value, ...out] };
+    case 'll-insert-tail':
+      return { list: [...out, value] };
+    case 'll-insert-at':
+      out.splice(index, 0, value);
+      return { list: out };
+    case 'll-delete-head':
+      return { list: out.slice(1) };
+    case 'll-delete-tail':
+      return { list: out.slice(0, -1) };
+    case 'll-delete-at':
+      out.splice(index, 1);
+      return { list: out };
+    case 'reverse-linked-list':
+      return { list: out.reverse() };
+    default:
+      throw new Error(`no list oracle for ${id}`);
+  }
+}

@@ -2,6 +2,16 @@ import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { MessageSquare, ArrowRightLeft, Target, Layers, Variable, CheckCircle, XCircle } from 'lucide-react';
+import type { ListSnapshot } from '../../types/algorithm';
+import { indexFromHead, nodeById } from '../../engine/linkedList/listSnapshot';
+import { listText } from './listVisuals';
+
+/** "4 (#0)", "9 (outside the list)" or "NULL": where a list pointer points, read from the snapshot. */
+const pointsTo = (s: ListSnapshot, id: string | null) => {
+  if (id === null) return 'NULL';
+  const k = indexFromHead(s, id);
+  return `${nodeById(s, id)?.value} (${k >= 0 ? `#${k}` : 'outside the list'})`;
+};
 
 export const ExplanationPanel: React.FC = () => {
   const { steps, currentStepIndex } = useVisualizerStore();
@@ -23,8 +33,9 @@ export const ExplanationPanel: React.FC = () => {
     result,
   } = currentStep;
 
-  // Format array string representation
-  const arrayString = `[${state.join(', ')}]`;
+  // linked-list steps describe the list and its pointers; array steps the array and its indices
+  const list = currentStep.list;
+  const stateString = list ? listText(state) : `[${state.join(', ')}]`;
 
   // Dynamic styling per step type
   let badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
@@ -36,7 +47,9 @@ export const ExplanationPanel: React.FC = () => {
 
   // Build variables display - merge variables + pointers
   const varEntries = Object.entries(variables || {});
-  const ptrEntries = Object.entries(pointers || {});
+  const ptrEntries: [string, string | number][] = list
+    ? [['HEAD', pointsTo(list, list.head)], ['TAIL', pointsTo(list, list.tail)], ...Object.entries(list.pointers).map(([k, v]): [string, string] => [k, pointsTo(list, v)])]
+    : Object.entries(pointers || {});
 
   return (
     <div role="region" aria-label="Explanation" className={`bg-[#0B0F19] border rounded-2xl p-5 shadow-xl space-y-4 ${accentColor}`}>
@@ -115,12 +128,13 @@ export const ExplanationPanel: React.FC = () => {
               {ptrEntries.map(([key, val]) => (
                 <motion.span
                   key={`ptr-${key}`}
+                  data-pointer-readout={key}
                   layout
                   className="flex items-center gap-1 text-[11px] font-mono bg-cyan-900/30 border border-cyan-700/40 px-2 py-0.5 rounded"
                 >
-                  <span className="text-cyan-500">↓</span>
+                  <span className="text-cyan-500">{list ? '→' : '↓'}</span>
                   <span className="text-slate-400">{key}</span>
-                  <span className="text-cyan-300 font-bold">= {val}</span>
+                  <span className="text-cyan-300 font-bold">{list ? '' : '= '}{val}</span>
                 </motion.span>
               ))}
             </div>
@@ -155,18 +169,18 @@ export const ExplanationPanel: React.FC = () => {
           <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
             <span className="text-slate-400 flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-purple-400" />
-              Indices:
+              {list ? 'Positions:' : 'Indices:'}
             </span>
-            <span className="text-purple-300 font-bold">
+            <span data-testid="step-positions" className="text-purple-300 font-bold">
               {indices.length > 0 ? `[${indices.join(', ')}]` : 'None'}
             </span>
           </div>
 
           {/* Array State */}
           <div className="flex items-center justify-between pt-1">
-            <span className="text-slate-400">Array State:</span>
-            <span className="text-emerald-400 font-bold truncate max-w-[140px]">
-              {arrayString}
+            <span className="text-slate-400">{list ? 'List:' : 'Array State:'}</span>
+            <span data-testid="step-state" title={stateString} className={`text-emerald-400 font-bold ${list ? 'text-right break-words max-w-[180px]' : 'truncate max-w-[140px]'}`}>
+              {stateString}
             </span>
           </div>
         </div>

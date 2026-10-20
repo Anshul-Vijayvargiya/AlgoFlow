@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 import type { AlgorithmDefinition, ExecutionStep, ProgrammingLanguage } from '../../types/algorithm';
-import { getAllAlgorithms } from '../AlgorithmRegistry';
+import { getAllAlgorithms, visualKindOf } from '../AlgorithmRegistry';
+import { defaultListIndex } from '../inputParsing';
 
 export const LANGUAGES: ProgrammingLanguage[] = ['c', 'cpp', 'java', 'python'];
 
@@ -39,6 +40,21 @@ export const SORT_IDS = [
   'quick-sort',
   'heap-sort',
 ] as const;
+
+/** Algorithms drawn as bars over a fixed-length numeric array (every algorithm except the linked-list operations). */
+export const arrayAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'array');
+/** Linked-list operations: their list can grow or shrink, so array-length invariants do not apply to them. */
+export const listAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'linked-list');
+
+/**
+ * Whether a call with default parameters has a valid trace: every array algorithm runs on any array, while Delete
+ * at Position has no node to delete in an empty list (the app rejects that input before running anything). Generic
+ * registry tests skip such inputs, and a test checks that the generator refuses each one.
+ */
+export function hasDefaultRun(d: AlgorithmDefinition, input: readonly number[]): boolean {
+  const index = d.inputSpec?.index;
+  return !index || defaultListIndex(index, input.length) !== null;
+}
 
 export function def(id: string): AlgorithmDefinition {
   const d = getAllAlgorithms().find(a => a.id === id);

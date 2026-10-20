@@ -20,6 +20,16 @@ import { mergeSortDefinition } from './algorithms/mergeSort';
 import { quickSortDefinition } from './algorithms/quickSort';
 import { heapSortDefinition } from './algorithms/heapSort';
 import { twoPointerDefinition } from './algorithms/twoPointer';
+import { llTraverseDefinition } from './algorithms/linkedList/traverse';
+import { llSearchDefinition } from './algorithms/linkedList/search';
+import { llInsertHeadDefinition } from './algorithms/linkedList/insertHead';
+import { llInsertTailDefinition } from './algorithms/linkedList/insertTail';
+import { llDeleteHeadDefinition } from './algorithms/linkedList/deleteHead';
+import { llDeleteTailDefinition } from './algorithms/linkedList/deleteTail';
+import { llBuildDefinition } from './algorithms/linkedList/build';
+import { llInsertAtDefinition } from './algorithms/linkedList/insertAt';
+import { llDeleteAtDefinition } from './algorithms/linkedList/deleteAt';
+import { reverseLinkedListDefinition } from './algorithms/linkedList/reverse';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
@@ -37,6 +47,16 @@ register(mergeSortDefinition);
 register(quickSortDefinition);
 register(heapSortDefinition);
 register(twoPointerDefinition);
+register(llTraverseDefinition);
+register(llSearchDefinition);
+register(llInsertHeadDefinition);
+register(llInsertTailDefinition);
+register(llDeleteHeadDefinition);
+register(llDeleteTailDefinition);
+register(llBuildDefinition);
+register(llInsertAtDefinition);
+register(llDeleteAtDefinition);
+register(reverseLinkedListDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -77,6 +97,10 @@ export function resolveCodeRange(
   const span = def.lineSpans?.[lang]?.[codeRef!] ?? 1;
   return { start: line - lead, end: line + span - 1 };
 }
+
+/** How a definition's trace is drawn: 'array' unless it declares otherwise (every existing algorithm is 'array'). */
+export const visualKindOf = (def: Pick<AlgorithmDefinition, 'visual'> | undefined): 'array' | 'linked-list' =>
+  def?.visual ?? 'array';
 
 /**
  * Returns the source code string for the given algorithm and language.

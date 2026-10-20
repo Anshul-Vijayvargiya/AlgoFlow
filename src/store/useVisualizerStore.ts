@@ -23,7 +23,7 @@ import type { AlgorithmId, ExecutionStep, ProgrammingLanguage } from '../types/a
 import { getAlgorithmDefinition, resolveCodeRange, resolveCodeRef } from '../engine/AlgorithmRegistry';
 import { buildExecution } from '../engine/buildExecution';
 import type { ExecutionBuild, ExecutionFailure } from '../engine/buildExecution';
-import { MAX_ARRAY_SIZE, sortedCopy, validateAlgorithmInput } from '../engine/inputParsing';
+import { defaultListIndex, lastListIndex, maxInputLength, sortedCopy, validateAlgorithmInput } from '../engine/inputParsing';
 
 export type InputSource = 'default' | 'random' | 'custom';
 
@@ -31,6 +31,8 @@ export type InputSource = 'default' | 'random' | 'custom';
 export interface InputNotice {
   kind: 'replaced-custom' | 'sorted-copy';
   original: number[];
+  /** the position entered with the original list (insert / delete at a position): Size may have moved it into range */
+  originalIndex?: number | null;
 }
 
 export interface InputIssue {
@@ -50,6 +52,8 @@ interface VisualizerState {
   array: number[];
   /** Search target / target sum; only meaningful for algorithms whose inputSpec has a target */
   target: number | null;
+  /** Linked-list operations that take a position (insert/delete at index); null otherwise */
+  index: number | null;
   inputSource: InputSource;
   inputNotice: InputNotice | null;
   /** Set only when status === 'invalid-input' */
@@ -83,7 +87,7 @@ interface VisualizerState {
   setCurrentStepIndex: (index: number) => void;
 
   /** Apply user-entered values. Rejected (state untouched) if invalid for the selected algorithm. */
-  applyInput: (array: number[], target: number | null) => InputResult;
+  applyInput: (array: number[], target: number | null, index?: number | null) => InputResult;
   /** Explicit, user-triggered: replace the array with a sorted COPY (original kept in inputNotice). */
   sortInputCopy: (array?: number[], target?: number | null) => InputResult;
   /** Put back the array that Randomize / Size / Sort-a-copy replaced. */
@@ -95,10 +99,10 @@ const DEFAULT_ALGORITHM: AlgorithmId = 'bubble-sort';
 const DEFAULT_LANGUAGE: ProgrammingLanguage = 'cpp';
 
 /** Validates the input, runs the generator and returns the state fields that depend on its outcome. */
-function runExecution(id: AlgorithmId, arr: number[], target: number | null) {
+function runExecution(id: AlgorithmId, arr: number[], target: number | null, index: number | null) {
   const def = getAlgorithmDefinition(id);
   if (def) {
-    const v = validateAlgorithmInput(def, arr, target);
+    const v = validateAlgorithmInput(def, arr, target, index);
     if (!v.ok) {
       return {
         steps: [] as ExecutionStep[],
@@ -108,7 +112,13 @@ function runExecution(id: AlgorithmId, arr: number[], target: number | null) {
       };
     }
   }
-  const params = def?.inputSpec?.target ? { target } : undefined;
+  const spec = def?.inputSpec;
+  // searches take `target`; linked-list operations take `value` (held in the same field) and/or `index`
+  const params = spec?.target
+    ? { target }
+    : spec?.value || spec?.index
+      ? { ...(spec.value ? { value: target } : {}), ...(spec.index ? { index } : {}) }
+      : undefined;
   const result = buildExecution(id, arr, getAlgorithmDefinition, params);
   const executionError = 'error' in result ? result.error : null;
   if (executionError && import.meta.env.DEV) {
@@ -137,22 +147,24 @@ const atEnd = (s: { steps: ExecutionStep[]; currentStepIndex: number }) =>
 export const useVisualizerStore = create<VisualizerState>((set, get) => {
   const defDef = getAlgorithmDefinition(DEFAULT_ALGORITHM)!;
   const initialArray = [...defDef.defaultInput];
-  const initialRun = runExecution(DEFAULT_ALGORITHM, initialArray, null);
+  const initialRun = runExecution(DEFAULT_ALGORITHM, initialArray, null, null);
 
   /** Single commit point for every input change: regenerate, reset position, stop playback. */
   const commit = (
     id: AlgorithmId,
     array: number[],
     target: number | null,
+    index: number | null,
     inputSource: InputSource,
     inputNotice: InputNotice | null
   ) => {
-    const run = runExecution(id, array, target);
+    const run = runExecution(id, array, target, index);
     set(s => ({
       selectedAlgorithm: id,
       array,
       arraySize: array.length,
       target,
+      index,
       inputSource,
       inputNotice,
       inputRevision: s.inputRevision + 1,
@@ -167,6 +179,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
     selectedLanguage: DEFAULT_LANGUAGE,
     array: initialArray,
     target: null,
+    index: null,
     inputSource: 'default',
     inputNotice: null,
     inputRevision: 0,
@@ -209,12 +222,15 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       const s = get();
       const def = getAlgorithmDefinition(id);
       const spec = def?.inputSpec;
+      // a search target and a linked-list value share the number field
+      const numberSpec = spec?.target ?? spec?.value;
       if (s.inputSource === 'custom') {
-        const target = spec?.target ? (s.target ?? spec.target.defaultValue) : s.target;
-        commit(id, s.array, target, 'custom', null);
+        const target = numberSpec ? (s.target ?? numberSpec.defaultValue) : s.target;
+        const index = spec?.index ? (s.index ?? defaultListIndex(spec.index, s.array.length)) : s.index;
+        commit(id, s.array, target, index, 'custom', null);
       } else {
         const array = def ? [...def.defaultInput] : [];
-        commit(id, array, spec?.target ? spec.target.defaultValue : null, 'default', null);
+        commit(id, array, numberSpec ? numberSpec.defaultValue : null, spec?.index ? defaultListIndex(spec.index, array.length) : null, 'default', null);
       }
     },
 
@@ -271,17 +287,21 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       const def = getAlgorithmDefinition(s.selectedAlgorithm);
       if (!def) return;
       const spec = def.inputSpec;
-      const n = Math.max(0, Math.min(MAX_ARRAY_SIZE, Math.floor(size)));
+      // deleting at a position needs at least one node
+      const n = Math.max(spec?.index?.bound === 'delete' ? 1 : 0, Math.min(maxInputLength(def), Math.floor(size)));
+      const numberSpec = spec?.target ?? spec?.value;
       const notice: InputNotice | null =
         s.inputSource === 'custom'
-          ? { kind: 'replaced-custom', original: s.array }
+          ? { kind: 'replaced-custom', original: s.array, ...(spec?.index ? { originalIndex: s.index } : {}) }
           : s.inputNotice?.kind === 'replaced-custom'
             ? s.inputNotice
             : null;
       commit(
         s.selectedAlgorithm,
         randomArray(n, Boolean(spec?.sortedRequired)),
-        spec?.target ? (s.target ?? spec.target.defaultValue) : s.target,
+        numberSpec ? (s.target ?? numberSpec.defaultValue) : s.target,
+        // a position is kept when the new list has it; otherwise it moves to the nearest valid one
+        spec?.index ? Math.max(0, Math.min(s.index ?? spec.index.defaultValue, lastListIndex(spec.index.bound, n))) : s.index,
         'random',
         notice
       );
@@ -296,14 +316,16 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       set({ currentStepIndex: Math.max(0, Math.min(index, maxIdx)) });
     },
 
-    applyInput: (array, target) => {
+    applyInput: (array, target, index = null) => {
       const s = get();
       const def = getAlgorithmDefinition(s.selectedAlgorithm);
       if (!def) return { ok: false, message: 'This algorithm has no visualization yet.', canSortCopy: false };
-      const nextTarget = def.inputSpec?.target ? target : s.target;
-      const v = validateAlgorithmInput(def, array, nextTarget);
+      const spec = def.inputSpec;
+      const nextTarget = spec?.target || spec?.value ? target : s.target;
+      const nextIndex = spec?.index ? index : s.index;
+      const v = validateAlgorithmInput(def, array, nextTarget, nextIndex);
       if (!v.ok) return v;
-      commit(s.selectedAlgorithm, [...array], nextTarget, 'custom', null);
+      commit(s.selectedAlgorithm, [...array], nextTarget, nextIndex, 'custom', null);
       return { ok: true };
     },
 
@@ -315,16 +337,17 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       // the target the user has typed (if any) wins over the last applied one
       const target = def.inputSpec?.target ? (draftTarget ?? s.target ?? def.inputSpec.target.defaultValue) : s.target;
       const sorted = sortedCopy(original);
-      const v = validateAlgorithmInput(def, sorted, target);
+      const v = validateAlgorithmInput(def, sorted, target, s.index);
       if (!v.ok) return v;
-      commit(s.selectedAlgorithm, sorted, target, 'custom', { kind: 'sorted-copy', original });
+      commit(s.selectedAlgorithm, sorted, target, s.index, 'custom', { kind: 'sorted-copy', original });
       return { ok: true };
     },
 
     restoreOriginalInput: () => {
       const s = get();
       if (!s.inputNotice) return;
-      commit(s.selectedAlgorithm, [...s.inputNotice.original], s.target, 'custom', null);
+      const index = s.inputNotice.originalIndex !== undefined ? s.inputNotice.originalIndex : s.index;
+      commit(s.selectedAlgorithm, [...s.inputNotice.original], s.target, index, 'custom', null);
     },
   };
 });

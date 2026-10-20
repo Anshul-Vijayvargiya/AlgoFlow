@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { getAllAlgorithms, getAlgorithmDefinition } from '../../../engine/AlgorithmRegistry';
+import { getAlgorithmDefinition } from '../../../engine/AlgorithmRegistry';
 import type { AlgorithmId, ExecutionStep } from '../../../types/algorithm';
 import { deriveOutcome, deriveStepVisuals } from '../barVisuals';
 import type { BarRole } from '../barVisuals';
-import { EDGE_INPUTS, randomArrays } from '../../../engine/__tests__/testUtils';
+import { EDGE_INPUTS, arrayAlgorithms, randomArrays } from '../../../engine/__tests__/testUtils';
 
-const ALL = getAllAlgorithms();
+// bars are drawn for array algorithms only; linked-list operations have their own visuals
+const ALL = arrayAlgorithms();
 const INPUTS: number[][] = [...Object.values(EDGE_INPUTS), ...randomArrays(25, 9, 31)];
 const visuals = (id: AlgorithmId, step: ExecutionStep, steps: ExecutionStep[], i: number) =>
   deriveStepVisuals(step, {

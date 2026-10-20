@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ArrayVisualizer } from '../components/visualizer/ArrayVisualizer';
+import { LinkedListVisualizer } from '../components/visualizer/LinkedListVisualizer';
+import { listFoundPosition } from '../components/visualizer/listVisuals';
 import { deriveOutcome } from '../components/visualizer/barVisuals';
 import { ExecutionControls } from '../components/visualizer/ExecutionControls';
 import { CodePanel } from '../components/visualizer/CodePanel';
@@ -9,15 +11,18 @@ import { ComplexityBadge } from '../components/visualizer/ComplexityBadge';
 import { UnimplementedCard } from '../components/visualizer/UnimplementedCard';
 import { ExecutionErrorCard } from '../components/visualizer/ExecutionErrorCard';
 import { InputPanel } from '../components/visualizer/InputPanel';
+import { LinkedListInputPanel } from '../components/visualizer/LinkedListInputPanel';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
-import { getAlgorithmDefinition } from '../engine/AlgorithmRegistry';
+import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
 import { Play, Code2, Menu, X, Sparkles } from 'lucide-react';
 
 export const VisualizerPage: React.FC = () => {
   const { selectedAlgorithm, steps, currentStepIndex, executionError, executionStatus, inputIssue, isPlaying, speed } = useVisualizerStore();
   const algorithmMeta = getAlgorithmById(selectedAlgorithm);
   const def = getAlgorithmDefinition(selectedAlgorithm);
+  // array algorithms draw bars and use the array/target form; linked-list operations draw nodes and use the list form
+  const visual = visualKindOf(def);
   const currentStep = steps[currentStepIndex] || steps[0];
   const outcome = deriveOutcome(steps, currentStepIndex);
 
@@ -186,11 +191,22 @@ export const VisualizerPage: React.FC = () => {
                     </div>
 
                     {/* Animated Vertical Array Display */}
-                    {currentStep && (
+                    {currentStep && visual === 'array' && (
                       <ArrayVisualizer
                         currentStep={currentStep}
                         positionPointers={def?.positionPointers}
                         outcome={outcome}
+                        stepIntervalMs={speed}
+                      />
+                    )}
+                    {currentStep && visual === 'linked-list' && (
+                      <LinkedListVisualizer
+                        currentStep={currentStep}
+                        previousStep={steps[currentStepIndex - 1]}
+                        foundPosition={listFoundPosition(steps, currentStepIndex)}
+                        outcome={outcome}
+                        valueLabel={def?.inputSpec?.value?.label}
+                        showPosition={Boolean(def?.inputSpec?.index)}
                         stepIntervalMs={speed}
                       />
                     )}
@@ -207,8 +223,8 @@ export const VisualizerPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Array / target input */}
-                  <InputPanel />
+                  {/* Array / target input, or the linked-list form */}
+                  {visual === 'array' ? <InputPanel /> : <LinkedListInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

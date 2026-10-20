@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import * as Registry from '../AlgorithmRegistry';
 import { getAllAlgorithms, resolveCodeRef, getAlgorithmDefinition } from '../AlgorithmRegistry';
-import { LANGUAGES, EDGE_INPUTS, randomArrays, codeLines, def as defById } from './testUtils';
+import { LANGUAGES, EDGE_INPUTS, randomArrays, codeLines, def as defById, hasDefaultRun } from './testUtils';
 import { LINE_ANCHORS, KNOWN_LINE_MAP_DEFECTS, KNOWN_RETURN_LINE_DEFECTS } from './lineAnchors';
 
 const ALL = getAllAlgorithms();
 
 /** A representative set of inputs (and search targets) used to collect every emitted step. */
 function traces(d: (typeof ALL)[number]) {
-  const inputs = [d.defaultInput, ...Object.values(EDGE_INPUTS), ...randomArrays(40)];
+  const inputs = [d.defaultInput, ...Object.values(EDGE_INPUTS), ...randomArrays(40)].filter(inp => hasDefaultRun(d, inp));
   return inputs.flatMap(inp => {
     const out = [d.generateSteps([...inp])];
     if (['linear-search', 'binary-search', 'two-pointer'].includes(d.id)) {

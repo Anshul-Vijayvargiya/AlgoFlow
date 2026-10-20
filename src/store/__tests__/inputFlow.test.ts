@@ -425,3 +425,169 @@ describe('Two Pointer: applied target and trace target agree (audit R2)', () => 
     expect(st().target).toBe(0);
   });
 });
+
+// Phase 2 linked-list operations: the store passes { value } to the generator and enforces the node limits.
+describe('linked-list operations in the store', () => {
+  const genList = (id: AlgorithmId, input: number[], value?: number) =>
+    getAlgorithmDefinition(id)!.generateSteps([...input], value === undefined ? undefined : { value });
+
+  it('selecting an operation loads its default list and value; the index is unused', () => {
+    st().setAlgorithm('ll-search');
+    expect(st().array).toEqual([4, 7, 1, 7, 9]);
+    expect(st().target).toBe(7);
+    expect(st().index).toBeNull();
+    expect(st().executionStatus).toBe('ok');
+    expect(st().steps).toEqual(genList('ll-search', [4, 7, 1, 7, 9], 7));
+    st().setAlgorithm('ll-traverse');
+    expect(st().target).toBeNull();
+    expect(st().steps).toEqual(genList('ll-traverse', st().array));
+  });
+
+  it('the applied value reaches the generator (Search, Insert at Head, Insert at Tail)', () => {
+    st().setAlgorithm('ll-search');
+    expect(st().applyInput([3, 3, 1], 1).ok).toBe(true);
+    expect(st().steps).toEqual(genList('ll-search', [3, 3, 1], 1));
+    expect(st().steps[st().steps.length - 1].variables!.result).toBe(2);
+    for (const id of ['ll-insert-head', 'll-insert-tail'] as const) {
+      st().setAlgorithm(id);
+      expect(st().applyInput([5, 6], 0).ok).toBe(true);
+      const last = st().steps[st().steps.length - 1];
+      expect(last.state).toEqual(id === 'll-insert-head' ? [0, 5, 6] : [5, 6, 0]);
+    }
+  });
+
+  it('empty and single-node lists are accepted by every operation', () => {
+    for (const id of ['ll-traverse', 'll-search', 'll-insert-head', 'll-insert-tail', 'll-delete-head', 'll-delete-tail'] as const) {
+      st().setAlgorithm(id);
+      for (const input of [[], [5]]) {
+        const needsValue = id === 'll-search' || id === 'll-insert-head' || id === 'll-insert-tail';
+        expect(st().applyInput(input, needsValue ? 5 : null).ok, `${id} ${JSON.stringify(input)}`).toBe(true);
+        expect(st().executionStatus).toBe('ok');
+      }
+    }
+  });
+
+  it('node limits: 10 nodes, or 9 when the operation adds one; Size is clamped to the same limit', () => {
+    st().setAlgorithm('ll-traverse');
+    expect(st().applyInput(Array(10).fill(1), null).ok).toBe(true);
+    expect(st().applyInput(Array(11).fill(1), null)).toMatchObject({ ok: false, message: 'Too many nodes (11). The visualizer shows at most 10.' });
+    st().setArraySize(50);
+    expect(st().array).toHaveLength(10);
+
+    st().setAlgorithm('ll-insert-tail');
+    const before = st().steps;
+    expect(st().applyInput(Array(10).fill(1), 3).ok).toBe(false);
+    expect(st().steps).toBe(before);
+    expect(st().applyInput(Array(9).fill(1), 3).ok).toBe(true);
+    st().setArraySize(50);
+    expect(st().array).toHaveLength(9);
+  });
+
+  it('a missing value is rejected before the generator runs; the previous trace stays', () => {
+    st().setAlgorithm('ll-insert-head');
+    const before = st().steps;
+    expect(st().applyInput([1, 2], null)).toMatchObject({ ok: false });
+    expect(st().steps).toBe(before);
+  });
+});
+
+// Phase 3: Insert / Delete at Position take an index as well; Build and Reverse take only the list.
+describe('linked-list positions in the store', () => {
+  const genAt = (id: AlgorithmId, input: number[], params: Record<string, unknown>) => getAlgorithmDefinition(id)!.generateSteps([...input], params);
+
+  it('selecting Insert / Delete at Position loads the default list, value and position', () => {
+    st().setAlgorithm('ll-insert-at');
+    expect([st().array, st().target, st().index]).toEqual([[4, 7, 9], 5, 2]);
+    expect(st().steps).toEqual(genAt('ll-insert-at', [4, 7, 9], { value: 5, index: 2 }));
+    st().setAlgorithm('ll-delete-at');
+    expect([st().array, st().target, st().index]).toEqual([[4, 7, 1, 9], null, 2]);
+    expect(st().steps).toEqual(genAt('ll-delete-at', [4, 7, 1, 9], { index: 2 }));
+    for (const id of ['ll-build', 'reverse-linked-list'] as const) {
+      st().setAlgorithm(id);
+      expect(st().index).toBeNull();
+      expect(st().executionStatus).toBe('ok');
+    }
+  });
+
+  it('the applied position and value reach the generator: head, middle and tail', () => {
+    st().setAlgorithm('ll-insert-at');
+    for (const [index, result] of [[0, [8, 1, 2]], [1, [1, 8, 2]], [2, [1, 2, 8]]] as const) {
+      expect(st().applyInput([1, 2], 8, index).ok).toBe(true);
+      expect(st().index).toBe(index);
+      expect(st().steps[st().steps.length - 1].state).toEqual(result);
+    }
+    st().setAlgorithm('ll-delete-at');
+    for (const [index, result] of [[0, [2, 3]], [1, [1, 3]], [2, [1, 2]]] as const) {
+      expect(st().applyInput([1, 2, 3], null, index).ok).toBe(true);
+      expect(st().steps[st().steps.length - 1].state).toEqual(result);
+    }
+  });
+
+  it('an invalid position is rejected before the generator runs; the previous trace stays', () => {
+    st().setAlgorithm('ll-delete-at');
+    const before = st().steps;
+    expect(st().applyInput([1, 2, 3], null, 3)).toEqual({ ok: false, canSortCopy: false, message: 'Index 3 is out of range. For a list of 3 nodes, delete at 0 to 2.' });
+    expect(st().applyInput([], null, 0)).toMatchObject({ ok: false, message: 'The list is empty, so there is no node to delete at index 0.' });
+    expect(st().applyInput([1, 2, 3], null, null)).toMatchObject({ ok: false, message: 'Enter a value for "Position".' });
+    expect(st().steps).toBe(before);
+    expect(st().index).toBe(2);
+  });
+
+  it('a custom list keeps the user\'s position when switching; without one, the default is moved into range', () => {
+    st().setAlgorithm('reverse-linked-list');
+    st().applyInput([6], null);
+    st().setAlgorithm('ll-insert-at');
+    expect(st().index).toBe(1); // default 2 does not fit a 1-node list: append at 1
+    expect(st().executionStatus).toBe('ok');
+    st().applyInput([6, 7, 8], 3, 3);
+    st().setAlgorithm('ll-delete-at');
+    // the user's position 3 is kept (never silently changed) and reported as invalid for deleting
+    expect(st().index).toBe(3);
+    expect(st().executionStatus).toBe('invalid-input');
+    expect(st().inputIssue?.message).toBe('Index 3 is out of range. For a list of 3 nodes, delete at 0 to 2.');
+  });
+
+  it('Size / Randomize generate a list the position fits: it is moved into range, and Delete keeps at least one node', () => {
+    st().setAlgorithm('ll-delete-at');
+    st().applyInput([1, 2, 3, 4], null, 3);
+    st().setArraySize(2);
+    expect(st().array).toHaveLength(2);
+    expect(st().index).toBe(1);
+    expect(st().executionStatus).toBe('ok');
+    st().setArraySize(0);
+    expect(st().array).toHaveLength(1);
+    expect(st().index).toBe(0);
+    expect(st().executionStatus).toBe('ok');
+    st().setArraySize(50);
+    expect(st().array).toHaveLength(10);
+    expect(st().index).toBe(0); // a position that still fits is kept
+    st().setAlgorithm('ll-insert-at');
+    st().setArraySize(50);
+    expect(st().array).toHaveLength(9);
+    st().setArraySize(0);
+    expect([st().array, st().index, st().executionStatus]).toEqual([[], 0, 'ok']);
+  });
+});
+
+// Phase 5 regression: Restore after Size / Randomize brought the list back with the position Size had moved into range.
+describe('Restore after Size / Randomize on a linked list', () => {
+  it('restores the entered list AND the entered position', () => {
+    st().setAlgorithm('ll-delete-at');
+    st().applyInput([1, 2, 3, 4], null, 3);
+    st().setArraySize(2);
+    expect(st().index).toBe(1);
+    st().randomizeArray(); // the notice keeps the original through repeated randomizing
+    st().restoreOriginalInput();
+    expect([st().array, st().index, st().executionStatus, st().inputNotice]).toEqual([[1, 2, 3, 4], 3, 'ok', null]);
+    expect(st().steps).toEqual(getAlgorithmDefinition('ll-delete-at')!.generateSteps([1, 2, 3, 4], { index: 3 }));
+  });
+
+  it('operations without a position, and arrays, are unchanged', () => {
+    st().setAlgorithm('ll-search');
+    st().applyInput([5, 6], 6);
+    st().setArraySize(3);
+    expect(st().inputNotice).toEqual({ kind: 'replaced-custom', original: [5, 6] });
+    st().restoreOriginalInput();
+    expect([st().array, st().target, st().index]).toEqual([[5, 6], 6, null]);
+  });
+});

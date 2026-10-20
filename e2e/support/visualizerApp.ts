@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { ALGORITHMS, type AlgorithmId, type ProgrammingLanguage } from './engineTrace';
+import { ALGORITHMS, LIST_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
 
 export interface BarState {
   index: number;
@@ -8,6 +8,37 @@ export interface BarState {
   inRange: boolean;
   pointers: string[];
   height: number;
+}
+
+/** A node box of the linked-list view, as drawn. */
+export interface ListNodeState {
+  id: string;
+  value: number;
+  /** position from HEAD, or 'outside' for a node drawn off the HEAD chain */
+  position: string;
+  role: string;
+  isNew: boolean;
+  head: boolean;
+  tail: boolean;
+  pointers: string[];
+  next: string;
+  linkChanged: boolean;
+}
+
+/** What the linked-list view shows (null when an array algorithm is selected). */
+export interface ListViewState {
+  chain: ListNodeState[];
+  outside: (ListNodeState & { reason: string })[];
+  nullPointers: string[];
+  /** where the HEAD / TAIL chips are drawn: a node id, or 'null' for the NULL terminator */
+  headAt: string[];
+  tailAt: string[];
+  headChanged: boolean;
+  tailChanged: boolean;
+  changedArrows: string[];
+  released: number[];
+  valuePill: string | null;
+  indexPill: string | null;
 }
 
 export interface UiState {
@@ -43,6 +74,14 @@ export interface UiState {
   /** the code panel says the current step runs no statement (an explanation-only step) */
   noStatement: boolean;
   errorCard: string | null;
+  list: ListViewState | null;
+  listValue: string | null;
+  valueValue: string | null;
+  indexValue: string | null;
+  /** the explanation panel's pointer read-outs, e.g. ["HEAD", "→HEAD4 (#0)"] */
+  pointerReadouts: [string, string][];
+  /** the explanation panel's state read-out ("4 → 7 → NULL" for lists) */
+  stateText: string | null;
 }
 
 export type Speed = 'fast' | 'medium';
@@ -58,6 +97,11 @@ export class VisualizerApp {
   readonly heading: Locator;
   readonly arrayInput: Locator;
   readonly targetInput: Locator;
+  readonly listInput: Locator;
+  readonly valueInput: Locator;
+  readonly indexInput: Locator;
+  readonly listSizeSelect: Locator;
+  readonly listNodes: Locator;
   readonly visualizeButton: Locator;
   readonly sortCopyButton: Locator;
   readonly restoreButton: Locator;
@@ -85,6 +129,11 @@ export class VisualizerApp {
     this.heading = page.getByRole('heading', { level: 1 });
     this.arrayInput = page.getByRole('textbox', { name: 'Array', exact: true });
     this.targetInput = page.getByRole('textbox', { name: /^Target/ });
+    this.listInput = page.getByRole('textbox', { name: 'List values' });
+    this.valueInput = page.locator('#value-input');
+    this.indexInput = page.getByRole('textbox', { name: 'Position' });
+    this.listSizeSelect = page.getByRole('combobox', { name: 'List size' });
+    this.listNodes = page.locator('[data-testid="list-chain"] [data-list-node]');
     this.visualizeButton = page.getByRole('button', { name: 'Visualize' });
     this.sortCopyButton = page.getByRole('button', { name: 'Sort a copy' });
     this.restoreButton = page.getByRole('button', { name: /^Restore/ });
@@ -111,7 +160,7 @@ export class VisualizerApp {
   }
 
   async selectAlgorithm(id: AlgorithmId) {
-    const { label, heading } = ALGORITHMS[id];
+    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id];
     const name = new RegExp(`^${label}(?![a-z])`);
     const drawerToggle = this.page.getByRole('button', { name: 'Open algorithm list' });
     if (await drawerToggle.isVisible()) {
@@ -136,6 +185,20 @@ export class VisualizerApp {
     await this.type(array, target);
     await this.visualizeButton.click();
     await this.expectBars(array);
+  }
+
+  /** Types the list (and the operation's value / position) and presses Visualize, then waits for the drawn list. */
+  async enterList(list: number[], params: ListParams = {}) {
+    await this.listInput.fill(list.join(', '));
+    if (params.value !== undefined) await this.valueInput.fill(String(params.value));
+    if (params.index !== undefined) await this.indexInput.fill(String(params.index));
+    await this.visualizeButton.click();
+    await this.expectStep(1);
+    await expect.poll(async () => (await this.listInput.inputValue()).replace(/\s/g, ''), { message: 'the list was applied' }).toBe(list.join(','));
+  }
+
+  async listValues(): Promise<number[]> {
+    return this.listNodes.evaluateAll(els => els.map(e => Number((e as HTMLElement).dataset.value)));
   }
 
   async expectBars(values: number[]) {
@@ -241,6 +304,44 @@ export class VisualizerApp {
       const text = (sel: string) => document.querySelector(sel)?.textContent?.trim() ?? null;
       const rect = (el: Element) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
       const button = (prefix: string) => [...document.querySelectorAll('button')].find(b => b.textContent?.trim().startsWith(prefix));
+      const readList = () => {
+        const root = document.querySelector('[data-testid="list-visualizer"]');
+        if (!root) return null;
+        const node = (e: HTMLElement) => ({
+          id: e.dataset.listNode!,
+          value: Number(e.dataset.value),
+          position: e.dataset.position!,
+          role: e.dataset.role!,
+          isNew: e.dataset.new === 'true',
+          head: e.dataset.head === 'true',
+          tail: e.dataset.tail === 'true',
+          pointers: e.dataset.pointers ? e.dataset.pointers.split(',') : [],
+          next: e.dataset.next!,
+          linkChanged: e.dataset.linkChanged === 'true',
+        });
+        const chips = (label: string) =>
+          [...root.querySelectorAll<HTMLElement>(`[data-end-chip="${label}"]`)].map(c => {
+            // a chip sits in the same unit as its node box, or above the NULL terminator
+            const unit = c.parentElement!.parentElement!;
+            return unit.querySelector<HTMLElement>('[data-list-node]')?.dataset.listNode ?? 'null';
+          });
+        const nul = root.querySelector<HTMLElement>('[data-null-terminator="main"]');
+        return {
+          chain: [...root.querySelectorAll<HTMLElement>('[data-testid="list-chain"] [data-list-node]')].map(node),
+          outside: [...root.querySelectorAll<HTMLElement>('[data-testid="list-segment"]')].flatMap(g =>
+            [...g.querySelectorAll<HTMLElement>('[data-list-node]')].map(e => ({ ...node(e), reason: (g as HTMLElement).dataset.reason! }))
+          ),
+          nullPointers: nul?.dataset.pointers ? nul.dataset.pointers.split(',') : [],
+          headAt: chips('HEAD'),
+          tailAt: chips('TAIL'),
+          headChanged: root.querySelector('[data-end-chip="HEAD"][data-changed="true"]') !== null,
+          tailChanged: root.querySelector('[data-end-chip="TAIL"][data-changed="true"]') !== null,
+          changedArrows: [...root.querySelectorAll<HTMLElement>('[data-arrow-from][data-changed="true"]')].map(a => a.dataset.arrowFrom!),
+          released: [...root.querySelectorAll<HTMLElement>('[data-testid="released-node"]')].map(r => Number(r.dataset.value)),
+          valuePill: root.querySelector('[data-testid="value-pill"]')?.textContent?.trim() ?? null,
+          indexPill: root.querySelector('[data-testid="index-pill"]')?.textContent?.trim() ?? null,
+        };
+      };
       const read = (): UiState => {
       const counter = document.querySelector<HTMLElement>('[data-testid="step-counter"]');
       const bars = [...document.querySelectorAll<HTMLElement>('[data-bar-index]')].map(b => ({
@@ -298,6 +399,12 @@ export class VisualizerApp {
         unmapped: document.body.innerText.includes('Unmapped step'),
         noStatement: document.body.innerText.includes('No statement runs at this step'),
         errorCard: alertCards[0]?.textContent?.trim() ?? null,
+        list: readList(),
+        listValue: document.querySelector<HTMLInputElement>('#list-input')?.value ?? null,
+        valueValue: document.querySelector<HTMLInputElement>('#value-input')?.value ?? null,
+        indexValue: document.querySelector<HTMLInputElement>('#index-input')?.value ?? null,
+        pointerReadouts: [...document.querySelectorAll<HTMLElement>('[data-pointer-readout]')].map(e => [e.dataset.pointerReadout!, e.textContent?.trim() ?? '']),
+        stateText: text('[data-testid="step-state"]'),
       } as UiState;
       };
 

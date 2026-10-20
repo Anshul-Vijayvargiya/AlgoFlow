@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { getAllAlgorithms } from '../AlgorithmRegistry';
+import { getAllAlgorithms, visualKindOf } from '../AlgorithmRegistry';
 import { buildExecution } from '../buildExecution';
 import type { ExecutionStep } from '../../types/algorithm';
 import {
   EDGE_INPUTS,
   SORT_IDS,
+  arrayAlgorithms,
   def,
+  hasDefaultRun,
   randomArrays,
   sameMultiset,
   sortedCopy,
@@ -164,12 +166,14 @@ describe('searching algorithms — correct results (real generators)', () => {
 });
 
 describe('execution-step consistency (all registered algorithms)', () => {
-  const inputsFor = (id: string) =>
-    id === 'binary-search' || id === 'two-pointer' ? [...Object.values(EDGE_INPUTS), ...FUZZ] : SORT_INPUTS;
+  const inputsFor = (d: { id: string }) =>
+    (d.id === 'binary-search' || d.id === 'two-pointer' ? [...Object.values(EDGE_INPUTS), ...FUZZ] : SORT_INPUTS).filter(input =>
+      hasDefaultRun(def(d.id), input)
+    );
 
   it('step ids are contiguous, first step is init and last step is complete', () => {
     for (const d of getAllAlgorithms()) {
-      for (const input of inputsFor(d.id)) {
+      for (const input of inputsFor(d)) {
         const steps = d.generateSteps([...input]);
         expect(steps.length).toBeGreaterThanOrEqual(2);
         expect(steps[0].type, `${d.id} ${JSON.stringify(input)}`).toBe('init');
@@ -179,9 +183,10 @@ describe('execution-step consistency (all registered algorithms)', () => {
     }
   });
 
+  // array algorithms only: a linked-list insert or delete changes the length (lists: linkedListOps.test.ts)
   it('state length never changes and sortedIndices stay in bounds (non-empty inputs)', () => {
-    for (const d of getAllAlgorithms()) {
-      for (const input of inputsFor(d.id).filter(a => a.length > 0)) {
+    for (const d of arrayAlgorithms()) {
+      for (const input of inputsFor(d).filter(a => a.length > 0)) {
         const steps = d.generateSteps([...input]);
         for (const s of steps) {
           expect(s.state.length, `${d.id} step ${s.id}`).toBe(input.length);
@@ -195,8 +200,8 @@ describe('execution-step consistency (all registered algorithms)', () => {
   });
 
   it('highlighted indices are within the array for non-empty inputs', () => {
-    for (const d of getAllAlgorithms()) {
-      for (const input of inputsFor(d.id).filter(a => a.length > 0)) {
+    for (const d of arrayAlgorithms()) {
+      for (const input of inputsFor(d).filter(a => a.length > 0)) {
         for (const s of d.generateSteps([...input])) {
           for (const i of s.indices ?? []) {
             expect(i, `${d.id} step ${s.id} ${s.codeRef}`).toBeGreaterThanOrEqual(0);
@@ -229,7 +234,7 @@ describe('execution-step consistency (all registered algorithms)', () => {
 
   it('pointers agree with variables of the same name (all algorithms)', () => {
     for (const id of ['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search', 'merge-sort', 'quick-sort', 'heap-sort', 'two-pointer']) {
-      for (const input of inputsFor(id)) {
+      for (const input of inputsFor({ id })) {
         for (const s of def(id).generateSteps([...input])) {
           for (const [k, v] of Object.entries(s.pointers ?? {})) {
             if (s.variables && k in s.variables) {
@@ -276,9 +281,19 @@ describe('execution-step consistency (all registered algorithms)', () => {
 
   it('every algorithm: an empty array produces no highlighted/sorted indices and no undefined/NaN text (audit P2-3)', () => {
     for (const d of getAllAlgorithms()) {
+      if (!hasDefaultRun(d, [])) {
+        // Delete at Position: an empty list has no index to delete at; the generator refuses rather than tracing a crash
+        expect(() => d.generateSteps([]), d.id).toThrow(RangeError);
+        continue;
+      }
       for (const params of [undefined, { target: 5 }]) {
         for (const s of d.generateSteps([], params)) {
           expect(`${s.message} ${s.explanation ?? ''}`, `${d.id} step ${s.id}`).not.toMatch(/undefined|NaN/);
+          if (visualKindOf(d) === 'linked-list') {
+            // inserting into an empty list legitimately makes it non-empty; indices stay inside the current list
+            for (const i of s.indices ?? []) expect(i >= 0 && i < s.state.length, `${d.id} step ${s.id} index ${i}`).toBe(true);
+            continue;
+          }
           expect(s.state, `${d.id} step ${s.id}`).toEqual([]);
           expect(s.indices ?? [], `${d.id} step ${s.id} indices`).toEqual([]);
           expect(s.sortedIndices ?? [], `${d.id} step ${s.id} sortedIndices`).toEqual([]);
@@ -324,7 +339,7 @@ describe('final positions vs Insertion Sort\'s sorted prefix (audit M1)', () => 
 
   it('only Insertion Sort reports a sorted prefix', () => {
     for (const d of getAllAlgorithms().filter(a => a.id !== 'insertion-sort')) {
-      for (const input of SORT_INPUTS) {
+      for (const input of SORT_INPUTS.filter(i => hasDefaultRun(d, i))) {
         for (const s of d.generateSteps([...input], { target: 5 })) expect(s.sortedPrefixIndices, `${d.id} step ${s.id}`).toBeUndefined();
       }
     }

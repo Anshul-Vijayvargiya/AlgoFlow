@@ -10,6 +10,8 @@ import type { AlgorithmDefinition } from '../types/algorithm';
 
 /** Keeps bars and pointer labels legible; far above anything the traces need to demonstrate. */
 export const MAX_ARRAY_SIZE = 16;
+/** Linked lists are drawn as node boxes with arrows; 10 nodes stay legible on a phone. */
+export const MAX_LIST_SIZE = 10;
 export const MIN_VALUE = -999;
 export const MAX_VALUE = 999;
 
@@ -73,18 +75,74 @@ export const sortedCopy = (array: number[]): number[] => [...array].sort((a, b) 
 
 export type InputValidation = { ok: true } | { ok: false; message: string; canSortCopy: boolean };
 
-/** Checks the array/target against the algorithm's declared input requirements. */
+const nodes = (n: number) => `${n} node${n === 1 ? '' : 's'}`;
+
+/** The longest input an algorithm accepts: 16 array values, 10 list nodes, or 9 when the operation adds a node. */
+export function maxInputLength(def: Pick<AlgorithmDefinition, 'inputSpec' | 'visual'>): number {
+  if (def.visual !== 'linked-list') return MAX_ARRAY_SIZE;
+  return def.inputSpec?.addsNode ? MAX_LIST_SIZE - 1 : MAX_LIST_SIZE;
+}
+
+/** The positions a list of `length` nodes accepts: insert at 0..length (length appends), delete at 0..length−1. */
+export const lastListIndex = (bound: 'insert' | 'delete', length: number) => (bound === 'insert' ? length : length - 1);
+
+/**
+ * The position used when none was chosen: the declared default, moved into range for a list of `length` nodes (so a
+ * default never makes a short list invalid). null when there is no valid position: deleting from an empty list.
+ */
+export function defaultListIndex(spec: { defaultValue: number; bound: 'insert' | 'delete' }, length: number): number | null {
+  const last = lastListIndex(spec.bound, length);
+  return last < 0 ? null : Math.min(spec.defaultValue, last);
+}
+
+function tooManyNodesMessage(def: Pick<AlgorithmDefinition, 'name' | 'inputSpec' | 'visual'>, count: number): string {
+  const max = maxInputLength(def);
+  return def.inputSpec?.addsNode
+    ? `Too many nodes (${count}). ${def.name} adds one, and the visualizer shows at most ${MAX_LIST_SIZE}, so start with at most ${max}.`
+    : `Too many nodes (${count}). The visualizer shows at most ${MAX_LIST_SIZE}.`;
+}
+
+/**
+ * Checks the array/target (and, for linked-list operations, the value and index) against the algorithm's declared
+ * input requirements. An invalid linked-list index is rejected here, before anything runs.
+ */
 export function validateAlgorithmInput(
-  def: Pick<AlgorithmDefinition, 'name' | 'inputSpec'>,
+  def: Pick<AlgorithmDefinition, 'name' | 'inputSpec' | 'visual'>,
   array: number[],
-  target: number | null
+  target: number | null,
+  index: number | null = null
 ): InputValidation {
-  if (array.length > MAX_ARRAY_SIZE) {
+  const spec = def.inputSpec;
+  if (def.visual === 'linked-list') {
+    if (array.length > maxInputLength(def)) return { ok: false, canSortCopy: false, message: tooManyNodesMessage(def, array.length) };
+  } else if (array.length > MAX_ARRAY_SIZE) {
     return { ok: false, canSortCopy: false, message: `Too many values (${array.length}). The visualizer supports at most ${MAX_ARRAY_SIZE}.` };
   }
-  const spec = def.inputSpec;
   if (spec?.target && (target === null || !Number.isInteger(target))) {
     return { ok: false, canSortCopy: false, message: `Enter a value for "${spec.target.label}".` };
+  }
+  // linked-list operations carry their value in the same field as a search target
+  if (spec?.value && (target === null || !Number.isInteger(target))) {
+    return { ok: false, canSortCopy: false, message: `Enter a value for "${spec.value.label}".` };
+  }
+  if (spec?.index) {
+    if (index === null || !Number.isInteger(index)) {
+      return { ok: false, canSortCopy: false, message: `Enter a value for "${spec.index.label}".` };
+    }
+    const last = lastListIndex(spec.index.bound, array.length);
+    if (last < 0) {
+      return { ok: false, canSortCopy: false, message: `The list is empty, so there is no node to delete at index ${index}.` };
+    }
+    if (index < 0 || index > last) {
+      return {
+        ok: false,
+        canSortCopy: false,
+        message:
+          spec.index.bound === 'insert'
+            ? `Index ${index} is out of range. For a list of ${nodes(array.length)}, insert at 0 to ${last} (${last} appends at the end).`
+            : `Index ${index} is out of range. For a list of ${nodes(array.length)}, delete at 0 to ${last}.`,
+      };
+    }
   }
   if (spec?.sortedRequired) {
     const i = firstUnsortedIndex(array);
@@ -120,4 +178,43 @@ export function validateDraft(
   const v = validateAlgorithmInput(def, a.value, target);
   if (!v.ok) return { ok: false, field: 'order', message: v.message, canSortCopy: v.canSortCopy, array: a.value, target };
   return { ok: true, array: a.value, target };
+}
+
+export type ListDraftValidation =
+  | { ok: true; list: number[]; value: number | null; index: number | null }
+  | { ok: false; field: 'list' | 'value' | 'index'; message: string };
+
+/**
+ * Validates what the user has typed into the linked-list form (values, and the operation's value and position when
+ * it takes them). The rules are validateAlgorithmInput's: this only parses the text and says which field is wrong.
+ */
+export function validateListDraft(
+  def: Pick<AlgorithmDefinition, 'name' | 'inputSpec' | 'visual'>,
+  listText: string,
+  valueText: string,
+  indexText: string
+): ListDraftValidation {
+  const spec = def.inputSpec;
+  // counted before parsing, so a long list gets the node-limit message rather than the array one
+  const body = listText.trim().replace(/^\[(.*)\]$/, '$1').trim();
+  const count = body === '' ? 0 : body.split(',').length;
+  if (count > maxInputLength(def)) return { ok: false, field: 'list', message: tooManyNodesMessage(def, count) };
+  const a = parseArrayInput(listText);
+  if (!a.ok) return { ok: false, field: 'list', message: a.message };
+  let value: number | null = null;
+  if (spec?.value) {
+    const v = parseTargetInput(valueText, spec.value.label);
+    if (!v.ok) return { ok: false, field: 'value', message: v.message };
+    value = v.value;
+  }
+  let index: number | null = null;
+  if (spec?.index) {
+    const i = parseTargetInput(indexText, spec.index.label);
+    if (!i.ok) return { ok: false, field: 'index', message: i.message };
+    index = i.value;
+  }
+  const v = validateAlgorithmInput(def, a.value, value, index);
+  // the remaining problems are the position (out of range, or nothing to delete in an empty list)
+  if (!v.ok) return { ok: false, field: v.message.startsWith('The list is empty') ? 'list' : 'index', message: v.message };
+  return { ok: true, list: a.value, value, index };
 }

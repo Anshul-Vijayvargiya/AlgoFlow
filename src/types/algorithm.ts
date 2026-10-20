@@ -27,6 +27,15 @@ export type AlgorithmId =
   | 'sliding-window'
   | 'prefix-sum'
   | 'reverse-linked-list'
+  | 'll-build'
+  | 'll-traverse'
+  | 'll-insert-head'
+  | 'll-insert-tail'
+  | 'll-insert-at'
+  | 'll-delete-head'
+  | 'll-delete-tail'
+  | 'll-delete-at'
+  | 'll-search'
   | 'detect-cycle'
   | 'merge-lists'
   | 'stack'
@@ -66,6 +75,37 @@ export type StepType =
   | 'not-found'
   | 'sorted'
   | 'complete';
+
+// ─── Linked-list snapshots ─────────────────────────────────────────────────────
+// One immutable snapshot per step (see src/engine/linkedList/listSnapshot.ts). Node ids are stable for the whole
+// trace (n1, n2, …, never reused), so a node keeps its identity while links around it change.
+
+export interface ListNodeSnapshot {
+  readonly id: string;
+  readonly value: number;
+  /** id of the next node, or null for a NULL next pointer */
+  readonly next: string | null;
+}
+
+/** The single link, HEAD or TAIL change that the step's statement made (absent when it changed none). */
+export type ListChange =
+  | { readonly kind: 'next'; readonly node: string; readonly from: string | null; readonly to: string | null }
+  | { readonly kind: 'head' | 'tail'; readonly from: string | null; readonly to: string | null };
+
+export interface ListSnapshot {
+  /** every node that currently exists (created and not freed), in creation order */
+  readonly nodes: readonly ListNodeSnapshot[];
+  readonly head: string | null;
+  readonly tail: string | null;
+  /** named code variables (curr, prev, node, …) → node id, or null for a NULL pointer */
+  readonly pointers: Readonly<Record<string, string | null>>;
+  /** nodes that exist but are deliberately outside the list (a new node before it is linked in, an unlinked node
+   *  before it is freed) */
+  readonly detached: readonly string[];
+  readonly changed?: ListChange;
+  /** highest node number ever allocated in this trace (n1 … n<lastId>), so a freed node's id is never reused */
+  readonly lastId: number;
+}
 
 export interface ExecutionStep {
   id: number;
@@ -117,6 +157,12 @@ export interface ExecutionStep {
    */
   buffers?: { name: string; values: number[]; cursor?: number }[];
 
+  /**
+   * Linked-list algorithms only (visual: 'linked-list'): the whole list at this step, as an immutable snapshot with
+   * stable node ids. `state` still holds the values read from head, so generic consumers keep working.
+   */
+  list?: ListSnapshot;
+
   /** Extra metadata */
   extraInfo?: {
     pivotIndex?: number;
@@ -165,6 +211,24 @@ export interface AlgorithmInputSpec {
   };
   /** The array must already be sorted ascending (non-decreasing); the user's order is never changed silently */
   sortedRequired?: boolean;
+  /** Linked-list operations: the value to insert or search for; passed to generateSteps as params.value */
+  value?: {
+    label: string;
+    hint: string;
+    defaultValue: number;
+  };
+  /**
+   * Linked-list operations: a position in the list; passed as params.index. Validated before execution:
+   * 'insert' accepts 0..length (inserting at length appends), 'delete' accepts 0..length-1.
+   */
+  index?: {
+    label: string;
+    hint: string;
+    defaultValue: number;
+    bound: 'insert' | 'delete';
+  };
+  /** The operation adds a node, so the input list must leave room for it (at most MAX_LIST_SIZE - 1 nodes) */
+  addsNode?: boolean;
 }
 
 export interface AlgorithmDefinition {
@@ -178,6 +242,12 @@ export interface AlgorithmDefinition {
 
   /** Input requirements (target, sortedness). Omitted for algorithms that only need an array. */
   inputSpec?: AlgorithmInputSpec;
+
+  /**
+   * How the trace is drawn: 'array' (bars, the default when omitted) or 'linked-list' (nodes and links; every step
+   * then carries `list`). Existing definitions omit it and are unaffected.
+   */
+  visual?: 'array' | 'linked-list';
 
   /** Source code for each language. Missing languages show "Code unavailable." */
   code: AlgorithmCode;

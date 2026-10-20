@@ -10,21 +10,25 @@ import {
   Zap 
 } from 'lucide-react';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
+import { getAlgorithmDefinition, visualKindOf } from '../../engine/AlgorithmRegistry';
+import { maxInputLength } from '../../engine/inputParsing';
 import { getSizeOptions } from './sizeOptions';
 
-export const SizeSelect: React.FC<{ size: number; onChange: (size: number) => void; disabled?: boolean }> = ({
-  size,
-  onChange,
-  disabled,
-}) => (
+export const SizeSelect: React.FC<{
+  size: number;
+  onChange: (size: number) => void;
+  disabled?: boolean;
+  label?: string;
+  bounds?: { min: number; max: number };
+}> = ({ size, onChange, disabled, label = 'Array size', bounds }) => (
   <select
-    aria-label="Array size"
+    aria-label={label}
     value={size}
     onChange={e => onChange(Number(e.target.value))}
     disabled={disabled}
     className="h-6 bg-transparent text-xs font-mono text-cyan-300 cursor-pointer rounded disabled:opacity-40"
   >
-    {getSizeOptions(size).map(option => (
+    {getSizeOptions(size, bounds).map(option => (
       <option key={option} value={option} className="bg-slate-900">
         {option}
       </option>
@@ -34,6 +38,7 @@ export const SizeSelect: React.FC<{ size: number; onChange: (size: number) => vo
 
 export const ExecutionControls: React.FC = () => {
   const {
+    selectedAlgorithm,
     currentStepIndex,
     steps,
     isPlaying,
@@ -49,6 +54,10 @@ export const ExecutionControls: React.FC = () => {
   } = useVisualizerStore();
 
   const totalSteps = steps.length;
+  const def = getAlgorithmDefinition(selectedAlgorithm);
+  // linked lists: "list" wording, and only the sizes the operation accepts
+  const isList = visualKindOf(def) === 'linked-list';
+  const sizeBounds = isList && def ? { min: def.inputSpec?.index?.bound === 'delete' ? 1 : 0, max: maxInputLength(def) } : undefined;
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -145,7 +154,7 @@ export const ExecutionControls: React.FC = () => {
           aria-label="Randomize"
           disabled={isPlaying}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 transition-colors"
-          title="Randomize Array"
+          title={isList ? 'Randomize list' : 'Randomize Array'}
         >
           <Shuffle className="w-3.5 h-3.5 text-cyan-400" />
           <span className="hidden sm:inline">Randomize</span>
@@ -154,7 +163,13 @@ export const ExecutionControls: React.FC = () => {
         <div className="flex items-center gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
           <Sliders className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-[11px] font-mono text-slate-400">Size:</span>
-          <SizeSelect size={arraySize} onChange={setArraySize} disabled={isPlaying} />
+          <SizeSelect
+            size={arraySize}
+            onChange={setArraySize}
+            disabled={isPlaying}
+            label={isList ? 'List size' : 'Array size'}
+            bounds={sizeBounds}
+          />
         </div>
 
         <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
