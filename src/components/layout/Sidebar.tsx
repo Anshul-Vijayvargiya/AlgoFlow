@@ -19,9 +19,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onSelect }) =>
 
   return (
     <aside
-      className={`w-64 bg-[#070A12] border-r border-slate-800/80 flex flex-col h-full overflow-y-auto custom-scrollbar ${className}`}
+      className={`w-64 bg-page border-r border-slate-800/80 flex flex-col h-full overflow-y-auto custom-scrollbar ${className}`}
     >
-      <div className="p-4 border-b border-slate-800/60 sticky top-0 bg-[#070A12]/95 backdrop-blur-md z-10">
+      <div className="p-4 border-b border-slate-800/60 sticky top-0 bg-[#070A12]/95 light:bg-page/95 backdrop-blur-md z-10">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-cyan-400" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">

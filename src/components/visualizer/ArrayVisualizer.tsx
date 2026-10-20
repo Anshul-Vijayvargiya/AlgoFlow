@@ -57,9 +57,9 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-2" data-testid="array-visualizer" data-outcome={outcome ?? ''}>
-      <div className={`w-full h-72 sm:h-80 md:h-96 bg-[#0B0F19]/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex items-end justify-center ${compact ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'} relative overflow-hidden shadow-inner`}>
+      <div className={`w-full h-72 sm:h-80 md:h-96 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex items-end justify-center ${compact ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'} relative overflow-hidden shadow-inner`}>
         {/* Background Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--af-grid)_1px,transparent_1px),linear-gradient(to_bottom,var(--af-grid)_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none" />
 
         {/* Values the algorithm is looking for / around (only when the trace defines them) */}
         {(target !== undefined || pivot !== undefined) && (

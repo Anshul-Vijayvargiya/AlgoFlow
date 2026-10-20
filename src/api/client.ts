@@ -11,7 +11,7 @@ export function normalizeRole(role: unknown): UserRole {
 }
 
 export interface UserPreferences {
-  theme: 'dark' | 'system';
+  theme: 'dark' | 'light' | 'system';
   preferredLanguage: 'cpp' | 'c' | 'java' | 'python';
   dailyGoalMinutes: number;
 }

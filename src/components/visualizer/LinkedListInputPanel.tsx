@@ -70,7 +70,7 @@ const LinkedListInputForm: React.FC = () => {
       noValidate
       data-testid="list-input-panel"
       aria-label="Linked list input"
-      className="bg-[#0B0F19] border border-cyan-500/20 rounded-2xl p-4 flex flex-col gap-3 shadow-xl"
+      className="bg-surface border border-cyan-500/20 rounded-2xl p-4 flex flex-col gap-3 shadow-xl"
     >
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex-1 min-w-[200px]">

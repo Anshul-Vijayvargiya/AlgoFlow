@@ -64,14 +64,14 @@ const LEARNING_TRACKS: LearningTrack[] = [
 
 export const LearningPathsPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 space-y-8 max-w-7xl mx-auto">
       {/* Page Title */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-mono">
           <Compass className="w-3.5 h-3.5" />
           STRUCTURED LEARNING ROADMAPS
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white font-sans">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink font-sans">
           DSA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Mastery Roadmap</span>
         </h1>
         <p className="text-sm text-slate-400 max-w-2xl">
@@ -84,7 +84,7 @@ export const LearningPathsPage: React.FC = () => {
         {LEARNING_TRACKS.map((track) => (
           <div
             key={track.id}
-            className="bg-[#0B0F19] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 relative overflow-hidden"
+            className="bg-surface border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 relative overflow-hidden"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
               <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ export const LearningPathsPage: React.FC = () => {
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">{track.title}</h2>
+                  <h2 className="text-lg font-bold text-ink">{track.title}</h2>
                   <p className="text-xs text-slate-400">{track.description}</p>
                 </div>
               </div>

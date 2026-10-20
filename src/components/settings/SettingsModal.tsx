@@ -11,12 +11,20 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useThemeStore } from '../../store/useThemeStore';
+import type { ThemePreference } from '../../theme/theme';
 import { apiClient } from '../../api';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'System' },
+];
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { user, fetchCurrentUser } = useAuthStore();
@@ -25,7 +33,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [preferredLanguage, setPreferredLanguage] = useState<'cpp' | 'c' | 'java' | 'python'>(
     user?.preferences?.preferredLanguage || 'cpp'
   );
-  const [theme, setTheme] = useState<'dark' | 'system'>(user?.preferences?.theme || 'dark');
+  // the theme is shared with the header control: it applies (and is saved) as soon as it is picked, not on Save
+  const { preference: theme, setPreference: setTheme, accountSync } = useThemeStore();
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState<number>(
     user?.preferences?.dailyGoalMinutes || 30
   );
@@ -53,6 +62,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       });
 
       await fetchCurrentUser();
+      // Save also sends the current theme, so a failed immediate theme save is now resolved
+      useThemeStore.setState({ accountSync: 'saved' });
       setSuccessMessage('Settings updated successfully!');
       setTimeout(() => {
         setSuccessMessage(null);
@@ -67,10 +78,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl w-full max-w-lg p-6 space-y-6 shadow-2xl relative">
+      <div className="bg-surface border border-cyan-500/30 rounded-3xl w-full max-w-lg p-6 space-y-6 shadow-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white cursor-pointer"
+          className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-ink cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -80,7 +91,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <Settings className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold font-mono text-white">Account Settings</h2>
+            <h2 className="text-xl font-bold font-mono text-ink">Account Settings</h2>
             <p className="text-xs text-slate-400">
               Manage your display profile and learning preferences.
             </p>
@@ -114,7 +125,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               maxLength={60}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-ink focus:outline-none focus:border-cyan-500"
             />
           </div>
 
@@ -177,15 +188,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {/* Theme */}
           <div className="space-y-1.5">
-            <label className="text-slate-400 flex items-center gap-1.5">
-              <Palette className="w-3.5 h-3.5 text-cyan-400" />
+            <span id="settings-theme-label" className="text-slate-400 flex items-center gap-1.5">
+              <Palette className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
               Interface Theme
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['dark', 'system'] as const).map((t) => (
+            </span>
+            <div role="group" aria-labelledby="settings-theme-label" className="grid grid-cols-3 gap-2">
+              {THEME_OPTIONS.map(({ value: t, label }) => (
                 <button
                   key={t}
                   type="button"
+                  aria-pressed={theme === t}
                   onClick={() => setTheme(t)}
                   className={`py-2 rounded-xl text-center font-bold capitalize transition-all cursor-pointer ${
                     theme === t
@@ -193,10 +205,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
                   }`}
                 >
-                  {t} Mode
+                  {label}
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-slate-400">Applies immediately. System follows your device&apos;s light or dark setting.</p>
+            {accountSync === 'error' && (
+              <p role="status" data-testid="theme-sync-error" className="text-[11px] text-amber-300">
+                Saved on this device, but it could not be saved to your account. Press Save to try again.
+              </p>
+            )}
           </div>
 
           {/* Security & Role Badges */}

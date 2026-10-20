@@ -16,7 +16,7 @@ import { useAuthStore } from './store/useAuthStore';
 
 const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ProtectedRoute>
-    <div className="min-h-screen bg-[#070A12] text-slate-200 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen bg-page text-slate-200 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       <Header />
       <main className="flex-1">{children}</main>
     </div>
@@ -74,7 +74,7 @@ export const App: React.FC = () => {
           path="/admin"
           element={
             <ProtectedRoute requiredRole="ADMIN">
-              <div className="min-h-screen bg-[#070A12] text-slate-200 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+              <div className="min-h-screen bg-page text-slate-200 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
                 <Header />
                 <main className="flex-1"><AdminPage /></main>
               </div>

@@ -43,7 +43,8 @@ function sanitizeUserProfile(raw: any): UserProfile {
     role: normalizeRole(raw.role),
     accountStatus: raw.accountStatus === 'suspended' ? 'suspended' : 'active',
     preferences: {
-      theme: raw.preferences?.theme === 'system' ? 'system' : 'dark',
+      // unknown or missing values fall back to dark, the default
+      theme: ['dark', 'light', 'system'].includes(raw.preferences?.theme) ? raw.preferences.theme : 'dark',
       preferredLanguage: ['cpp', 'c', 'java', 'python'].includes(raw.preferences?.preferredLanguage)
         ? raw.preferences.preferredLanguage
         : 'cpp',

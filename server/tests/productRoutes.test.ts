@@ -462,5 +462,56 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
       expect(updateFields.role).toBeUndefined();
       expect(updateFields.accountStatus).toBeUndefined();
     });
+
+    // Theme preference: dark, light and system are valid; anything else is rejected before the database is touched.
+    const profileWithTheme = (theme: string) => ({
+      _id: new mongoose.Types.ObjectId('507f1f77bcf86cd799439011'),
+      name: 'Theme User',
+      email: 'user@algoflow.io',
+      role: 'USER',
+      accountStatus: 'active',
+      preferences: { theme, preferredLanguage: 'cpp', dailyGoalMinutes: 30 },
+    });
+
+    it.each(['light', 'dark', 'system'])('accepts and saves the "%s" theme', async (theme) => {
+      mockUser.findByIdAndUpdate.mockResolvedValue(profileWithTheme(theme));
+
+      const res = await request(app)
+        .patch('/api/users/profile')
+        .set('Cookie', [`algoflow_token=${userToken}`])
+        .send({ preferences: { theme } });
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.preferences.theme).toBe(theme);
+      const updateFields = mockUser.findByIdAndUpdate.mock.calls[0][1].$set;
+      expect(updateFields).toEqual({ 'preferences.theme': theme });
+    });
+
+    it.each([['an unknown name', 'neon'], ['the wrong case', 'Light'], ['a number', 1], ['null', null], ['an empty string', '']])(
+      'rejects %s as a theme with 400 and does not update the user',
+      async (_label, theme) => {
+        const res = await request(app)
+          .patch('/api/users/profile')
+          .set('Cookie', [`algoflow_token=${userToken}`])
+          .send({ preferences: { theme } });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Validation failed');
+        expect(res.body.details).toEqual([expect.objectContaining({ field: 'preferences.theme' })]);
+        expect(mockUser.findByIdAndUpdate).not.toHaveBeenCalled();
+      }
+    );
+
+    it('changing the theme leaves the other preferences alone', async () => {
+      mockUser.findByIdAndUpdate.mockResolvedValue(profileWithTheme('light'));
+
+      await request(app)
+        .patch('/api/users/profile')
+        .set('Cookie', [`algoflow_token=${userToken}`])
+        .send({ preferences: { theme: 'light' } });
+
+      const updateFields = mockUser.findByIdAndUpdate.mock.calls[0][1].$set;
+      expect(Object.keys(updateFields)).toEqual(['preferences.theme']);
+    });
   });
 });

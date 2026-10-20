@@ -76,7 +76,7 @@ export const ExecutionControls: React.FC = () => {
   return (
     <div role="region"
       aria-label="Playback controls"
-      className="bg-[#0B0F19] border border-cyan-500/20 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+      className="bg-surface border border-cyan-500/20 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
       <div className="flex items-center gap-2">
         <button
           onClick={reset}

@@ -1,16 +1,18 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" data-theme="dark" style="color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- applies the saved theme before first paint (see src/theme/theme.ts); must stay a blocking script in <head> -->
+    <script src="/theme-init.js"></script>
     <meta name="description" content="AlgoFlow - Don't just read the algorithm. Watch it execute. Synchronized step-by-step code, live bar visualizations, and execution trace explanations." />
     <title>AlgoFlow - Interactive DSA Learning & Visualization Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#070A12] text-slate-200 antialiased min-h-screen">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

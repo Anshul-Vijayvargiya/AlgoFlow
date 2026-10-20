@@ -22,11 +22,13 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
+import { useChartColors } from '../theme/chartColors';
 
 import { useProgressStore } from '../store/useProgressStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const Dashboard: React.FC = () => {
+  const chart = useChartColors();
   const { user } = useAuthStore();
   const { progress, fetchProgress } = useProgressStore();
 
@@ -68,7 +70,7 @@ export const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 space-y-8 max-w-7xl mx-auto">
       {/* Hero Section */}
       <div className="relative rounded-3xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-purple-950/40 border border-cyan-500/20 p-6 md:p-10 overflow-hidden shadow-2xl">
         <div className="absolute right-0 top-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -77,7 +79,7 @@ export const Dashboard: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5" />
             CORE USP: WATCH ALGORITHMS EXECUTE LIVE
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white font-sans">
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-ink font-sans">
             Master DSA by <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">Watching It Execute</span>
           </h1>
           <p className="text-sm md:text-base text-slate-300 leading-relaxed">
@@ -106,29 +108,29 @@ export const Dashboard: React.FC = () => {
       {/* Stats Grid Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Solved */}
-        <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
+        <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold font-mono text-white">{solvedCount}</div>
+            <div className="text-2xl font-bold font-mono text-ink">{solvedCount}</div>
             <div className="text-xs text-slate-400">Problems Solved</div>
           </div>
         </div>
 
         {/* Card 2: Algorithms Learned */}
-        <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
+        <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold font-mono text-white">{algorithmsLearned}</div>
+            <div className="text-2xl font-bold font-mono text-ink">{algorithmsLearned}</div>
             <div className="text-xs text-slate-400">Algorithms Learned</div>
           </div>
         </div>
 
         {/* Card 3: Streak */}
-        <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
+        <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
             <Flame className="w-6 h-6" />
           </div>
@@ -141,7 +143,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Card 4: Learning Progress */}
-        <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
+        <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
             <Trophy className="w-6 h-6" />
           </div>
@@ -158,12 +160,12 @@ export const Dashboard: React.FC = () => {
         {/* Left 2 Cols: Continue Learning & Activity Chart */}
         <div className="lg:col-span-2 space-y-6">
           {/* Continue Learning Card */}
-          <div className="bg-[#0B0F19] border border-cyan-500/20 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-surface border border-cyan-500/20 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
                 CONTINUE LEARNING
               </span>
-              <h3 className="text-lg font-bold text-white">Bubble Sort & Array Partitioning</h3>
+              <h3 className="text-lg font-bold text-ink">Bubble Sort & Array Partitioning</h3>
               <p className="text-xs text-slate-400">
                 Step 4 of 10 executed. Pick up right where you left off.
               </p>
@@ -178,7 +180,7 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Weekly Activity Chart */}
-          <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="bg-surface border border-cyan-500/15 rounded-2xl p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
@@ -195,12 +197,12 @@ export const Dashboard: React.FC = () => {
             <div className="h-56 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyData}>
-                  <XAxis dataKey="day" stroke="#64748B" fontSize={11} />
-                  <YAxis stroke="#64748B" fontSize={11} />
+                  <XAxis dataKey="day" stroke={chart.axis} fontSize={11} />
+                  <YAxis stroke={chart.axis} fontSize={11} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '8px', color: '#F8FAFC', fontSize: '12px' }}
+                    contentStyle={chart.tooltip}
                   />
-                  <Bar dataKey="minutes" fill="#38BDF8" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="minutes" fill={chart.primary} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -210,7 +212,7 @@ export const Dashboard: React.FC = () => {
         {/* Right 1 Col: Difficulty Distribution & Recommended */}
         <div className="space-y-6">
           {/* Difficulty Distribution Chart */}
-          <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="bg-surface border border-cyan-500/15 rounded-2xl p-6 shadow-xl space-y-4">
             <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200">
               DIFFICULTY DISTRIBUTION
             </h3>
@@ -230,7 +232,7 @@ export const Dashboard: React.FC = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '8px', color: '#F8FAFC', fontSize: '12px' }} />
+                  <Tooltip contentStyle={chart.tooltip} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -239,14 +241,14 @@ export const Dashboard: React.FC = () => {
                 <div key={d.name} className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
                   <span className="text-slate-400">{d.name}:</span>
-                  <span className="text-white font-bold">{d.value}</span>
+                  <span className="text-ink font-bold">{d.value}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Recommended Algorithms */}
-          <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-6 shadow-xl space-y-3">
+          <div className="bg-surface border border-cyan-500/15 rounded-2xl p-6 shadow-xl space-y-3">
             <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-200">
               RECOMMENDED ALGORITHMS
             </h3>

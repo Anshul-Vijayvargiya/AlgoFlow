@@ -18,6 +18,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
+import { ThemeSelect } from '../components/theme/ThemeSelect';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ export const AuthPage: React.FC = () => {
   const allPwSatisfied = pwSatisfied.every(Boolean);
 
   return (
-    <div className="min-h-screen bg-[#070A12] flex overflow-x-hidden">
+    <div className="min-h-screen bg-page flex overflow-x-hidden">
 
       {/* ── Left Panel: Branding (hidden on mobile / tablet) ── */}
       <div
@@ -164,7 +165,7 @@ export const AuthPage: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12 group w-fit" tabIndex={-1}>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5 shadow-xl shadow-cyan-500/30 group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-[#070A12] rounded-[14px] flex items-center justify-center">
+              <div className="w-full h-full bg-page rounded-[14px] flex items-center justify-center">
                 <Play className="w-5 h-5 text-cyan-400 fill-cyan-400/20 ml-0.5" />
               </div>
             </div>
@@ -173,13 +174,13 @@ export const AuthPage: React.FC = () => {
                 AlgoFlow
               </span>
               {/* Item 2: Updated subtitle */}
-              <div className="text-[10px] tracking-widest uppercase text-cyan-400/60 font-mono">
+              <div className="text-[10px] tracking-widest uppercase text-cyan-400/60 light:text-cyan-400 font-mono">
                 Interactive DSA Learning Platform
               </div>
             </div>
           </Link>
 
-          <h1 className="text-4xl xl:text-5xl font-black text-white leading-tight mb-4">
+          <h1 className="text-4xl xl:text-5xl font-black text-ink leading-tight mb-4">
             Master{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
               Data Structures
@@ -199,7 +200,7 @@ export const AuthPage: React.FC = () => {
               <div key={f.label} className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${f.color} p-0.5 flex-shrink-0`}>
                   <div className="w-full h-full bg-slate-900/80 rounded-[10px] flex items-center justify-center">
-                    <f.icon className="w-4 h-4 text-white" />
+                    <f.icon className="w-4 h-4 text-ink" />
                   </div>
                 </div>
                 <span className="text-slate-300 text-sm font-medium">{f.label}</span>
@@ -211,6 +212,10 @@ export const AuthPage: React.FC = () => {
 
       {/* ── Right Panel: Auth Form ── */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-12 relative min-w-0">
+        {/* signed-out users get the same theme control as the header */}
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeSelect id="auth-theme-select" />
+        </div>
         {/* Mobile background orbs */}
         <FloatingOrb className="lg:hidden w-72 h-72 bg-cyan-500 -top-20 -right-10" />
         <FloatingOrb className="lg:hidden w-60 h-60 bg-purple-600 bottom-0 -left-10" />
@@ -220,7 +225,7 @@ export const AuthPage: React.FC = () => {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 justify-center mb-6" aria-hidden="true">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5">
-              <div className="w-full h-full bg-[#070A12] rounded-[10px] flex items-center justify-center">
+              <div className="w-full h-full bg-page rounded-[10px] flex items-center justify-center">
                 <Play className="w-4 h-4 text-cyan-400 fill-cyan-400/20 ml-0.5" />
               </div>
             </div>
@@ -229,7 +234,7 @@ export const AuthPage: React.FC = () => {
                 AlgoFlow
               </span>
               {/* Item 2: updated on mobile too */}
-              <div className="text-[9px] tracking-widest uppercase text-cyan-400/60 font-mono">
+              <div className="text-[9px] tracking-widest uppercase text-cyan-400/60 light:text-cyan-400 font-mono">
                 Interactive DSA Learning Platform
               </div>
             </div>
@@ -246,7 +251,7 @@ export const AuthPage: React.FC = () => {
                   {mode === 'login' ? 'Welcome back' : 'Get started free'}
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-2xl font-black text-ink">
                 {mode === 'login' ? 'Sign in to AlgoFlow' : 'Create your account'}
               </h2>
               <p className="text-slate-400 text-sm mt-1">
@@ -299,7 +304,7 @@ export const AuthPage: React.FC = () => {
                       aria-describedby={fieldErrors.name ? `${nameId}-err` : undefined}
                       className={`w-full bg-slate-800/60 border ${
                         fieldErrors.name ? 'border-red-500/60' : 'border-slate-700/60'
-                      } rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/30 transition-all`}
+                      } rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/30 transition-all`}
                     />
                   </div>
                   {fieldErrors.name && (
@@ -332,7 +337,7 @@ export const AuthPage: React.FC = () => {
                     aria-describedby={fieldErrors.email ? `${emailId}-err` : undefined}
                     className={`w-full bg-slate-800/60 border ${
                       fieldErrors.email ? 'border-red-500/60' : 'border-slate-700/60'
-                    } rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/30 transition-all`}
+                    } rounded-xl pl-10 pr-4 py-3 text-sm text-ink placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/30 transition-all`}
                   />
                 </div>
                 {fieldErrors.email && (
@@ -371,7 +376,7 @@ export const AuthPage: React.FC = () => {
                     }
                     className={`w-full bg-slate-800/60 border ${
                       fieldErrors.password ? 'border-red-500/60' : 'border-slate-700/60'
-                    } rounded-xl pl-10 pr-12 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/30 transition-all`}
+                    } rounded-xl pl-10 pr-12 py-3 text-sm text-ink placeholder-slate-500 focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/30 transition-all`}
                   />
                   {/* Show / hide toggle — item 11: aria-label */}
                   <button

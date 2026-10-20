@@ -1,7 +1,7 @@
 import { Schema, model, Document } from 'mongoose';
 
 export interface IUserPreferences {
-  theme: 'dark' | 'system';
+  theme: 'dark' | 'light' | 'system';
   preferredLanguage: 'cpp' | 'c' | 'java' | 'python';
   dailyGoalMinutes: number;
 }
@@ -33,7 +33,7 @@ const UserSchema = new Schema<IUser>(
     role: { type: String, enum: ['USER', 'ADMIN', 'SUPER_ADMIN'], default: 'USER' },
     accountStatus: { type: String, enum: ['active', 'suspended'], default: 'active', index: true },
     preferences: {
-      theme: { type: String, enum: ['dark', 'system'], default: 'dark' },
+      theme: { type: String, enum: ['dark', 'light', 'system'], default: 'dark' },
       preferredLanguage: { type: String, enum: ['cpp', 'c', 'java', 'python'], default: 'cpp' },
       dailyGoalMinutes: { type: Number, default: 30, min: 5, max: 300 },
     },

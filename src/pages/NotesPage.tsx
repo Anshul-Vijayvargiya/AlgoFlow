@@ -115,10 +115,10 @@ export const NotesPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold font-mono text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold font-mono text-ink flex items-center gap-2">
             <FileText className="w-6 h-6 text-cyan-400" />
             DSA NOTES & REVISION
           </h1>
@@ -144,7 +144,7 @@ export const NotesPage: React.FC = () => {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0B0F19] p-4 rounded-2xl border border-cyan-500/15">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-cyan-500/15">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
           <input
@@ -181,7 +181,7 @@ export const NotesPage: React.FC = () => {
           <span className="text-xs font-mono text-slate-400">Loading your persistent notes...</span>
         </div>
       ) : filteredNotes.length === 0 ? (
-        <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
+        <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
           <FileText className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-base font-mono font-bold text-slate-300">No notes found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -195,11 +195,11 @@ export const NotesPage: React.FC = () => {
           {filteredNotes.map((note) => (
             <div
               key={note.id}
-              className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-xl group"
+              className="bg-surface border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-xl group"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  <h3 className="text-base font-bold text-ink group-hover:text-cyan-300 transition-colors">
                     {note.title}
                   </h3>
                   <div className="flex items-center gap-1 shrink-0">
@@ -249,17 +249,17 @@ export const NotesPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleSave}
-            className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl w-full max-w-xl p-6 space-y-4 shadow-2xl relative"
+            className="bg-surface border border-cyan-500/30 rounded-3xl w-full max-w-xl p-6 space-y-4 shadow-2xl relative"
           >
             <button
               type="button"
               onClick={() => setIsCreating(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-ink cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="text-xl font-bold font-mono text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold font-mono text-ink flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-cyan-400" />
               {editingNote ? 'Edit Note' : 'Create New Note'}
             </h2>
@@ -280,7 +280,7 @@ export const NotesPage: React.FC = () => {
                 placeholder="e.g. Binary Search Pattern"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-ink focus:outline-none focus:border-cyan-500"
               />
             </div>
 

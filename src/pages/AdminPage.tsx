@@ -124,7 +124,7 @@ export const AdminPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Top Header */}
       <div className="border-b border-slate-800 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -132,7 +132,7 @@ export const AdminPage: React.FC = () => {
             <Shield className="w-3.5 h-3.5" />
             ADMINISTRATIVE CONSOLE
           </div>
-          <h1 className="text-3xl font-extrabold font-mono text-white flex items-center gap-3">
+          <h1 className="text-3xl font-extrabold font-mono text-ink flex items-center gap-3">
             AlgoFlow System Management
             <span className="text-xs px-2.5 py-1 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 font-normal">
               {user?.role}
@@ -174,7 +174,7 @@ export const AdminPage: React.FC = () => {
           </div>
           <button
             onClick={() => setBannerMessage(null)}
-            className="p-1 hover:text-white cursor-pointer"
+            className="p-1 hover:text-ink cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -231,12 +231,12 @@ export const AdminPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
+              <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
                   <span>Registered Users</span>
                   <Users className="w-4 h-4 text-cyan-400" />
                 </div>
-                <div className="text-3xl font-bold font-mono text-white">
+                <div className="text-3xl font-bold font-mono text-ink">
                   {metrics?.totalUsers ?? 0}
                 </div>
                 <div className="text-[11px] text-slate-500 font-mono">
@@ -244,7 +244,7 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
+              <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
                   <span>Published Problems</span>
                   <Code2 className="w-4 h-4 text-emerald-400" />
@@ -255,7 +255,7 @@ export const AdminPage: React.FC = () => {
                 <div className="text-[11px] text-slate-500 font-mono">Curated catalog</div>
               </div>
 
-              <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
+              <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
                   <span>Practice Submissions</span>
                   <BarChart3 className="w-4 h-4 text-purple-400" />
@@ -266,7 +266,7 @@ export const AdminPage: React.FC = () => {
                 <div className="text-[11px] text-slate-500 font-mono">Persisted user attempts</div>
               </div>
 
-              <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
+              <div className="bg-surface border border-cyan-500/15 rounded-2xl p-5 shadow-lg space-y-2">
                 <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
                   <span>Server Uptime</span>
                   <Clock className="w-4 h-4 text-amber-400" />
@@ -284,7 +284,7 @@ export const AdminPage: React.FC = () => {
       {/* ── USER MANAGEMENT TAB ─────────────────────────────────── */}
       {activeTab === 'users' && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0B0F19] p-4 rounded-2xl border border-cyan-500/15">
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-cyan-500/15">
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
@@ -334,11 +334,11 @@ export const AdminPage: React.FC = () => {
               <span className="text-xs font-mono text-slate-400">Loading user directory...</span>
             </div>
           ) : users.length === 0 ? (
-            <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-3xl p-12 text-center text-xs font-mono text-slate-500">
+            <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center text-xs font-mono text-slate-500">
               No users found matching current filters.
             </div>
           ) : (
-            <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-surface border border-cyan-500/15 rounded-2xl overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800">
@@ -360,7 +360,7 @@ export const AdminPage: React.FC = () => {
                       return (
                         <tr key={u.id} className="hover:bg-slate-900/40 transition-colors">
                           <td className="p-4">
-                            <div className="font-bold text-white">{u.name}</div>
+                            <div className="font-bold text-ink">{u.name}</div>
                             <div className="text-[11px] text-slate-400">{u.email}</div>
                           </td>
                           <td className="p-4">
@@ -443,11 +443,11 @@ export const AdminPage: React.FC = () => {
               <span className="text-xs font-mono text-slate-400">Loading audit trail...</span>
             </div>
           ) : auditLogs.length === 0 ? (
-            <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-3xl p-12 text-center text-xs font-mono text-slate-500">
+            <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center text-xs font-mono text-slate-500">
               No administrative audit events recorded yet.
             </div>
           ) : (
-            <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-surface border border-cyan-500/15 rounded-2xl overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800">

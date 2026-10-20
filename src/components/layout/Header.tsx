@@ -23,6 +23,7 @@ import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { AITutorDrawer } from '../ai/AITutorDrawer';
 import { SettingsModal } from '../settings/SettingsModal';
+import { ThemeSelect } from '../theme/ThemeSelect';
 import type { ProgrammingLanguage } from '../../types/algorithm';
 
 function getInitials(name: string): string {
@@ -85,11 +86,11 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-16 bg-[#070A12]/90 backdrop-blur-md border-b border-cyan-500/15 px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-40">
+      <header className="h-16 bg-[#070A12]/90 light:bg-page/90 backdrop-blur-md border-b border-cyan-500/15 px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-40">
         {/* Brand Logo */}
         <NavLink to="/dashboard" className="flex items-center gap-3 group min-w-0 shrink">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-300">
-            <div className="w-full h-full bg-[#070A12] rounded-[10px] flex items-center justify-center">
+            <div className="w-full h-full bg-page rounded-[10px] flex items-center justify-center">
               <Play className="w-4 h-4 text-cyan-400 fill-cyan-400/20 ml-0.5" />
             </div>
           </div>
@@ -97,7 +98,7 @@ export const Header: React.FC = () => {
             <span className="truncate font-bold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 font-mono">
               AlgoFlow
             </span>
-            <span className="truncate text-[10px] tracking-widest uppercase text-cyan-400/70 font-mono -mt-1">
+            <span className="truncate text-[10px] tracking-widest uppercase text-cyan-400/70 light:text-cyan-400 font-mono -mt-1">
               Production DSA Platform
             </span>
           </div>
@@ -134,8 +135,12 @@ export const Header: React.FC = () => {
             aria-label="AI Tutor"
           >
             <Bot className="w-4 h-4 text-cyan-400" />
-            <span className="hidden sm:inline">AI Tutor</span>
+            {/* icon only where the full navigation leaves little room (as on phones); it keeps its aria-label */}
+            <span className="hidden sm:inline lg:max-2xl:hidden">AI Tutor</span>
           </button>
+
+          {/* Theme (Dark / Light / System), shared with Settings */}
+          <ThemeSelect id="header-theme-select" compact />
 
           {/* Language Selector */}
           <div className="relative flex items-center bg-slate-900/80 border border-slate-700/60 rounded-lg px-2.5 py-1">
@@ -191,7 +196,7 @@ export const Header: React.FC = () => {
                           {initials}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-white truncate">{user.name}</div>
+                          <div className="text-sm font-semibold text-ink truncate">{user.name}</div>
                           <div className="text-xs text-slate-400 truncate">{user.email}</div>
                           {isAdmin && (
                             <div className="flex items-center gap-1 mt-0.5">
@@ -225,7 +230,7 @@ export const Header: React.FC = () => {
                     <div className="p-2 space-y-0.5">
                       <button
                         onClick={() => { setShowProfileModal(false); navigate('/progress'); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-ink transition-colors"
                       >
                         <User className="w-4 h-4 text-slate-400" />
                         My Profile
@@ -236,7 +241,7 @@ export const Header: React.FC = () => {
                           setShowProfileModal(false);
                           setSettingsModalOpen(true);
                         }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-ink transition-colors cursor-pointer"
                       >
                         <Settings className="w-4 h-4 text-slate-400" />
                         Settings

@@ -52,7 +52,7 @@ int main() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 space-y-6 max-w-7xl mx-auto flex flex-col">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 space-y-6 max-w-7xl mx-auto flex flex-col">
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -60,7 +60,7 @@ int main() {
             <Terminal className="w-3.5 h-3.5" />
             MULTI-LANGUAGE PLAYGROUND
           </div>
-          <h1 className="text-2xl font-bold font-mono text-white mt-2">
+          <h1 className="text-2xl font-bold font-mono text-ink mt-2">
             Code <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Playground</span>
           </h1>
         </div>
@@ -94,8 +94,8 @@ int main() {
       {/* Main Grid: Code Editor | Console */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
         {/* Code Editor Column */}
-        <div className="lg:col-span-7 bg-[#0B0F19] border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-xl min-h-[450px]">
-          <div className="px-4 py-3 bg-[#070A12] border-b border-slate-800 flex items-center justify-between">
+        <div className="lg:col-span-7 bg-surface border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-xl min-h-[450px]">
+          <div className="px-4 py-3 bg-page border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-cyan-400" />
               <span className="text-xs font-mono font-bold text-slate-200">main.{selectedLanguage}</span>
@@ -110,7 +110,7 @@ int main() {
             </button>
           </div>
 
-          <div className="flex-1 p-3 bg-[#0B0F19]">
+          <div className="flex-1 p-3 bg-surface">
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -123,7 +123,7 @@ int main() {
         {/* Input Config & Console Output Column */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           {/* Custom Input Config */}
-          <div className="bg-[#0B0F19] border border-slate-800 rounded-2xl p-4 space-y-2 shadow-lg">
+          <div className="bg-surface border border-slate-800 rounded-2xl p-4 space-y-2 shadow-lg">
             <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300">
               <Sliders className="w-4 h-4 text-cyan-400" />
               <span>CUSTOM ARRAY INPUT</span>
@@ -138,7 +138,7 @@ int main() {
           </div>
 
           {/* Console Output */}
-          <div className="flex-1 bg-[#05070D] border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl min-h-[300px]">
+          <div className="flex-1 bg-[#05070D] light:bg-surface-raised border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl min-h-[300px]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3">
               <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />

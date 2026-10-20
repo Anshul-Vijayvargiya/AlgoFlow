@@ -17,7 +17,7 @@ const updateProfileSchema = z.object({
     .optional(),
   preferences: z
     .object({
-      theme: z.enum(['dark', 'system']).optional(),
+      theme: z.enum(['dark', 'light', 'system']).optional(),
       preferredLanguage: z.enum(['cpp', 'c', 'java', 'python']).optional(),
       dailyGoalMinutes: z.number().min(5).max(300).optional(),
     })

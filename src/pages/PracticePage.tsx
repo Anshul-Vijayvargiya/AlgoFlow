@@ -54,10 +54,10 @@ export const PracticePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold font-mono text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold font-mono text-ink flex items-center gap-2">
             <Code2 className="w-6 h-6 text-cyan-400" />
             CODING PRACTICE
           </h1>
@@ -74,12 +74,12 @@ export const PracticePage: React.FC = () => {
             placeholder="Search problems or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#0B0F19] border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
+            className="w-full bg-surface border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
           />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#0B0F19] p-4 rounded-2xl border border-cyan-500/15">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-cyan-500/15">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-slate-400">Difficulty:</span>
           <div className="flex gap-1.5">
@@ -120,7 +120,7 @@ export const PracticePage: React.FC = () => {
           <span className="text-xs font-mono text-slate-400">Loading curated problem collection...</span>
         </div>
       ) : problems.length === 0 ? (
-        <div className="bg-[#0B0F19] border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
+        <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
           <Code2 className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-base font-mono font-bold text-slate-300">No problems found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -137,7 +137,7 @@ export const PracticePage: React.FC = () => {
             return (
               <div
                 key={prob.id}
-                className="bg-[#0B0F19] border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-lg group"
+                className="bg-surface border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-lg group"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -154,7 +154,7 @@ export const PracticePage: React.FC = () => {
                     )}
                   </div>
 
-                  <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  <h3 className="text-base font-bold text-ink group-hover:text-cyan-300 transition-colors">
                     {prob.title}
                   </h3>
                   <p className="text-xs text-slate-400 line-clamp-2">
@@ -186,10 +186,10 @@ export const PracticePage: React.FC = () => {
       {/* Problem Workspace & Submission Modal */}
       {activeModalProblem && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl relative">
+          <div className="bg-surface border border-cyan-500/30 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl relative">
             <button
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-ink cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -198,7 +198,7 @@ export const PracticePage: React.FC = () => {
               <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded border border-cyan-500/20">
                 {activeModalProblem.category} • {activeModalProblem.difficulty}
               </span>
-              <h2 className="text-2xl font-bold font-mono text-white">
+              <h2 className="text-2xl font-bold font-mono text-ink">
                 {activeModalProblem.title}
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed">

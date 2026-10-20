@@ -60,9 +60,9 @@ export const CodePanel: React.FC = () => {
   };
 
   return (
-    <div role="region" aria-label="Code" className="bg-[#0B0F19] border border-cyan-500/20 rounded-2xl flex flex-col h-full overflow-hidden shadow-2xl">
+    <div role="region" aria-label="Code" className="bg-surface border border-cyan-500/20 rounded-2xl flex flex-col h-full overflow-hidden shadow-2xl">
       {/* Header */}
-      <div className="px-4 py-3 bg-[#070A12] border-b border-slate-800/80 flex items-center justify-between shrink-0">
+      <div className="px-4 py-3 bg-page border-b border-slate-800/80 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block" />
@@ -74,7 +74,7 @@ export const CodePanel: React.FC = () => {
           <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
             LIVE CODE
           </span>
-          <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
+          <span className="text-[10px] font-mono text-cyan-400/80 light:text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
             {LANGUAGE_LABELS[selectedLanguage] ?? selectedLanguage.toUpperCase()}
           </span>
         </div>
@@ -101,7 +101,7 @@ export const CodePanel: React.FC = () => {
         {sourceCode === null ? (
           /* ─── Code unavailable state ─────────────────────────── */
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6">
-            <AlertTriangle className="w-10 h-10 text-amber-400/60" />
+            <AlertTriangle className="w-10 h-10 text-amber-400/60 light:text-amber-400" />
             <p className="text-sm font-mono text-slate-400">
               Code unavailable for{' '}
               <span className="text-amber-300">
@@ -114,7 +114,7 @@ export const CodePanel: React.FC = () => {
           </div>
         ) : (
           /* ─── Code viewer ─────────────────────────────────────── */
-          <div tabIndex={0} role="region" aria-label="Source code" className="absolute inset-0 overflow-y-auto font-mono text-xs p-3 space-y-0.5 bg-[#0B0F19] custom-scrollbar">
+          <div tabIndex={0} role="region" aria-label="Source code" className="absolute inset-0 overflow-y-auto font-mono text-xs p-3 space-y-0.5 bg-surface custom-scrollbar">
             {codeLines.map((lineText, idx) => {
               const lineNum = idx + 1;
               const isActive = activeCodeLine !== null && lineNum === activeCodeLine;

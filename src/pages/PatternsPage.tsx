@@ -184,13 +184,13 @@ export const PatternsPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070A12] text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-8">
       <div className="border-b border-slate-800 pb-6 space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono">
           <Brain className="w-3.5 h-3.5" />
           DSA PATTERN CATALOG
         </div>
-        <h1 className="text-3xl font-extrabold font-mono text-white">
+        <h1 className="text-3xl font-extrabold font-mono text-ink">
           Algorithmic Design Patterns
         </h1>
         <p className="text-xs text-slate-400 max-w-2xl">
@@ -205,7 +205,7 @@ export const PatternsPage: React.FC = () => {
           return (
             <div
               key={pat.id}
-              className={`bg-[#0B0F19] border rounded-2xl transition-all duration-300 shadow-xl overflow-hidden ${
+              className={`bg-surface border rounded-2xl transition-all duration-300 shadow-xl overflow-hidden ${
                 isExpanded ? 'border-cyan-500/40 shadow-cyan-500/5' : 'border-slate-800/80 hover:border-cyan-500/20'
               }`}
             >
@@ -218,7 +218,7 @@ export const PatternsPage: React.FC = () => {
                     <Zap className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold font-mono text-white flex items-center gap-2">
+                    <h3 className="text-base font-bold font-mono text-ink flex items-center gap-2">
                       {pat.title}
                     </h3>
                     <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
@@ -287,7 +287,7 @@ export const PatternsPage: React.FC = () => {
                       <Code className="w-4 h-4 text-purple-400" />
                       CANONICAL PATTERN SNIPPET (C++)
                     </div>
-                    <div className="bg-[#070A12] p-4 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 overflow-x-auto">
+                    <div className="bg-page p-4 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 overflow-x-auto">
                       <pre>{pat.codeSnippet}</pre>
                     </div>
                   </div>

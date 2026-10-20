@@ -52,7 +52,7 @@ export const ExplanationPanel: React.FC = () => {
     : Object.entries(pointers || {});
 
   return (
-    <div role="region" aria-label="Explanation" className={`bg-[#0B0F19] border rounded-2xl p-5 shadow-xl space-y-4 ${accentColor}`}>
+    <div role="region" aria-label="Explanation" className={`bg-surface border rounded-2xl p-5 shadow-xl space-y-4 ${accentColor}`}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
         <div className="flex items-center gap-2">

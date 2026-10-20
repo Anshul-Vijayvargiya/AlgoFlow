@@ -42,7 +42,7 @@ export const VisualizerPage: React.FC = () => {
   const isImplemented = Boolean(def) && algorithmMeta.implemented && !executionError;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-[#070A12] text-slate-200">
+    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-page text-slate-200">
       {/* Screen-reader announcement of the current step for manual stepping (Next/Previous/Reset). Silent while
           playing, so automatic playback does not flood assistive technology with an announcement per step. */}
       <div className="sr-only" aria-live="polite" aria-atomic="true" data-testid="step-announcer">
@@ -62,13 +62,13 @@ export const VisualizerPage: React.FC = () => {
             role="dialog"
             aria-modal="true"
             aria-label="Algorithm list"
-            className="w-4/5 max-w-xs bg-[#070A12] h-full shadow-2xl relative"
+            className="w-4/5 max-w-xs bg-page h-full shadow-2xl relative"
           >
             <button
               ref={drawerCloseRef}
               aria-label="Close algorithm list"
               onClick={() => setMobileDrawerOpen(false)}
-              className="absolute top-4 right-4 z-20 p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white"
+              className="absolute top-4 right-4 z-20 p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-ink"
             >
               <X className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -79,7 +79,7 @@ export const VisualizerPage: React.FC = () => {
       )}
 
       {/* Visualizer Top Header Toolbar */}
-      <div className="px-4 py-3 bg-[#0B0F19]/90 border-b border-cyan-500/15 flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <div className="px-4 py-3 bg-[#0B0F19]/90 light:bg-surface/90 border-b border-cyan-500/15 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
           {/* Mobile Drawer Toggle Button */}
           <button
@@ -94,7 +94,7 @@ export const VisualizerPage: React.FC = () => {
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold font-mono text-white flex items-center gap-2">
+              <h1 className="text-lg font-bold font-mono text-ink flex items-center gap-2">
                 {algorithmMeta.name}
               </h1>
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
@@ -121,7 +121,7 @@ export const VisualizerPage: React.FC = () => {
 
       {/* Mobile Tab Controls */}
       {isImplemented && (
-        <div className="md:hidden flex border-b border-slate-800 bg-[#070A12] shrink-0">
+        <div className="md:hidden flex border-b border-slate-800 bg-page shrink-0">
           <button
             aria-pressed={activeMobileTab === 'visualization'}
             onClick={() => setActiveMobileTab('visualization')}
@@ -171,7 +171,7 @@ export const VisualizerPage: React.FC = () => {
                   activeMobileTab === 'code' ? 'hidden md:flex' : 'flex'
                 }`}>
                   {/* Visualization Card Header */}
-                  <div role="region" aria-label="Visualization" className="bg-[#0B0F19] border border-cyan-500/20 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+                  <div role="region" aria-label="Visualization" className="bg-surface border border-cyan-500/20 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -214,7 +214,7 @@ export const VisualizerPage: React.FC = () => {
                       <div
                         data-testid="input-issue"
                         role="status"
-                        className="w-full min-h-48 flex flex-col items-center justify-center gap-2 text-center px-6 py-10 bg-[#0B0F19]/90 border border-amber-500/30 rounded-2xl"
+                        className="w-full min-h-48 flex flex-col items-center justify-center gap-2 text-center px-6 py-10 bg-[#0B0F19]/90 light:bg-surface/90 border border-amber-500/30 rounded-2xl"
                       >
                         <p className="text-sm font-mono font-bold text-amber-300">No visualization for this input yet</p>
                         <p className="text-xs text-slate-400 max-w-md">{inputIssue?.message}</p>

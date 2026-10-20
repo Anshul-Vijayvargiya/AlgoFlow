@@ -36,8 +36,9 @@ function outcomeText(outcome: Outcome, foundPosition: number | null | undefined,
 }
 
 const ROLE_STYLE: Record<ListNodeView['role'], string> = {
-  default: 'border-cyan-500/40 bg-slate-900 text-cyan-100',
-  active: 'border-cyan-300 bg-cyan-500/20 text-white ring-2 ring-cyan-300/60',
+  // light: a solid outline (3.7:1 on the white canvas); the 40% outline is too faint there
+  default: 'border-cyan-500/40 light:border-cyan-600 bg-slate-900 text-cyan-100',
+  active: 'border-cyan-300 bg-cyan-500/20 text-ink ring-2 ring-cyan-300/60',
   compare: 'border-amber-300 bg-amber-500/20 text-amber-100 ring-2 ring-amber-300/60',
   found: 'border-emerald-300 bg-emerald-500/25 text-emerald-100 ring-2 ring-emerald-300/60',
 };
@@ -256,7 +257,7 @@ export const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-2" data-testid="list-visualizer" data-outcome={outcome ?? ''}>
-      <div className="w-full min-h-60 bg-[#0B0F19]/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex flex-col gap-4 relative overflow-hidden shadow-inner">
+      <div className="w-full min-h-60 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex flex-col gap-4 relative overflow-hidden shadow-inner">
         {(value !== undefined || index !== undefined) && (
           <div className="absolute top-2 left-3 flex gap-2 z-10">
             {value !== undefined && (
