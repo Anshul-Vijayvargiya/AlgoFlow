@@ -9,24 +9,36 @@ import {
   X, 
   BookOpen,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { useNotesStore } from '../store/useNotesStore';
+import { NOTES_PAGE_SIZE, useNotesStore } from '../store/useNotesStore';
 import type { NoteRecord } from '../api';
 
 export const NotesPage: React.FC = () => {
   const {
     notes,
+    total,
+    page,
+    totalPages,
+    tags,
     isLoading,
     error,
+    searchQuery,
+    selectedTag,
     fetchNotes,
+    fetchTags,
+    setPage,
+    setSearchQuery,
+    setSelectedTag,
     createNote,
     updateNote,
     deleteNote,
   } = useNotesStore();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string>('All');
+  // what is typed; sent to the server after a short pause (search runs across all notes, on the server)
+  const [searchInput, setSearchInput] = useState(searchQuery);
   const [editingNote, setEditingNote] = useState<NoteRecord | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -38,18 +50,19 @@ export const NotesPage: React.FC = () => {
   // Initial fetch on mount
   useEffect(() => {
     fetchNotes();
-  }, [fetchNotes]);
+    fetchTags();
+  }, [fetchNotes, fetchTags]);
 
-  const allTags = ['All', ...Array.from(new Set(notes.flatMap((n) => n.tags || [])))];
+  useEffect(() => {
+    if (searchInput === searchQuery) return;
+    const timer = setTimeout(() => setSearchQuery(searchInput), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, searchQuery, setSearchQuery]);
 
-  const filteredNotes = notes.filter((note) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      note.title.toLowerCase().includes(q) ||
-      note.content.toLowerCase().includes(q);
-    const matchesTag = selectedTag === 'All' || (note.tags && note.tags.includes(selectedTag));
-    return matchesSearch && matchesTag;
-  });
+  const allTags = ['All', ...tags];
+  const firstShown = total === 0 ? 0 : (page - 1) * NOTES_PAGE_SIZE + 1;
+  const lastShown = Math.min(total, (page - 1) * NOTES_PAGE_SIZE + notes.length);
+  const filtering = Boolean(searchQuery.trim()) || selectedTag !== 'All';
 
   const handleCreateNew = () => {
     setFormTitle('');
@@ -151,8 +164,9 @@ export const NotesPage: React.FC = () => {
             id="notes-search-input"
             type="text"
             placeholder="Search notes content or title..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search notes"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
           />
         </div>
@@ -162,6 +176,7 @@ export const NotesPage: React.FC = () => {
           {allTags.map((tag) => (
             <button
               key={tag}
+              aria-pressed={selectedTag === tag}
               onClick={() => setSelectedTag(tag)}
               className={`px-3 py-1 rounded-lg text-xs font-mono shrink-0 transition-all cursor-pointer ${
                 selectedTag === tag
@@ -180,19 +195,25 @@ export const NotesPage: React.FC = () => {
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
           <span className="text-xs font-mono text-slate-400">Loading your persistent notes...</span>
         </div>
-      ) : filteredNotes.length === 0 ? (
+      ) : notes.length === 0 && page > 1 ? (
+        <div data-testid="notes-page-empty" className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
+          <p className="text-sm font-mono text-slate-300">There are no notes on page {page}.</p>
+          <button type="button" onClick={() => setPage(1)} className="text-xs font-mono text-cyan-300 underline underline-offset-2">Go to the first page</button>
+        </div>
+      ) : notes.length === 0 ? (
         <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
           <FileText className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-base font-mono font-bold text-slate-300">No notes found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            {searchQuery || selectedTag !== 'All'
+            {filtering
               ? 'No notes match your current search query or tag filter.'
               : 'You have not created any algorithm notes yet. Click "Create Note" to capture your first insight.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredNotes.map((note) => (
+        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="notes-list" aria-busy={isLoading}>
+          {notes.map((note) => (
             <div
               key={note.id}
               className="bg-surface border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-xl group"
@@ -243,6 +264,35 @@ export const NotesPage: React.FC = () => {
             </div>
           ))}
         </div>
+        <nav aria-label="Notes pages" data-testid="notes-pagination" className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-400">
+          <span data-testid="notes-range">
+            Showing {firstShown}–{lastShown} of {total} {filtering ? 'matching notes' : total === 1 ? 'note' : 'notes'}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage(page - 1)}
+                disabled={page <= 1 || isLoading}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1 disabled:opacity-40 cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                Previous
+              </button>
+              <span data-testid="notes-page" aria-current="page">Page {page} of {totalPages}</span>
+              <button
+                type="button"
+                onClick={() => setPage(page + 1)}
+                disabled={page >= totalPages || isLoading}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1 disabled:opacity-40 cursor-pointer"
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </nav>
+        </>
       )}
 
       {isCreating && (

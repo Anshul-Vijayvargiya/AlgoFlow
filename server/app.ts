@@ -7,6 +7,8 @@ import authRoutes from './routes/authRoutes';
 import problemRoutes from './routes/problemRoutes';
 import noteRoutes from './routes/noteRoutes';
 import progressRoutes from './routes/progressRoutes';
+import runRoutes from './routes/runRoutes';
+import tutorRoutes from './routes/tutorRoutes';
 import adminRoutes from './routes/adminRoutes';
 import userRoutes from './routes/userRoutes';
 import { errorHandler } from './middleware/errorHandler';
@@ -59,6 +61,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/run', runRoutes);
+app.use('/api/tutor', tutorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 

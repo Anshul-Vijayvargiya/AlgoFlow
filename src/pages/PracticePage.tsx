@@ -8,19 +8,25 @@ import {
   Terminal,
   Check,
   Loader2,
-  History
+  History,
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 import { usePracticeStore } from '../store/usePracticeStore';
+import { TONE_PANEL, TONE_TEXT, verdictOf } from './practice/verdicts';
 import type { PracticeProblem, ProgrammingLanguage } from '../types/algorithm';
 
 export const PracticePage: React.FC = () => {
   const {
     problems,
     isLoading,
+    error,
     selectedLanguage,
     userCode,
     isSubmitting,
     submissionResult,
+    submissionError,
+    draftsNotSaved,
     submissions,
     selectedDifficulty,
     selectedTopic,
@@ -114,7 +120,32 @@ export const PracticePage: React.FC = () => {
         </div>
       </div>
 
-      {isLoading && problems.length === 0 ? (
+      {error && problems.length > 0 && (
+        <div role="status" data-testid="practice-refresh-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Couldn&apos;t refresh the problems. Showing what was loaded earlier.</span>
+          <button type="button" onClick={() => fetchProblems()} className="font-mono font-bold underline underline-offset-2">Retry</button>
+        </div>
+      )}
+
+      {error && problems.length === 0 ? (
+        <div role="alert" data-testid="practice-error" className="bg-surface border border-rose-500/40 rounded-3xl p-8 flex flex-col sm:flex-row sm:items-center gap-4">
+          <AlertTriangle className="w-6 h-6 text-rose-400 shrink-0" aria-hidden="true" />
+          <div className="flex-1 space-y-1">
+            <h2 className="text-base font-bold text-ink">The problems could not be loaded</h2>
+            <p className="text-sm text-slate-400">{error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchProblems()}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-sm font-mono font-bold flex items-center gap-2 hover:border-cyan-500/50 disabled:opacity-50"
+          >
+            <RotateCcw className="w-4 h-4" aria-hidden="true" />
+            {isLoading ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
+      ) : isLoading && problems.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
           <span className="text-xs font-mono text-slate-400">Loading curated problem collection...</span>
@@ -137,6 +168,7 @@ export const PracticePage: React.FC = () => {
             return (
               <div
                 key={prob.id}
+                data-problem={prob.id}
                 className="bg-surface border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-lg group"
               >
                 <div className="space-y-2">
@@ -201,9 +233,18 @@ export const PracticePage: React.FC = () => {
               <h2 className="text-2xl font-bold font-mono text-ink">
                 {activeModalProblem.title}
               </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line" data-testid="problem-statement">
                 {activeModalProblem.description}
               </p>
+              {activeModalProblem.autoJudged ? (
+                <p className="text-[11px] font-mono text-slate-400">
+                  Submissions are judged by running your program on these sample tests and on hidden tests.
+                </p>
+              ) : (
+                <p role="note" data-testid="not-auto-judged" className="text-[11px] font-mono text-amber-300">
+                  This problem is not set up for automatic judging: submitting records your attempt without a verdict.
+                </p>
+              )}
             </div>
 
             {/* Test Cases */}
@@ -212,9 +253,15 @@ export const PracticePage: React.FC = () => {
                 SAMPLE TEST CASES
               </div>
               {activeModalProblem.testCases.map((tc, idx) => (
-                <div key={idx} className="flex justify-between py-1 border-b border-slate-800/50">
-                  <span className="text-slate-300">Input: {tc.input}</span>
-                  <span className="text-cyan-400 font-bold">Expected: {tc.expected}</span>
+                <div key={idx} data-testid="sample-test" className="grid grid-cols-2 gap-3 py-1 border-b border-slate-800/50">
+                  <div>
+                    <span className="text-slate-400 text-[10px]">Input</span>
+                    <pre className="text-slate-300 whitespace-pre-wrap">{tc.input}</pre>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px]">Expected output</span>
+                    <pre className="text-cyan-400 font-bold whitespace-pre-wrap">{tc.expected || '(empty)'}</pre>
+                  </div>
                 </div>
               ))}
             </div>
@@ -251,6 +298,11 @@ export const PracticePage: React.FC = () => {
                 className="w-full bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-cyan-200 focus:outline-none focus:border-cyan-500/50 resize-y"
                 placeholder="Write your solution here..."
               />
+              {draftsNotSaved && (
+                <p role="status" data-testid="drafts-not-saved" className="text-[11px] font-mono text-amber-300">
+                  Your draft could not be saved on this device (storage is full or blocked). It is kept until you reload the page.
+                </p>
+              )}
             </div>
 
             {/* Attempt History */}
@@ -267,7 +319,10 @@ export const PracticePage: React.FC = () => {
                       className="flex items-center justify-between text-[11px] font-mono bg-slate-900/80 px-3 py-1.5 rounded border border-slate-800/50"
                     >
                       <span className="text-cyan-300 uppercase">{s.language}</span>
-                      <span className="text-slate-400">{s.status}</span>
+                      <span className={TONE_TEXT[verdictOf(s.status).tone]} data-testid="history-status">
+                        {verdictOf(s.status).label}
+                        {s.testsTotal !== undefined && ` · ${s.testsPassed ?? 0}/${s.testsTotal}`}
+                      </span>
                       <span className="text-slate-500 text-[10px]">
                         {new Date(s.createdAt).toLocaleDateString()}
                       </span>
@@ -279,17 +334,82 @@ export const PracticePage: React.FC = () => {
 
             {/* Submission Status Message */}
             {submissionResult ? (
-              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-300 text-xs font-mono flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <span>{submissionResult.message}</span>
+              <div
+                role="status"
+                data-testid="submission-result"
+                data-status={submissionResult.status}
+                className={`p-4 border rounded-xl text-xs font-mono space-y-3 ${TONE_PANEL[verdictOf(submissionResult.status).tone]}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className={`flex items-center gap-2 text-sm font-bold ${TONE_TEXT[verdictOf(submissionResult.status).tone]}`}>
+                      {submissionResult.passed ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                      <span data-testid="submission-verdict">{verdictOf(submissionResult.status).label}</span>
+                    </div>
+                    <p className="text-slate-300" data-testid="submission-message">{submissionResult.message}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => usePracticeStore.setState({ submissionResult: null })}
+                      className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-lg cursor-pointer"
+                    >
+                      Edit &amp; resubmit
+                    </button>
+                    <button
+                      onClick={handleCloseModal}
+                      className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 rounded-lg cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={handleCloseModal}
-                  className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 rounded-lg shrink-0 cursor-pointer"
-                >
-                  Close
-                </button>
+                {submissionResult.failedTest && !submissionResult.failedTest.hidden && (
+                  <div data-testid="failed-test" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-slate-400 text-[10px]">Input (test {submissionResult.failedTest.number})</span>
+                      <pre className="text-slate-300 whitespace-pre-wrap">{submissionResult.failedTest.input}</pre>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px]">Expected output</span>
+                      <pre className="text-emerald-300 whitespace-pre-wrap">{submissionResult.failedTest.expected || '(empty)'}</pre>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 text-[10px]">Your output</span>
+                      <pre className="text-rose-300 whitespace-pre-wrap">{submissionResult.failedTest.actual || '(no output)'}</pre>
+                    </div>
+                    {submissionResult.failedTest.stderr && (
+                      <div className="sm:col-span-3">
+                        <span className="text-slate-400 text-[10px]">Errors (stderr)</span>
+                        <pre className="text-amber-300 whitespace-pre-wrap">{submissionResult.failedTest.stderr}</pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {submissionResult.failedTest?.hidden && (
+                  <p data-testid="failed-hidden-test" className="text-slate-300">
+                    Hidden test {submissionResult.failedTest.number} failed. Hidden tests&apos; inputs are not shown.
+                  </p>
+                )}
+                {submissionResult.compileOutput && (
+                  <div>
+                    <span className="text-slate-400 text-[10px]">Compiler output</span>
+                    <pre data-testid="submission-compile-output" className="text-rose-300 whitespace-pre-wrap">{submissionResult.compileOutput}</pre>
+                  </div>
+                )}
+              </div>
+            ) : submissionError ? (
+              <div role="alert" data-testid="submission-error" className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs font-mono flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-rose-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>Not submitted: {submissionError}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleCloseModal} className="px-3 py-1 bg-slate-900 text-slate-300 rounded-lg cursor-pointer">Cancel</button>
+                  <button onClick={submitSolution} disabled={isSubmitting} className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg cursor-pointer flex items-center gap-1.5">
+                    <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                    Retry
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex justify-end gap-3">
@@ -308,7 +428,7 @@ export const PracticePage: React.FC = () => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Recording Attempt...
+                      {activeModalProblem.autoJudged ? 'Judging…' : 'Recording Attempt...'}
                     </>
                   ) : (
                     'Submit Solution'

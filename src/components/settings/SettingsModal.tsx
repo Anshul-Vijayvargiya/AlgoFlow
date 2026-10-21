@@ -114,11 +114,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         <form onSubmit={handleSave} className="space-y-4 text-xs font-mono">
           {/* Display Name */}
           <div className="space-y-1.5">
-            <label className="text-slate-400 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-cyan-400" />
+            <label htmlFor="settings-name" className="text-slate-400 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
               Display Name
             </label>
             <input
+              id="settings-name"
               type="text"
               required
               minLength={2}
@@ -144,15 +145,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {/* Preferred Language */}
           <div className="space-y-1.5">
-            <label className="text-slate-400 flex items-center gap-1.5">
-              <Code2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span id="settings-language-label" className="text-slate-400 flex items-center gap-1.5">
+              <Code2 className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
               Default Programming Language
-            </label>
-            <div className="grid grid-cols-4 gap-2">
+            </span>
+            <p className="text-[11px] text-slate-400">
+              The language the visualizer, Playground and Practice start in when you sign in.
+            </p>
+            <div role="group" aria-labelledby="settings-language-label" className="grid grid-cols-4 gap-2">
               {(['cpp', 'c', 'java', 'python'] as const).map((lang) => (
                 <button
                   key={lang}
                   type="button"
+                  aria-pressed={preferredLanguage === lang}
                   onClick={() => setPreferredLanguage(lang)}
                   className={`py-2 rounded-xl text-center font-bold transition-all cursor-pointer ${
                     preferredLanguage === lang
@@ -168,14 +173,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {/* Daily Goal */}
           <div className="space-y-1.5">
-            <label className="text-slate-400 flex items-center justify-between">
+            <label htmlFor="settings-daily-goal" className="text-slate-400 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <Clock className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
                 Daily Learning Goal
               </span>
               <span className="text-cyan-300 font-bold">{dailyGoalMinutes} min/day</span>
             </label>
+            <p className="text-[11px] text-slate-400">Shown on your Dashboard against the minutes logged today.</p>
             <input
+              id="settings-daily-goal"
               type="range"
               min={10}
               max={120}

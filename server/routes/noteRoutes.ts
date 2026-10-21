@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { Note } from '../models/Note';
+import { Note, type INote } from '../models/Note';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 
@@ -50,38 +50,49 @@ function escapeRegex(text: string): string {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
-// GET /api/notes — List current user's notes with search, tags, algorithm filter & pagination
+/**
+ * Query parameters of the note list. Strict: a malformed value is a 400 instead of being silently replaced, so a
+ * client never shows the wrong page as if it were the one asked for. A page past the last one is valid (it is empty).
+ */
+const positiveInt = (max: number) => z.string().regex(/^[0-9]+$/, 'must be a positive whole number').transform(Number).pipe(z.number().int().min(1).max(max));
+const listQuerySchema = z.object({
+  page: positiveInt(10_000).optional(),
+  limit: positiveInt(50).optional(),
+  search: z.string().trim().max(100, 'Search is limited to 100 characters').optional(),
+  tag: z.string().trim().max(30).optional(),
+  algorithmId: z.string().trim().max(100).optional(),
+});
+
+// GET /api/notes — the current user's notes, newest first: one page, filtered on the server across ALL their notes
 router.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
+    const parsed = listQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid query parameters.',
+        details: parsed.error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
+      });
+      return;
+    }
+    const { page = 1, limit = 20, search, tag, algorithmId } = parsed.data;
     const userId = req.user?.userId;
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const skip = (page - 1) * limit;
 
     const filter: Record<string, any> = { userId };
-
-    const tag = typeof req.query.tag === 'string' ? req.query.tag.trim() : undefined;
-    if (tag && tag !== 'All') {
-      filter.tags = tag;
-    }
-
-    const algorithmId = typeof req.query.algorithmId === 'string' ? req.query.algorithmId.trim() : undefined;
-    if (algorithmId) {
-      filter.algorithmId = algorithmId;
-    }
-
-    const search = typeof req.query.search === 'string' ? req.query.search.trim() : undefined;
+    if (tag && tag !== 'All') filter.tags = tag;
+    if (algorithmId) filter.algorithmId = algorithmId;
     if (search) {
       const sanitized = escapeRegex(search);
       filter.$or = [
         { title: { $regex: sanitized, $options: 'i' } },
         { content: { $regex: sanitized, $options: 'i' } },
+        { tags: { $regex: sanitized, $options: 'i' } },
       ];
     }
 
     const [total, notes] = await Promise.all([
       Note.countDocuments(filter),
-      Note.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit),
+      Note.find(filter).sort({ updatedAt: -1, _id: -1 }).skip(skip).limit(limit),
     ]);
 
     res.json({
@@ -91,6 +102,17 @@ router.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       limit,
       totalPages: Math.ceil(total / limit) || 1,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/notes/tags — every tag the current user has used (for the tag filter), not only those on one page
+router.get('/tags', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    // the session's user id, typed as the model declares it (Mongoose casts the string at runtime)
+    const tags: string[] = await Note.distinct('tags', { userId: req.user?.userId as unknown as INote['userId'] });
+    res.json({ tags: tags.filter(Boolean).sort((a, b) => a.localeCompare(b)) });
   } catch (err) {
     next(err);
   }

@@ -28,6 +28,11 @@ export interface IProblem extends Document {
     python: string;
   };
   testCases: IProblemTestCase[];
+  /**
+   * How submissions are judged: 'stdio' runs the program on each test's input and compares its output; 'none'
+   * (the default, and every problem created before judging existed) records attempts without a verdict.
+   */
+  judgeMode: 'none' | 'stdio';
   publicationStatus: 'published' | 'draft' | 'archived';
   createdAt: Date;
   updatedAt: Date;
@@ -64,6 +69,7 @@ const ProblemSchema = new Schema<IProblem>(
         isHidden: { type: Boolean, default: false },
       },
     ],
+    judgeMode: { type: String, enum: ['none', 'stdio'], default: 'none' },
     publicationStatus: {
       type: String,
       enum: ['published', 'draft', 'archived'],

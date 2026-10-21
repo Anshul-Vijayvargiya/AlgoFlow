@@ -12,6 +12,7 @@ import { PatternsPage } from './pages/PatternsPage';
 import { NotesPage } from './pages/NotesPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { AdminPage } from './pages/AdminPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { useAuthStore } from './store/useAuthStore';
 
 const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -36,6 +37,8 @@ export const App: React.FC = () => {
       <Routes>
         {/* ── Public Routes ──────────────────────────────────── */}
         <Route path="/auth" element={<AuthPage />} />
+        {/* public: readable before signing up */}
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         {/* ── Protected Routes ───────────────────────────────── */}
         <Route
