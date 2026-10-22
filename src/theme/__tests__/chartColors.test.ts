@@ -29,6 +29,7 @@ describe('chart colours', () => {
     expect(contrast(light.polarAngle, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
     expect(contrast(String(light.tooltip.color), String(light.tooltip.backgroundColor))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(light.primary, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+    expect(contrast(light.secondary, '#FFFFFF')).toBeGreaterThanOrEqual(3);
     expect(contrast(light.radar, '#FFFFFF')).toBeGreaterThanOrEqual(3);
     expect(contrast(light.grid, '#FFFFFF')).toBeGreaterThan(1.2);
   });

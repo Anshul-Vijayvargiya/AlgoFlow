@@ -110,6 +110,9 @@ export function executionRateLimiter(req: Request, res: Response, next: NextFunc
   next();
 }
 
+/** a wait for a message: "1 second", "42 seconds" */
+export const secondsText = (seconds: number) => `${seconds} second${seconds === 1 ? '' : 's'}`;
+
 /**
  * Takes one of this minute's AI Tutor requests for all users together (TUTOR_GLOBAL_RATE_LIMIT_PER_MINUTE), so a burst
  * from many users stays under the provider's per-minute limit. Taken only for a question about to be sent (after
@@ -119,7 +122,7 @@ export function executionRateLimiter(req: Request, res: Response, next: NextFunc
 export function takeTutorGlobalSlot(now = Date.now()): { ok: true; window: number } | { ok: false; retryAfterSeconds: number } {
   if (now > tutorGlobal.resetTime) tutorGlobal = { count: 0, resetTime: now + 60_000 };
   if (tutorGlobal.count >= env.TUTOR_GLOBAL_RATE_LIMIT_PER_MINUTE) {
-    return { ok: false, retryAfterSeconds: Math.ceil((tutorGlobal.resetTime - now) / 1000) };
+    return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((tutorGlobal.resetTime - now) / 1000)) };
   }
   tutorGlobal.count++;
   return { ok: true, window: tutorGlobal.resetTime };
@@ -140,10 +143,11 @@ export function tutorRateLimiter(req: Request, res: Response, next: NextFunction
     tutorHits.set(key, record);
   }
   if (record.count >= env.TUTOR_RATE_LIMIT_PER_MINUTE) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
     res.status(429).json({
-      error: 'Too many questions. Please wait a moment and try again.',
+      error: `Too many questions. Please wait ${secondsText(retryAfterSeconds)} and try again.`,
       code: 'tutor_rate_limited',
-      retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
+      retryAfterSeconds,
     });
     return;
   }

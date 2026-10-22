@@ -221,17 +221,23 @@ test.describe('Light Mode — surfaces, components and switching back', () => {
   });
 
   test('charts use the theme colours and switch with it', async ({ app, page }) => {
-    void app;
+    // real activity, so both weekly series are drawn: a visualizer walkthrough and a practice submission
+    await app.next();
+    await page.goto('/practice');
+    await page.locator('[data-problem="p4"]').getByRole('button', { name: 'Practice Now' }).click();
+    await page.locator('#practice-submit-btn').click();
+    await expect(page.getByTestId('submission-verdict')).toBeVisible();
     await page.goto('/dashboard');
-    const barFill = () => page.locator('.recharts-bar-rectangle path').first().getAttribute('fill');
+    // submissions use the primary colour, walkthroughs the secondary one
+    const barFills = async () => [...new Set(await page.locator('.recharts-bar-rectangle path').evaluateAll(els => els.map(e => e.getAttribute('fill'))))].sort();
     const axisStroke = () => page.locator('.recharts-xAxis .recharts-cartesian-axis-line').first().getAttribute('stroke');
-    await expect.poll(barFill).toBe('#38BDF8');
+    await expect.poll(barFills).toEqual(['#38BDF8', '#F59E0B']);
     expect(await axisStroke()).toBe('#64748B');
     await setTheme(page, 'light');
-    await expect.poll(barFill).toBe('#0284C7');
+    await expect.poll(barFills).toEqual(['#0284C7', '#C2410C']);
     expect(await axisStroke()).toBe('#475569');
     await setTheme(page, 'dark');
-    await expect.poll(barFill).toBe('#38BDF8');
+    await expect.poll(barFills).toEqual(['#38BDF8', '#F59E0B']);
   });
 
   test('the settings dialog, inputs and the theme select work in light mode', async ({ app, page }) => {

@@ -22,6 +22,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
   PieChart,
   Pie,
   Cell
@@ -32,7 +33,16 @@ import { useProgressStore } from '../store/useProgressStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import type { AlgorithmId } from '../types/algorithm';
-import { continueLearning, dailyGoalSummary, difficultySummary, lastActiveText, recommendAlgorithms, weeklySummary } from './dashboard/dashboardData';
+import {
+  continueLearning,
+  dailyGoalSummary,
+  difficultySummary,
+  lastActiveText,
+  recommendAlgorithms,
+  submissionsText,
+  walkthroughsText,
+  weeklySummary,
+} from './dashboard/dashboardData';
 import { DifficultyBadge } from './dashboard/DifficultyBadge';
 
 const card = 'bg-surface border border-cyan-500/15 rounded-2xl shadow-xl';
@@ -61,8 +71,6 @@ export const Dashboard: React.FC = () => {
   const resume = continueLearning(tracks);
   const recommendations = recommendAlgorithms(tracks, resume?.id ?? null);
   const weekly = weeklySummary(progress?.weeklyActivity);
-  // the chart plots minutes; days active only in the visualizer (steps, no minutes) would draw an empty chart
-  const hasMinutes = Boolean(progress?.weeklyActivity?.some(d => d.minutes > 0));
   const difficulty = difficultySummary(progress?.difficultyDistribution);
 
   /** select the algorithm in the visualizer store, then the link opens /visualizer showing it */
@@ -278,7 +286,8 @@ export const Dashboard: React.FC = () => {
                     Weekly activity
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Minutes logged per day. Practice submissions are logged as 5 minutes each; visualizer time is not tracked yet.
+                    Practice submissions and visualizer walkthroughs per day, last 7 days (UTC). A walkthrough is an
+                    algorithm you stepped through in the visualizer; each algorithm counts once a day.
                   </p>
                 </div>
                 {status === 'ready' && (
@@ -290,36 +299,39 @@ export const Dashboard: React.FC = () => {
 
               {status === 'loading' ? (
                 <Skeleton className="h-56 w-full" />
-              ) : hasMinutes ? (
-                // the chart is drawn for sighted users; its data is in the text summary, so it is hidden and not focusable
-                <figure aria-labelledby="weekly-heading" aria-describedby="weekly-summary" className="h-56 w-full pt-2 m-0">
-                  <p id="weekly-summary" className="sr-only">{weekly.description}</p>
-                  <div aria-hidden="true" className="h-full w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={progress!.weeklyActivity} accessibilityLayer={false}>
-                        <XAxis dataKey="day" stroke={chart.axis} fontSize={11} />
-                        <YAxis stroke={chart.axis} fontSize={11} />
-                        <Tooltip contentStyle={chart.tooltip} />
-                        <Bar dataKey="minutes" name="Minutes logged" fill={chart.primary} radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </figure>
+              ) : weekly.hasActivity ? (
+                <>
+                  <p data-testid="weekly-totals" className="text-xs text-slate-300">
+                    This week: {submissionsText(weekly.totals.submissions)} · {walkthroughsText(weekly.totals.walkthroughs)}
+                  </p>
+                  {/* the chart is drawn for sighted users; its data is in the text summary, so it is hidden and not focusable */}
+                  <figure aria-labelledby="weekly-heading" aria-describedby="weekly-summary" className="h-64 w-full pt-2 m-0">
+                    <p id="weekly-summary" className="sr-only">{weekly.description}</p>
+                    <div aria-hidden="true" className="h-full w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={weekly.days} accessibilityLayer={false} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                          <XAxis dataKey="label" stroke={chart.axis} fontSize={10} interval={0} tickMargin={4} />
+                          <YAxis stroke={chart.axis} fontSize={11} allowDecimals={false} width={40} />
+                          <Tooltip
+                            contentStyle={chart.tooltip}
+                            labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel ?? label}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <Bar dataKey="submissions" name="Practice submissions" stackId="activity" fill={chart.primary} />
+                          <Bar dataKey="walkthroughs" name="Visualizer walkthroughs" stackId="activity" fill={chart.secondary} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </figure>
+                </>
               ) : (
                 <div data-testid="weekly-empty" className="h-56 flex flex-col items-center justify-center gap-2 text-center rounded-xl border border-dashed border-slate-700 px-6">
-                  {weekly.hasActivity ? (
-                    <>
-                      <p className="text-sm font-semibold text-slate-300">No minutes logged in the last 7 days</p>
-                      <p className="text-xs text-slate-400">
-                        Your visualizer activity is on the <Link to="/progress" className="text-cyan-400 underline underline-offset-2">Progress page</Link>.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm font-semibold text-slate-300">No activity logged in the last 7 days</p>
-                      <p className="text-xs text-slate-400">Submit a practice problem and it will appear here.</p>
-                    </>
-                  )}
+                  <p className="text-sm font-semibold text-slate-300">No activity in the last 7 days</p>
+                  <p className="text-xs text-slate-400">
+                    Step through an algorithm in the{' '}
+                    <Link to="/visualizer" className="text-cyan-400 underline underline-offset-2">visualizer</Link> or submit a practice
+                    problem, and it will appear here.
+                  </p>
                 </div>
               )}
             </section>

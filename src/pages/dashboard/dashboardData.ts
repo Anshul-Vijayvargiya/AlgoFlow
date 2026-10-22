@@ -65,27 +65,64 @@ export function dailyGoalSummary(weekly: UserProgressData['weeklyActivity'] | un
   };
 }
 
+export interface WeeklyDay {
+  /** short axis label, e.g. "Wed 21" */
+  label: string;
+  /** full date for the tooltip and screen readers, e.g. "Wednesday 21 Oct" */
+  fullLabel: string;
+  /** practice submissions made that day (judging failures are not counted) */
+  submissions: number;
+  /** algorithms stepped through in the visualizer that day, each once */
+  walkthroughs: number;
+}
+
 export interface WeeklySummary {
-  /** days in the last 7 with any logged minutes or steps */
+  days: WeeklyDay[];
+  /** days in the last 7 with at least one submission or walkthrough */
   activeDays: number;
   hasActivity: boolean;
+  totals: { submissions: number; walkthroughs: number };
   /** screen-reader text listing every day */
   description: string;
 }
 
+// the server's days are UTC dates, so they are formatted in UTC (formatting in local time could show the wrong day)
+const SHORT_DAY = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
+const FULL_DAY = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+export const submissionsText = (n: number) => count(n, 'practice submission', 'practice submissions');
+export const walkthroughsText = (n: number) => count(n, 'visualizer walkthrough', 'visualizer walkthroughs');
+
 /**
- * Weekly activity as logged by the server. Minutes are estimates (a practice submission is logged as 5 minutes and
- * visualizer time is not tracked), so no total time is derived from them; the count of active days is exact.
+ * Weekly activity as recorded by the server: per day, the practice submissions made and the algorithms stepped
+ * through in the visualizer. Both are counts of real records; the estimated minutes are not used here.
  */
 export function weeklySummary(weekly: UserProgressData['weeklyActivity'] | undefined): WeeklySummary {
-  const days = weekly ?? [];
-  const active = days.filter(d => d.minutes > 0 || d.steps > 0);
+  const days: WeeklyDay[] = (weekly ?? []).map(d => {
+    const date = d.date ? new Date(`${d.date}T00:00:00.000Z`) : null;
+    const valid = date !== null && !Number.isNaN(date.getTime());
+    return {
+      label: valid ? SHORT_DAY.format(date) : d.day,
+      fullLabel: valid ? FULL_DAY.format(date) : d.day,
+      submissions: Math.max(0, d.submissions ?? 0),
+      walkthroughs: Math.max(0, d.walkthroughs ?? 0),
+    };
+  });
+  const active = days.filter(d => d.submissions > 0 || d.walkthroughs > 0);
+  const totals = {
+    submissions: days.reduce((n, d) => n + d.submissions, 0),
+    walkthroughs: days.reduce((n, d) => n + d.walkthroughs, 0),
+  };
   return {
+    days,
     activeDays: active.length,
     hasActivity: active.length > 0,
+    totals,
     description: days.length
-      ? `Minutes logged per day: ${days.map(d => `${d.day} ${d.minutes}`).join(', ')}.`
-      : 'No activity has been logged.',
+      ? `Activity per day (UTC): ${days.map(d => `${d.fullLabel}: ${submissionsText(d.submissions)}, ${walkthroughsText(d.walkthroughs)}`).join('; ')}. ` +
+        `In total: ${submissionsText(totals.submissions)} and ${walkthroughsText(totals.walkthroughs)}.`
+      : 'No activity has been recorded.',
   };
 }
 

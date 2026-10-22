@@ -12,7 +12,6 @@ interface AITutorDrawerProps {
   onClose: () => void;
 }
 
-const LANGUAGE_NAMES: Record<ExecutionLanguageId, string> = { c: 'C', cpp: 'C++', java: 'Java', python: 'Python' };
 const QUICK_PROMPTS = [
   'Explain what is happening at the current step.',
   'What is the time and space complexity of this algorithm, and why?',
@@ -134,9 +133,6 @@ export const AITutorDrawer: React.FC<AITutorDrawerProps> = ({ isOpen, onClose })
     }
   };
 
-  const contextLine = canAskAboutState
-    ? `${meta.name} · step ${currentStepIndex + 1} of ${steps.length} · ${LANGUAGE_NAMES[language]}`
-    : `${meta.name}: open an algorithm the visualizer can run to ask about its steps`;
   const sendDisabled = !available || !canAskAboutState || pending || !input.trim();
 
   return (
@@ -148,7 +144,7 @@ export const AITutorDrawer: React.FC<AITutorDrawerProps> = ({ isOpen, onClose })
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-tutor-title"
-        aria-describedby="ai-tutor-context"
+        aria-describedby={canAskAboutState ? undefined : 'ai-tutor-context'}
         tabIndex={-1}
         onKeyDown={onKeyDown}
         data-testid="ai-tutor"
@@ -162,9 +158,12 @@ export const AITutorDrawer: React.FC<AITutorDrawerProps> = ({ isOpen, onClose })
             </div>
             <div className="min-w-0">
               <h2 id="ai-tutor-title" className="text-sm font-bold font-mono text-ink">AI Tutor</h2>
-              <p id="ai-tutor-context" data-testid="ai-tutor-context" className="text-[11px] text-slate-400 truncate">
-                {contextLine}
-              </p>
+              {/* only when questions cannot be sent: says why (the Send button is disabled) */}
+              {!canAskAboutState && (
+                <p id="ai-tutor-context" data-testid="ai-tutor-context" className="text-[11px] text-slate-400 truncate">
+                  {meta.name}: open an algorithm the visualizer can run to ask about its steps
+                </p>
+              )}
             </div>
           </div>
           <button

@@ -15,6 +15,8 @@ export interface ChartColors {
   polarRadius: string;
   /** the main series (weekly bars, activity area) */
   primary: string;
+  /** a second series stacked on the main one (weekly visualizer walkthroughs): orange, distinct from blue for colour-blind viewers too */
+  secondary: string;
   /** the proficiency radar */
   radar: string;
   tooltip: CSSProperties;
@@ -29,6 +31,7 @@ export const CHART_COLORS: Record<ResolvedTheme, ChartColors> = {
     polarAngle: '#94A3B8',
     polarRadius: '#475569',
     primary: '#38BDF8',
+    secondary: '#F59E0B',
     radar: '#A855F7',
     tooltip: { ...tooltipBase, backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
   },
@@ -38,6 +41,7 @@ export const CHART_COLORS: Record<ResolvedTheme, ChartColors> = {
     polarAngle: '#334155',
     polarRadius: '#64748B',
     primary: '#0284C7', // sky-600: a bar / line colour with 3:1+ against white
+    secondary: '#C2410C', // orange-700: 3:1+ against white
     radar: '#9333EA', // purple-600
     tooltip: { ...tooltipBase, backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', color: '#0F172A' },
   },

@@ -107,7 +107,13 @@ export interface PracticeApi {
 }
 
 export interface UserProgressData {
-  weeklyActivity: { day: string; minutes: number; steps: number }[];
+  /**
+   * The last 7 days (UTC), oldest first; the last is today. `minutes` is an estimate (5 per practice attempt) and
+   * `steps` the visualizer steps viewed. `date`, `submissions` (practice submissions, judging failures excluded) and
+   * `walkthroughs` (algorithms stepped through in the visualizer, each once per day) are counts of real records;
+   * optional because older servers do not send them.
+   */
+  weeklyActivity: { day: string; date?: string; minutes: number; steps: number; submissions?: number; walkthroughs?: number }[];
   difficultyDistribution: { name: string; value: number; color: string }[];
   topicProficiency: { topic: string; score: number }[];
   streakDays: number;

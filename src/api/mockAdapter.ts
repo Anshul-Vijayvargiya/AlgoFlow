@@ -108,6 +108,9 @@ const INITIAL_NOTES: NoteRecord[] = [
 
 /** visualizer activity recorded by the mock API, kept on the device so it survives reloads (as the server keeps it) */
 const MOCK_VISUALIZER_ACTIVITY_KEY = 'algoflow_visualizer_activity';
+// the estimated minutes stay fixed demo values (the daily goal's tests use them); every count is derived from what
+// was done in this browser, the same way the server derives it
+const MOCK_DEMO_MINUTES = [45, 60, 30, 80, 65, 90, 75];
 // the AI Tutor's test controls (see tutor below and e2e/tests/tutor.spec.ts)
 const MOCK_TUTOR_STATUS_KEY = 'algoflow_mock_tutor_status';
 const MOCK_TUTOR_RELEASE_EVENT = 'algoflow-mock-tutor-release';
@@ -117,6 +120,29 @@ interface MockVisualizerActivity {
   tracks: Record<string, { lastStepIndex: number; lastActivityAt: string }>;
 }
 const mockDateString = (d: Date) => d.toISOString().slice(0, 10);
+
+/** the last 7 UTC days (today last), as the server builds them: walkthroughs and submissions recorded on each */
+function mockWeeklyActivity(activity: MockVisualizerActivity): UserProgressData['weeklyActivity'] {
+  const { submissions } = readPracticeState();
+  const submittedOn = Object.values(submissions)
+    .flat()
+    .filter(s => s.status !== 'JUDGING_ERROR' && s.createdAt)
+    .map(s => s.createdAt!.slice(0, 10));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - (6 - i));
+    const date = mockDateString(d);
+    const stepped = activity.days[date] ?? {};
+    return {
+      day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()],
+      date,
+      minutes: MOCK_DEMO_MINUTES[i],
+      steps: Object.values(stepped).reduce((a, b) => a + b, 0),
+      submissions: submittedOn.filter(day => day === date).length,
+      walkthroughs: Object.keys(stepped).length,
+    };
+  });
+}
 function readMockVisualizerActivity(): MockVisualizerActivity {
   // a storage failure is reported to the caller, like a failed request
   const saved = localStorage.getItem(MOCK_VISUALIZER_ACTIVITY_KEY);
@@ -253,10 +279,9 @@ export class MockApiClient implements ApiClient {
 
   progress = {
     async getUserProgress(): Promise<UserProgressData> {
-      // minutes, solved problems and the streak are fixed demo values; everything about algorithms is derived from the
-      // visualizer activity recorded on this device, the same way the server derives it
+      // minutes, solved problems and the streak are fixed demo values; everything about algorithms, and the weekly
+      // counts, is derived from the activity recorded on this device, the same way the server derives it
       const activity = readMockVisualizerActivity();
-      const today = mockDateString(new Date());
       const tracks = Object.keys(activity.tracks).filter(isImplementedAlgorithm);
       const topicCoverage = IMPLEMENTED_TOPICS.map(({ topic, algorithmIds }) => ({
         topic,
@@ -265,16 +290,7 @@ export class MockApiClient implements ApiClient {
         completed: 0,
       }));
       return {
-        weeklyActivity: [
-          { day: 'Mon', minutes: 45, steps: 0 },
-          { day: 'Tue', minutes: 60, steps: 0 },
-          { day: 'Wed', minutes: 30, steps: 0 },
-          { day: 'Thu', minutes: 80, steps: 0 },
-          { day: 'Fri', minutes: 65, steps: 0 },
-          { day: 'Sat', minutes: 90, steps: 0 },
-          // the last day is today
-          { day: 'Sun', minutes: 75, steps: Object.values(activity.days[today] ?? {}).reduce((a, b) => a + b, 0) },
-        ],
+        weeklyActivity: mockWeeklyActivity(activity),
         difficultyDistribution: [
           { name: 'Easy', value: 24, color: '#10B981' },
           { name: 'Medium', value: 14, color: '#F59E0B' },

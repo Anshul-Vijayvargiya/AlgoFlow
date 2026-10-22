@@ -292,7 +292,8 @@ router.post(
           failedTestNumber: outcome.failedTest?.number,
           failedTestHidden: outcome.failedTest?.hidden,
         });
-        await logPracticeAttempt(owner, problem.problemId);
+        // a judging failure is not the learner's practice: the submission is kept, but earns no activity credit
+        if (outcome.verdict !== 'JUDGING_ERROR') await logPracticeAttempt(owner, problem.problemId);
 
         res.status(201).json({
           submissionId: submission._id.toString(),

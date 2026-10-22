@@ -104,10 +104,24 @@ async function calculateStreak(userId: any): Promise<number> {
   return streak;
 }
 
-// Helper: Build 7-day weekly activity array from real DB records
-async function getWeeklyActivity(userId: any): Promise<{ day: string; date: string; minutes: number; steps: number }[]> {
+interface WeeklyDay {
+  day: string;
+  /** YYYY-MM-DD (UTC) */
+  date: string;
+  /** estimated (5 per practice attempt); kept for older clients and the daily goal */
+  minutes: number;
+  /** visualizer steps viewed: the furthest step per algorithm, summed */
+  steps: number;
+  /** practice submissions made that day, from the submissions themselves; judging failures are not counted */
+  submissions: number;
+  /** algorithms stepped through in the visualizer that day (past the first step); each algorithm once per day */
+  walkthroughs: number;
+}
+
+// Helper: the last 7 days (UTC) with what was really recorded on each, from the database
+async function getWeeklyActivity(userId: any): Promise<WeeklyDay[]> {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const result: { day: string; date: string; minutes: number; steps: number }[] = [];
+  const result: WeeklyDay[] = [];
 
   const now = new Date();
   const dateStrings: string[] = [];
@@ -123,28 +137,41 @@ async function getWeeklyActivity(userId: any): Promise<{ day: string; date: stri
       date: dStr,
       minutes: 0,
       steps: 0,
+      submissions: 0,
+      walkthroughs: 0,
     });
   }
+  const byDate = new Map(result.map(item => [item.date, item]));
 
   const logs = await ActivityLog.find({
     userId,
     date: { $in: dateStrings },
   });
-
-  const aggregateMap: Record<string, { minutes: number; steps: number }> = {};
   for (const log of logs) {
-    if (!aggregateMap[log.date]) {
-      aggregateMap[log.date] = { minutes: 0, steps: 0 };
-    }
-    aggregateMap[log.date].minutes += log.minutes || 0;
-    aggregateMap[log.date].steps += log.steps || 0;
+    const item = byDate.get(log.date);
+    if (!item) continue;
+    item.minutes += log.minutes || 0;
+    item.steps += log.steps || 0;
+    // one visualizer_step record per user, day and algorithm (a unique index), written only once the user stepped past
+    // the first step: so each record is one walkthrough, and repeated stepping through the same algorithm counts once
+    if (log.activityType === 'visualizer_step') item.walkthroughs += 1;
   }
 
-  return result.map((item) => ({
-    ...item,
-    minutes: aggregateMap[item.date]?.minutes || 0,
-    steps: aggregateMap[item.date]?.steps || 0,
-  }));
+  // practice submissions are counted from the submissions, not from the activity log's estimated minutes, so each
+  // attempt counts exactly once; a JUDGING_ERROR (the judge could not finish) is not the learner's practice
+  const submissions = await Submission.find({
+    userId,
+    createdAt: { $gte: new Date(`${dateStrings[0]}T00:00:00.000Z`) },
+    status: { $ne: 'JUDGING_ERROR' },
+  }).select('createdAt');
+  for (const s of (submissions ?? []) as { createdAt?: Date }[]) {
+    const at = s.createdAt instanceof Date ? s.createdAt : new Date(s.createdAt ?? NaN);
+    if (Number.isNaN(at.getTime())) continue;
+    const item = byDate.get(toDateString(at));
+    if (item) item.submissions += 1;
+  }
+
+  return result;
 }
 
 // GET /api/progress/summary — Authentic user progress calculation

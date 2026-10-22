@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { env } from '../config/env';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
-import { releaseTutorGlobalSlot, takeTutorGlobalSlot, tutorRateLimiter } from '../middleware/rateLimiter';
+import { releaseTutorGlobalSlot, secondsText, takeTutorGlobalSlot, tutorRateLimiter } from '../middleware/rateLimiter';
 import { getTutorProvider } from '../services/tutor';
 import { buildTutorContext, tutorSystemInstruction } from '../services/tutor/context';
 import { TutorProviderError } from '../services/tutor/types';
@@ -105,7 +105,7 @@ router.post('/messages', requireAuth, tutorRateLimiter, validateBody(messageSche
   const body = req.body as z.infer<typeof messageSchema>;
 
   // the context comes from the server's own run of the algorithm; an invalid state costs no allowance
-  const built = buildTutorContext({ algorithmId: body.algorithmId, ...body.input, stepIndex: body.stepIndex, language: body.language });
+  const built = buildTutorContext({ algorithmId: body.algorithmId, ...body.input, stepIndex: body.stepIndex, language: body.language, question: body.question });
   if (!built.ok) {
     res.status(400).json({ error: built.message, code: 'invalid_context' });
     return;
@@ -119,7 +119,7 @@ router.post('/messages', requireAuth, tutorRateLimiter, validateBody(messageSche
   const slot = takeTutorGlobalSlot();
   if (!slot.ok) {
     res.status(503).json({
-      error: 'The AI Tutor is answering many questions right now. Please try again in a minute.',
+      error: `The AI Tutor is answering many questions right now. Please try again in ${secondsText(slot.retryAfterSeconds)}.`,
       code: 'tutor_global_rate_limited',
       retryAfterSeconds: slot.retryAfterSeconds,
     });
