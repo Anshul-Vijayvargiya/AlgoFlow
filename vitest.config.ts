@@ -7,5 +7,7 @@ export default defineConfig({
     testTimeout: 30000,
     environment: 'node',
     include: ['server/tests/**/*.test.ts', 'src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
+    // no real Gemini key and no enabled AI Tutor in any test process, whatever the developer's .env says
+    setupFiles: ['server/tests/helpers/noRealAiCredentials.ts'],
   },
 });
