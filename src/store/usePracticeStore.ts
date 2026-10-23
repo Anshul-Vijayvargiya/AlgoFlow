@@ -49,6 +49,9 @@ function writeStoredDrafts(drafts: Record<string, string>): boolean {
 interface PracticeState {
   problems: PracticeProblem[];
   total: number;
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
   isLoading: boolean;
   /** the problem list could not be loaded */
   error: string | null;
@@ -71,7 +74,8 @@ interface PracticeState {
   selectedTopic: string;
   searchQuery: string;
 
-  fetchProblems: (params?: { difficulty?: string; category?: string; search?: string }) => Promise<void>;
+  fetchProblems: (params?: { page?: number; difficulty?: string; category?: string; search?: string }) => Promise<void>;
+  setPage: (page: number) => void;
   selectProblem: (problem: PracticeProblem) => void;
   setLanguage: (lang: ProgrammingLanguage) => void;
   setUserCode: (code: string) => void;
@@ -86,6 +90,9 @@ interface PracticeState {
 export const usePracticeStore = create<PracticeState>((set, get) => ({
   problems: [],
   total: 0,
+  currentPage: 1,
+  totalPages: 1,
+  pageSize: 12,
   isLoading: false,
   error: null,
   selectedProblem: null,
@@ -109,17 +116,22 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       const difficulty = params?.difficulty !== undefined ? params.difficulty : get().selectedDifficulty;
       const category = params?.category !== undefined ? params.category : get().selectedTopic;
       const search = params?.search !== undefined ? params.search : get().searchQuery;
+      const page = params?.page !== undefined ? params.page : get().currentPage;
+      const pageSize = get().pageSize;
 
       const res = await apiClient.practice.getProblems({
+        page,
+        limit: pageSize,
         difficulty: difficulty !== 'All' ? difficulty : undefined,
         category: category !== 'All' ? category : undefined,
         search: search || undefined,
-        limit: 50,
       });
 
       set({
         problems: res.problems,
         total: res.total,
+        currentPage: res.page,
+        totalPages: Math.max(1, res.totalPages),
         isLoading: false,
       });
     } catch (err: any) {
@@ -192,19 +204,26 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     }
   },
 
+  setPage: (page) => {
+    const next = Math.max(1, Math.min(get().totalPages, Math.floor(page)));
+    if (next === get().currentPage) return;
+    set({ currentPage: next });
+    get().fetchProblems({ page: next });
+  },
+
   setSelectedDifficulty: (diff) => {
-    set({ selectedDifficulty: diff });
-    get().fetchProblems({ difficulty: diff });
+    set({ selectedDifficulty: diff, currentPage: 1 });
+    get().fetchProblems({ page: 1, difficulty: diff });
   },
 
   setSelectedTopic: (topic) => {
-    set({ selectedTopic: topic });
-    get().fetchProblems({ category: topic });
+    set({ selectedTopic: topic, currentPage: 1 });
+    get().fetchProblems({ page: 1, category: topic });
   },
 
   setSearchQuery: (query) => {
-    set({ searchQuery: query });
-    get().fetchProblems({ search: query });
+    set({ searchQuery: query, currentPage: 1 });
+    get().fetchProblems({ page: 1, search: query });
   },
 
   reset: () => set({ selectedProblem: null, userCode: '', drafts: {}, draftsNotSaved: false, submissionResult: null, submissionError: null, submissions: [] }),

@@ -248,10 +248,20 @@ export class MockApiClient implements ApiClient {
   };
 
   practice = {
-    async getProblems(): Promise<{ problems: PracticeProblem[]; total: number; page: number; limit: number; totalPages: number }> {
+    async getProblems(params?: { page?: number; limit?: number; difficulty?: string; category?: string; search?: string }): Promise<{ problems: PracticeProblem[]; total: number; page: number; limit: number; totalPages: number }> {
       const { submissions } = readPracticeState();
-      const problems = MOCK_PROBLEMS.map(p => ({ ...p, solved: (submissions[p.id] ?? []).some(s => s.passed) }));
-      return { problems, total: problems.length, page: 1, limit: problems.length, totalPages: 1 };
+      const query = params?.search?.trim().toLowerCase() ?? '';
+      const filtered = MOCK_PROBLEMS
+        .map(p => ({ ...p, solved: (submissions[p.id] ?? []).some(s => s.passed) }))
+        .filter(p => !params?.difficulty || params.difficulty === 'All' || p.difficulty === params.difficulty)
+        .filter(p => !params?.category || params.category === 'All' || p.category === params.category)
+        .filter(p => !query || [p.title, p.description, p.category, ...p.tags].some(value => value.toLowerCase().includes(query)));
+      const total = filtered.length;
+      const limit = Math.min(50, Math.max(1, Math.floor(params?.limit ?? 20)));
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const page = Math.min(totalPages, Math.max(1, Math.floor(params?.page ?? 1)));
+      const start = (page - 1) * limit;
+      return { problems: filtered.slice(start, start + limit), total, page, limit, totalPages };
     },
     async getProblemById(id: string): Promise<PracticeProblem | undefined> {
       const res = await this.getProblems();
