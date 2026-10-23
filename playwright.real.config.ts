@@ -40,7 +40,8 @@ export default defineConfig({
   // `npm run e2e:real` (and CI) runs chromium-real; `npm run e2e:real:cross` runs Firefox and WebKit too
   projects: [
     { name: 'chromium-real', use: { ...devices['Desktop Chrome'], viewport: { width: 1500, height: 1000 } } },
-    { name: 'firefox-real', use: { ...devices['Desktop Firefox'], viewport: { width: 1500, height: 1000 } } },
+    // Firefox against the real API ran up to 35 s per test here (a sign-up/sign-in test failed 3 of 3 at 30 s)
+    { name: 'firefox-real', timeout: 60_000, use: { ...devices['Desktop Firefox'], viewport: { width: 1500, height: 1000 } } },
     // as in playwright.config.ts: WebKit on Windows runs 2-2.5x slower than Chromium
     { name: 'webkit-real', timeout: 60_000, use: { ...devices['Desktop Safari'], viewport: { width: 1500, height: 1000 } } },
   ],
