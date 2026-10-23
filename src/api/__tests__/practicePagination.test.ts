@@ -67,3 +67,80 @@ describe('practice problem pagination (mock API)', () => {
     expect(result.total).toBeGreaterThan(0);
   });
 });
+
+describe('practice topic filter with search, difficulty and pagination (mock API)', () => {
+  const all = async (api: MockApiClient) => (await api.practice.getProblems({ limit: 50 })).problems;
+
+  it('a topic returns exactly the problems with that category, and its total matches', async () => {
+    const api = new MockApiClient();
+    const problems = await all(api);
+    for (const topic of new Set(problems.map(p => p.category))) {
+      const res = await api.practice.getProblems({ category: topic, limit: 50 });
+      const expected = problems.filter(p => p.category === topic).map(p => p.id);
+      expect(res.problems.map(p => p.id), topic).toEqual(expected);
+      expect(res.total, topic).toBe(expected.length);
+    }
+  });
+
+  it('a topic with no problems is an empty first page, not an error', async () => {
+    const res = await new MockApiClient().practice.getProblems({ category: 'Graphs', page: 3, limit: 12 });
+    expect(res).toMatchObject({ problems: [], total: 0, page: 1, totalPages: 1 });
+  });
+
+  it('topic, difficulty and search combine (all must match), counted before paging', async () => {
+    const api = new MockApiClient();
+    const problems = await all(api);
+    const topic = 'Arrays';
+    const expected = problems.filter(p => p.category === topic && p.difficulty === 'Medium');
+    const res = await api.practice.getProblems({ category: topic, difficulty: 'Medium', limit: 50 });
+    expect(res.problems.map(p => p.id)).toEqual(expected.map(p => p.id));
+
+    const sample = expected[0];
+    if (!sample) return;
+    const searched = await api.practice.getProblems({ category: topic, difficulty: 'Medium', search: sample.title.slice(0, 5).toLowerCase(), limit: 50 });
+    expect(searched.problems.map(p => p.id)).toContain(sample.id);
+    expect(searched.problems.every(p => p.category === topic && p.difficulty === 'Medium')).toBe(true);
+    // a search that matches another topic's problem only finds nothing in this topic
+    const other = problems.find(p => p.category !== topic)!;
+    const none = await api.practice.getProblems({ category: topic, search: other.title, limit: 50 });
+    expect(none.problems.some(p => p.id === other.id)).toBe(false);
+  });
+
+  it('pages within a topic cover every problem of the topic exactly once, and a page past the end is the last page', async () => {
+    const api = new MockApiClient();
+    const topic = 'Arrays';
+    const first = await api.practice.getProblems({ category: topic, page: 1, limit: 1 });
+    expect(first.totalPages).toBe(first.total);
+    const seen: string[] = [];
+    for (let page = 1; page <= first.totalPages; page++) {
+      const res = await api.practice.getProblems({ category: topic, page, limit: 1 });
+      expect(res.page).toBe(page);
+      seen.push(...res.problems.map(p => p.id));
+    }
+    expect(new Set(seen).size).toBe(first.total);
+    const past = await api.practice.getProblems({ category: topic, page: first.totalPages + 5, limit: 1 });
+    expect(past.page).toBe(first.totalPages);
+    expect(past.problems).toHaveLength(1);
+  });
+
+
+  it('searches descriptions case-insensitively', async () => {
+  const api = new MockApiClient();
+  const all = await api.practice.getProblems({ limit: 50 });
+  const sample = all.problems.find(p => p.description?.trim());
+
+  expect(sample).toBeDefined();
+  if (!sample) return;
+
+  const keyword = sample.description!.trim().split(/\s+/)[0];
+
+  const result = await api.practice.getProblems({
+    search: keyword.toUpperCase(),
+    limit: 50,
+  });
+
+  expect(result.problems.map(p => p.id)).toContain(sample.id);
+});
+
+
+});

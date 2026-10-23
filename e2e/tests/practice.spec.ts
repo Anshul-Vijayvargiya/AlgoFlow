@@ -134,3 +134,99 @@ test.describe('Practice', () => {
     });
   }
 });
+
+// Topic learning sets: built from the problems the (mock) API publishes; choosing one is the existing topic filter.
+test.describe('Practice — topic learning sets', () => {
+  const sets = (page: Page) => page.getByRole('group', { name: 'Topic learning sets' });
+  const setButton = (page: Page, topic: string) => page.locator(`[data-topic-set="${topic}"]`);
+  const shownProblems = (page: Page) => page.locator('[data-problem]').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.problem));
+  const open = async (page: Page) => {
+    await page.goto('/practice');
+    await expect(sets(page)).toBeVisible();
+  };
+
+  test('one set per topic the problems actually have, with real counts; none invented', async ({ app, page }) => {
+    void app;
+    await open(page);
+    await expect(sets(page).getByRole('button')).toHaveText([
+      /^All topics5 problems0 of 5 solved/, /^Arrays2 problems1 Easy · 1 Medium0 of 2 solved/, /^Linked List1 problem1 Easy0 of 1 solved/,
+      /^Stack1 problem1 Easy0 of 1 solved/, /^Trees1 problem1 Medium0 of 1 solved/,
+    ]);
+    await expect(setButton(page, 'All')).toContainText('0 of 5 solved');
+    // the topic filter offers the same topics, and nothing else
+    await expect(page.locator('#practice-topic-select option')).toHaveText(['All topics', 'Arrays', 'Linked List', 'Stack', 'Trees']);
+    for (const missing of ['Strings', 'Graphs', 'DP']) await expect(setButton(page, missing)).toHaveCount(0);
+  });
+
+  test('choosing a set shows exactly its problems, marks it selected and sets the topic filter', async ({ app, page }) => {
+    void app;
+    await open(page);
+    await expect(setButton(page, 'All')).toHaveAttribute('aria-pressed', 'true');
+    await setButton(page, 'Arrays').click();
+    await expect(setButton(page, 'Arrays')).toHaveAttribute('aria-pressed', 'true');
+    await expect(setButton(page, 'All')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#practice-topic-select')).toHaveValue('Arrays');
+    await expect.poll(() => shownProblems(page)).toEqual(['p1', 'p4']);
+    await expect(page.getByTestId('practice-page-indicator')).toHaveText('Page 1 of 1');
+    // the dropdown drives the same state
+    await page.locator('#practice-topic-select').selectOption('Trees');
+    await expect(setButton(page, 'Trees')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => shownProblems(page)).toEqual(['p5']);
+    await setButton(page, 'All').click();
+    await expect.poll(() => shownProblems(page)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+  });
+
+  test('a topic combines with difficulty and search; the sets themselves never change with the filters', async ({ app, page }) => {
+    void app;
+    await open(page);
+    await setButton(page, 'Arrays').click();
+    await page.getByRole('button', { name: 'Medium', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Medium', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => shownProblems(page)).toEqual(['p4']);
+    await page.locator('#practice-search-input').fill('two sum');
+    await expect(page.getByText('No published problems match your search, difficulty and topic filters.')).toBeVisible();
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await expect.poll(() => shownProblems(page)).toEqual(['p1']);
+    // still the full counts: the sets describe every published problem, not the filtered list
+    await expect(setButton(page, 'Arrays')).toContainText('2 problems');
+    await expect(setButton(page, 'All')).toContainText('5 problems');
+    await expect(page.locator('#practice-topic-select')).toHaveValue('Arrays');
+  });
+
+  test('keyboard: the sets are reachable with Tab, chosen with Enter or Space, and show a focus ring', async ({ app, page }) => {
+    void app;
+    await open(page);
+    await setButton(page, 'Linked List').focus();
+    await expect(setButton(page, 'Linked List')).toBeFocused();
+    const ring = await setButton(page, 'Linked List').evaluate(e => getComputedStyle(e).boxShadow);
+    expect(ring).not.toBe('none');
+    await page.keyboard.press('Enter');
+    await expect(setButton(page, 'Linked List')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => shownProblems(page)).toEqual(['p3']);
+    await page.keyboard.press('Tab');
+    await expect(setButton(page, 'Stack')).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(setButton(page, 'Stack')).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => shownProblems(page)).toEqual(['p2']);
+  });
+
+  for (const theme of ['dark', 'light'] as const) {
+    test(`axe-core WCAG 2.1 A/AA on the topic sets: no violations (${theme})`, async ({ app, page }) => {
+      void app;
+      await page.getByRole('banner').getByRole('combobox', { name: 'Theme' }).selectOption(theme);
+      await open(page);
+      await setButton(page, 'Arrays').click();
+      await page.evaluate(() => Promise.allSettled(document.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished)));
+      const result = await new AxeBuilder({ page }).include('[data-testid="topic-sets"]').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      expect(result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    });
+  }
+
+  test('phone width: the sets wrap without sideways scrolling', async ({ app, page }) => {
+    void app;
+    await page.setViewportSize({ width: 375, height: 800 });
+    await open(page);
+    await expect(setButton(page, 'Trees')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+});

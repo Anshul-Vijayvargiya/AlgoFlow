@@ -10,10 +10,12 @@ import {
   Loader2,
   History,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Layers
 } from 'lucide-react';
 import { usePracticeStore } from '../store/usePracticeStore';
 import { TONE_PANEL, TONE_TEXT, verdictOf } from './practice/verdicts';
+import { solvedPercent } from './practice/topicSets';
 import type { PracticeProblem, ProgrammingLanguage } from '../types/algorithm';
 
 export const PracticePage: React.FC = () => {
@@ -22,8 +24,14 @@ export const PracticePage: React.FC = () => {
     total,
     currentPage,
     totalPages,
+    pageSize,
     isLoading,
     error,
+    topicSets,
+    topicSetsStatus,
+    topicSetsError,
+    topicSetsIncomplete,
+    fetchTopicSets,
     selectedLanguage,
     userCode,
     isSubmitting,
@@ -51,8 +59,17 @@ export const PracticePage: React.FC = () => {
     fetchProblems();
   }, [fetchProblems]);
 
+  useEffect(() => {
+    fetchTopicSets();
+  }, [fetchTopicSets]);
+
   const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
-  const topics = ['All', 'Arrays', 'Strings', 'Linked List', 'Stack', 'Trees', 'Graphs', 'DP'];
+  // the topics the published problems actually have (plus the selected one, so the filter never shows a wrong value)
+  const topics = ['All', ...topicSets.map(t => t.topic)];
+  if (!topics.includes(selectedTopic)) topics.push(selectedTopic);
+  const allProblems = topicSets.reduce((n, t) => n + t.total, 0);
+  const allSolved = topicSets.reduce((n, t) => n + t.solved, 0);
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
   const handleOpenProblem = (prob: PracticeProblem) => {
     setActiveModalProblem(prob);
@@ -89,6 +106,83 @@ export const PracticePage: React.FC = () => {
         </div>
       </div>
 
+      {/* Topic learning sets: the published problems grouped by topic; choosing one sets the same topic filter as below */}
+      <section aria-labelledby="topic-sets-heading" data-testid="topic-sets" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="topic-sets-heading" className="text-sm font-bold font-mono text-ink flex items-center gap-2">
+              <Layers className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+              Topic learning sets
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Work through one topic at a time. Solved counts include only accepted solutions.
+            </p>
+          </div>
+        </div>
+
+        {topicSetsStatus === 'error' && (
+          <div role="alert" data-testid="topic-sets-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
+            <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="flex-1">
+              {topicSets.length > 0
+                ? `The topic sets could not be refreshed; showing what was loaded earlier. ${topicSetsError}`
+                : `The topic sets could not be loaded: ${topicSetsError}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchTopicSets()}
+              className="font-mono font-bold underline underline-offset-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {topicSetsStatus === 'error' && topicSets.length === 0 ? null : topicSetsStatus !== 'ready' && topicSetsStatus !== 'error' ? (
+          <p role="status" data-testid="topic-sets-loading" className="text-xs font-mono text-slate-400">
+            Loading topic sets…
+          </p>
+        ) : topicSets.length === 0 ? (
+          <p data-testid="topic-sets-empty" className="text-xs text-slate-400">
+            No topic sets yet: no practice problems have been published.
+          </p>
+        ) : (
+          <div role="group" aria-label="Topic learning sets" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[{ topic: 'All', label: 'All topics', total: allProblems, solved: allSolved, byDifficulty: null }, ...topicSets.map(t => ({ ...t, label: t.topic }))].map(set => {
+              const active = selectedTopic === set.topic;
+              const percent = solvedPercent(set);
+              const levels = set.byDifficulty
+                ? (['Easy', 'Medium', 'Hard'] as const).filter(d => set.byDifficulty![d] > 0).map(d => `${set.byDifficulty![d]} ${d}`).join(' · ')
+                : null;
+              return (
+                <button
+                  key={set.topic}
+                  type="button"
+                  data-topic-set={set.topic}
+                  aria-pressed={active}
+                  onClick={() => setSelectedTopic(set.topic)}
+                  className={`text-left rounded-2xl border p-3 space-y-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+                    active ? 'bg-cyan-500/15 border-cyan-500/50' : 'bg-surface border-slate-800 hover:border-cyan-500/40'
+                  }`}
+                >
+                  <span className={`block text-sm font-bold ${active ? 'text-cyan-300' : 'text-ink'}`}>{set.label}</span>
+                  <span className="block text-xs font-mono text-slate-400">{plural(set.total, 'problem')}</span>
+                  {levels && <span className="block text-[11px] font-mono text-slate-400">{levels}</span>}
+                  <span className="block text-[11px] font-mono text-slate-300">
+                    {set.solved} of {set.total} solved
+                  </span>
+                  <span aria-hidden="true" className="block h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                    <span className="block h-full bg-emerald-400" style={{ width: `${percent}%` }} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {topicSetsIncomplete && (
+          <p className="text-[11px] text-amber-300">There are more problems than the topic sets could read; their counts may be incomplete.</p>
+        )}
+      </section>
+
       <div className="flex flex-wrap items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-cyan-500/15">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-slate-400">Difficulty:</span>
@@ -96,8 +190,10 @@ export const PracticePage: React.FC = () => {
             {difficulties.map((diff) => (
               <button
                 key={diff}
+                type="button"
+                aria-pressed={selectedDifficulty === diff}
                 onClick={() => setSelectedDifficulty(diff)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
                   selectedDifficulty === diff
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200'
@@ -110,7 +206,7 @@ export const PracticePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-slate-400">Topic:</span>
+          <label htmlFor="practice-topic-select" className="text-xs font-mono text-slate-400">Topic:</label>
           <select
             id="practice-topic-select"
             value={selectedTopic}
@@ -118,7 +214,7 @@ export const PracticePage: React.FC = () => {
             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
           >
             {topics.map((t) => (
-              <option key={t} value={t}>{t}</option>
+              <option key={t} value={t}>{t === 'All' ? 'All topics' : t}</option>
             ))}
           </select>
         </div>
@@ -159,7 +255,7 @@ export const PracticePage: React.FC = () => {
           <Code2 className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-base font-mono font-bold text-slate-300">No problems found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            No published problems match your difficulty and category filters.
+            No published problems match your search, difficulty and topic filters.
           </p>
         </div>
       ) : (
@@ -222,7 +318,7 @@ export const PracticePage: React.FC = () => {
       {!error && total > 0 && (
         <nav aria-label="Practice problem pages" data-testid="practice-pagination" className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-surface px-4 py-3">
           <p className="text-xs font-mono text-slate-400" aria-live="polite">
-            Showing {(currentPage - 1) * 12 + 1}–{Math.min(currentPage * 12, total)} of {total} problems
+            Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, total)} of {total} problems
           </p>
           <div className="flex items-center gap-2">
             <button

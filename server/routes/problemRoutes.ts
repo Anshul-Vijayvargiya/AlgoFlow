@@ -55,9 +55,8 @@ function escapeRegex(text: string): string {
 // GET /api/problems — List published problems with filtering, pagination, and user solve state
 router.get('/', optionalAuth, async (req: AuthRequest, res, next) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const requestedPage = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
-    const skip = (page - 1) * limit;
 
     const filter: Record<string, any> = {
       publicationStatus: 'published',
@@ -78,6 +77,7 @@ router.get('/', optionalAuth, async (req: AuthRequest, res, next) => {
       const sanitized = escapeRegex(search);
       filter.$or = [
         { title: { $regex: sanitized, $options: 'i' } },
+        { description: { $regex: sanitized, $options: 'i' } },
         { category: { $regex: sanitized, $options: 'i' } },
         { tags: { $regex: sanitized, $options: 'i' } },
       ];
@@ -93,14 +93,15 @@ router.get('/', optionalAuth, async (req: AuthRequest, res, next) => {
       solvedSet = new Set(solved);
     }
 
-    const [total, rawProblems] = await Promise.all([
-      Problem.countDocuments(filter),
-      Problem.find(filter)
-        .sort({ createdAt: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-    ]);
+    // a page past the end (e.g. after a filter change) answers the last page, as the mock API does
+    const total = await Problem.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit) || 1;
+    const page = Math.min(requestedPage, totalPages);
+    const rawProblems = await Problem.find(filter)
+      .sort({ createdAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
 
     // Sanitize problems: never leak hidden test cases to client
     const problems = rawProblems.map((p) => {
@@ -131,7 +132,7 @@ router.get('/', optionalAuth, async (req: AuthRequest, res, next) => {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit) || 1,
+      totalPages,
     });
   } catch (err) {
     next(err);
