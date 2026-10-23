@@ -173,3 +173,51 @@ test.describe('Real backend — Practice judging', () => {
     await other.close();
   });
 });
+
+// Topic learning sets against the real API and database: counts from the published problems, progress from verdicts.
+test.describe('Real backend — topic learning sets', () => {
+  const setButton = (page: Page, topic: string) => page.locator(`[data-topic-set="${topic}"]`);
+  const openPractice = async (page: Page) => {
+    await page.goto('/practice');
+    await expect(page.getByRole('group', { name: 'Topic learning sets' })).toBeVisible();
+  };
+
+  test('counts come from the published problems; only an accepted solution counts as solved', async ({ page }, testInfo) => {
+    await registerViaApi(page.request, account(testInfo, 'A'));
+    await openPractice(page);
+    // the harness publishes the five seeded problems plus e2e-echo, e2e-hidden and e2e-legacy (all three in Arrays)
+    await expect(setButton(page, 'All')).toContainText('8 problems');
+    await expect(setButton(page, 'Arrays')).toContainText('5 problems');
+    await expect(setButton(page, 'Arrays')).toContainText('0 of 5 solved');
+    for (const topic of ['Linked List', 'Stack', 'Trees']) await expect(setButton(page, topic)).toContainText('1 problem');
+
+    // a recorded attempt (not judged) and a wrong answer are attempts, not solutions
+    await openProblem(page, 'e2e-legacy');
+    expect((await (await submitAndWait(page, 'e2e-legacy')).json()).status).toBe('SUBMITTED');
+    await openProblem(page, 'e2e-hidden');
+    expect((await (await submitAndWait(page, 'e2e-hidden')).json()).status).toBe('WRONG_ANSWER');
+    await openPractice(page);
+    await expect(setButton(page, 'Arrays')).toContainText('0 of 5 solved');
+
+    // an accepted solution is
+    await openProblem(page, 'e2e-echo');
+    expect((await (await submitAndWait(page, 'e2e-echo')).json()).status).toBe('ACCEPTED');
+    await openPractice(page);
+    await expect(setButton(page, 'Arrays')).toContainText('1 of 5 solved');
+    await expect(setButton(page, 'All')).toContainText('1 of 8 solved');
+    await expect(setButton(page, 'Trees')).toContainText('0 of 1 solved');
+  });
+
+  test('choosing a set asks the server for that topic and shows exactly its problems', async ({ page }, testInfo) => {
+    await registerViaApi(page.request, account(testInfo, 'A'));
+    await openPractice(page);
+    const filtered = page.waitForResponse(r => r.url().startsWith(`${API_ORIGIN}/api/problems?`) && new URL(r.url()).searchParams.get('category') === 'Arrays');
+    await setButton(page, 'Arrays').click();
+    const res = await filtered;
+    expect(new URL(res.url()).searchParams.get('page')).toBe('1');
+    expect((await res.json()).total).toBe(5);
+    await expect.poll(() => page.locator('[data-problem]').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.problem).sort()))
+      .toEqual(['e2e-echo', 'e2e-hidden', 'e2e-legacy', 'p1', 'p4']);
+    await expect(setButton(page, 'Arrays')).toHaveAttribute('aria-pressed', 'true');
+  });
+});
