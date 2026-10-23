@@ -125,7 +125,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         difficulty: difficulty !== 'All' ? difficulty : undefined,
         category: category !== 'All' ? category : undefined,
         search: search || undefined,
-        limit: 50,
       });
 
       set({
