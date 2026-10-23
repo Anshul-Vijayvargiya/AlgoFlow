@@ -41,13 +41,23 @@ describe('E2E database guard', () => {
     expect(checkE2eDatabaseUri('mongodb://localhost:27018/shared_test', protectedLocal)).toEqual([]);
   });
 
-  it('never echoes credentials in its messages', () => {
-    const messages = [
-      ...checkE2eDatabaseUri('mongodb://admin:hunter2@db.example.com/algoflow', PROTECTED),
-      ...checkE2eDatabaseUri('mongodb+srv://admin:hunter2@x.mongodb.net/algoflow', PROTECTED),
-    ].join(' ');
-    expect(messages).not.toContain('hunter2');
-  });
+ it('never echoes credentials in its messages', () => {
+  const username = 'test-user';
+  const password = 'test-password';
+  const messages = [
+    ...checkE2eDatabaseUri(
+      `mongodb://${username}:${password}@db.example.com/algoflow`,
+      PROTECTED,
+    ),
+    ...checkE2eDatabaseUri(
+      `mongodb+srv://${username}:${password}@x.mongodb.net/algoflow`,
+      PROTECTED,
+    ),
+  ].join(' ');
+
+  expect(messages).not.toContain(username);
+  expect(messages).not.toContain(password);
+});
 
   it('parses hosts, ports and the database name', () => {
     expect(parseMongoUri('mongodb://u:p@127.0.0.1:27999,localhost/algoflow_e2e?x=1')).toEqual({
