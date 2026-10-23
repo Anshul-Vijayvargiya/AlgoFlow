@@ -36,6 +36,8 @@ const MIN_SECRET_LENGTH = 32;
 // An empty value (`JWT_SECRET=`) counts as unset.
 const optionalString = z.preprocess(v => (v === '' ? undefined : v), z.string().optional());
 const positiveInt = (fallback: number) => z.coerce.number().int().positive().default(fallback);
+/** a Gemini model id (it becomes part of the request path) */
+export const GEMINI_MODEL_PATTERN = /^[a-z0-9][a-z0-9.-]{0,63}$/;
 
 export const envSchema = z
   .object({
@@ -54,6 +56,40 @@ export const envSchema = z
     RATE_LIMIT_MAX_API: positiveInt(100),
     // Development only: also seed the fixed-password ADMIN and SUPER_ADMIN accounts.
     SEED_DEV_ADMINS: z.enum(['true', 'false']).default('false'),
+    // Code execution (Playground). 'disabled' until configured; 'fake' is for automated tests only (never strict).
+    EXECUTION_PROVIDER: z.enum(['disabled', 'judge0', 'fake']).default('disabled'),
+    // Judge0 (hosted or self-hosted): base URL, key and how the key is sent. Never exposed to the browser.
+    JUDGE0_API_URL: optionalString,
+    JUDGE0_API_KEY: optionalString,
+    JUDGE0_AUTH: z.enum(['rapidapi', 'x-auth-token', 'none']).default('rapidapi'),
+    // Optional JSON overriding the language ids / labels, e.g. {"cpp":{"id":54,"label":"C++ (GCC 9.2.0)"}}
+    JUDGE0_LANGUAGES: optionalString,
+    // Abuse protection and cost control
+    EXECUTION_RATE_LIMIT_PER_MINUTE: positiveInt(10),
+    EXECUTION_DAILY_LIMIT_PER_USER: positiveInt(100),
+    // all users together, per UTC day; keep it below the provider plan's daily allowance to avoid paid overage
+    EXECUTION_DAILY_LIMIT_GLOBAL: positiveInt(1800),
+    // AI Tutor. 'disabled' (default) unless set explicitly: the presence of GEMINI_API_KEY alone never enables it.
+    // 'fake' is for automated tests only and is refused in staging/production.
+    AI_PROVIDER: z.enum(['disabled', 'gemini', 'fake']).default('disabled'),
+    // Google Gemini (server-side only; never a VITE_ variable, never logged or sent to the browser)
+    GEMINI_API_KEY: optionalString,
+    // a model id such as gemini-3.5-flash-lite: no default, it must be chosen after checking availability in AI Studio
+    // (Google limits the 2.5 models to projects that used them before). The chosen model may think by default (3.5
+    // Flash-Lite at a minimal level); thinking tokens count against the provider's output limit.
+    GEMINI_MODEL: z.preprocess(
+      v => (v === '' ? undefined : v),
+      z.string().regex(GEMINI_MODEL_PATTERN, 'GEMINI_MODEL must be a model id such as gemini-3.5-flash-lite').optional()
+    ),
+    // per user per minute, and all users together per minute (keep the latter below the project's per-minute request
+    // limit shown in AI Studio). Both are counted in this process's memory: each server instance has its own.
+    TUTOR_RATE_LIMIT_PER_MINUTE: positiveInt(10),
+    TUTOR_GLOBAL_RATE_LIMIT_PER_MINUTE: positiveInt(5),
+    // daily limits count by Pacific Time day (Google's daily limits reset at midnight Pacific), in MongoDB: shared by
+    // every instance that uses the same database
+    TUTOR_DAILY_LIMIT_PER_USER: positiveInt(30),
+    // all users together: keep it below the project's free daily request limit shown in AI Studio
+    TUTOR_DAILY_LIMIT_GLOBAL: positiveInt(200),
   })
   .superRefine((data, ctx) => {
     const strict = isStrictEnvironment(data.NODE_ENV);
@@ -75,7 +111,30 @@ export const envSchema = z
       }
     }
 
+    if (data.EXECUTION_PROVIDER === 'judge0') {
+      if (!data.JUDGE0_API_URL) issue('JUDGE0_API_URL', 'JUDGE0_API_URL must be set when EXECUTION_PROVIDER=judge0.');
+      if (data.JUDGE0_AUTH !== 'none' && !data.JUDGE0_API_KEY) {
+        issue('JUDGE0_API_KEY', `JUDGE0_API_KEY must be set when EXECUTION_PROVIDER=judge0 and JUDGE0_AUTH=${data.JUDGE0_AUTH}.`);
+      }
+    }
+
+    if (data.AI_PROVIDER === 'gemini') {
+      if (!data.GEMINI_API_KEY) issue('GEMINI_API_KEY', 'GEMINI_API_KEY must be set when AI_PROVIDER=gemini.');
+      if (!data.GEMINI_MODEL) issue('GEMINI_MODEL', 'GEMINI_MODEL must be set when AI_PROVIDER=gemini (there is no default model).');
+    }
+
     if (!strict) return;
+
+    if (data.AI_PROVIDER === 'fake') {
+      issue('AI_PROVIDER', `In ${data.NODE_ENV}, AI_PROVIDER cannot be 'fake' (it does not answer questions).`);
+    }
+
+    if (data.EXECUTION_PROVIDER === 'fake') {
+      issue('EXECUTION_PROVIDER', `In ${data.NODE_ENV}, EXECUTION_PROVIDER cannot be 'fake' (it does not run code).`);
+    }
+    if (data.EXECUTION_PROVIDER === 'judge0' && data.JUDGE0_API_URL && !data.JUDGE0_API_URL.startsWith('https://')) {
+      issue('JUDGE0_API_URL', `In ${data.NODE_ENV}, JUDGE0_API_URL must use https://.`);
+    }
 
     if (data.JWT_SECRET && data.JWT_SECRET === data.COOKIE_SECRET) {
       issue('COOKIE_SECRET', `In ${data.NODE_ENV}, COOKIE_SECRET must differ from JWT_SECRET.`);

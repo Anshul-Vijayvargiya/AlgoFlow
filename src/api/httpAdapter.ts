@@ -5,8 +5,18 @@ import type {
   NotesListResponse,
   UserProgressData,
   AlgorithmTrack,
+  VisualizerActivityResult,
+  ExecutionLanguages,
+  ExecutionLanguageId,
+  RunResult,
+  TutorStatus,
+  TutorQuestion,
+  TutorReply,
+  LegacyActivityReport,
+  AlgorithmProgressReset,
   ProblemsListResponse,
   SubmissionRecord,
+  SubmissionResult,
   AdminMetrics,
   AdminUserItem,
   AdminAuditItem,
@@ -27,10 +37,13 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): voi
 
 export class HttpError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** the server's machine-readable reason, when it sends one (e.g. 'daily_quota_exceeded') */
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = 'HttpError';
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -69,9 +82,9 @@ function sanitizeNote(raw: any): NoteRecord {
   };
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 10_000): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s network timeout
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs); // network timeout
 
   const config: RequestInit = {
     ...options,
@@ -109,7 +122,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
 
     if (!response.ok) {
-      throw new HttpError(data.error || `HTTP ${response.status}`, response.status);
+      throw new HttpError(data.error || `HTTP ${response.status}`, response.status, typeof data.code === 'string' ? data.code : undefined);
     }
 
     return data as T;
@@ -199,21 +212,10 @@ export class HttpApiClient implements ApiClient {
       return request<PracticeProblem>(`/problems/${id}`);
     },
 
-    async submitSolution(
-      problemId: string,
-      language: string,
-      code: string
-    ): Promise<{
-      passed: boolean;
-      runtimeMs: number;
-      memoryMb: number;
-      message: string;
-      submissionId?: string;
-    }> {
-      return request(`/problems/${problemId}/submit`, {
-        method: 'POST',
-        body: JSON.stringify({ language, code }),
-      });
+    async submitSolution(problemId: string, language: string, code: string): Promise<SubmissionResult> {
+      // judging runs every test on the execution service; the server stops starting tests after 60 s
+      // (JUDGING_BUDGET_MS), so it answers within ~90 s: wait longer than that, never give up before the server does
+      return request<SubmissionResult>(`/problems/${problemId}/submit`, { method: 'POST', body: JSON.stringify({ language, code }) }, 120_000);
     },
 
     async getSubmissions(problemId: string): Promise<SubmissionRecord[]> {
@@ -232,31 +234,24 @@ export class HttpApiClient implements ApiClient {
       return res.tracks || [];
     },
 
-    async recordActivity(activity: {
-      minutes?: number;
-      steps?: number;
-      algorithmId?: string;
-      activityType?: 'visualizer_step' | 'algorithm_completed' | 'problem_submitted' | 'problem_solved';
-    }): Promise<UserProgressData> {
+    async recordActivity(activity: LegacyActivityReport): Promise<UserProgressData> {
       return request<UserProgressData>('/progress/activity', {
         method: 'POST',
         body: JSON.stringify(activity),
       });
     },
 
-    async updateAlgorithmProgress(
-      algorithmId: string,
-      data: {
-        status?: 'not_started' | 'in_progress' | 'completed';
-        stepsCompleted?: number;
-        totalSteps?: number;
-        lastStepIndex?: number;
-        topic?: string;
-      }
-    ): Promise<AlgorithmTrack> {
+    async updateAlgorithmProgress(algorithmId: string, data: AlgorithmProgressReset): Promise<AlgorithmTrack> {
       return request<AlgorithmTrack>(`/progress/algorithms/${algorithmId}`, {
         method: 'PUT',
         body: JSON.stringify(data),
+      });
+    },
+
+    async recordVisualizerActivity(algorithmId: string, stepIndex: number): Promise<VisualizerActivityResult> {
+      return request<VisualizerActivityResult>('/progress/visualizer-activity', {
+        method: 'POST',
+        body: JSON.stringify({ algorithmId, stepIndex }),
       });
     },
   };
@@ -299,6 +294,11 @@ export class HttpApiClient implements ApiClient {
     async getNoteById(id: string): Promise<NoteRecord> {
       const res = await request<any>(`/notes/${id}`);
       return sanitizeNote(res);
+    },
+
+    async getTags(): Promise<string[]> {
+      const res = await request<{ tags?: unknown[] }>('/notes/tags');
+      return (res.tags ?? []).map(String);
     },
 
     async createNote(note: {
@@ -428,6 +428,29 @@ export class HttpApiClient implements ApiClient {
 
     async deleteProblem(id: string): Promise<void> {
       await request(`/admin/problems/${id}`, { method: 'DELETE' });
+    },
+  };
+
+  execution = {
+    async getLanguages(): Promise<ExecutionLanguages> {
+      return request<ExecutionLanguages>('/run/languages');
+    },
+
+    async run(body: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<RunResult> {
+      // the provider may queue and compile (Java) before running. One run takes at most ~40 s on the server (a 20 s
+      // result deadline plus request timeouts), so wait longer than that
+      return request<RunResult>('/run', { method: 'POST', body: JSON.stringify(body) }, 45_000);
+    },
+  };
+
+  tutor = {
+    async getStatus(): Promise<TutorStatus> {
+      return request<TutorStatus>('/tutor/status');
+    },
+
+    async ask(question: TutorQuestion): Promise<TutorReply> {
+      // the server waits up to 20 s for the model
+      return request<TutorReply>('/tutor/messages', { method: 'POST', body: JSON.stringify(question) }, 30_000);
     },
   };
 }

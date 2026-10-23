@@ -79,6 +79,39 @@ jobs:
             test-results/
           retention-days: 14
 
+  e2e-real:
+    name: Playwright E2E (real API and MongoDB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # a disposable database for this job only (see server/e2e/testDatabase.ts for what the suite accepts)
+      mongo:
+        image: mongo:8
+        ports:
+          - 27999:27017
+    env:
+      E2E_MONGODB_URI: mongodb://127.0.0.1:27999/algoflow_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run real-backend E2E tests
+        run: npm run e2e:real
+      - name: Upload report and traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-real
+          path: |
+            playwright-report/real/
+            test-results/real/
+          retention-days: 14
+
   e2e-cross:
     name: Playwright E2E (Firefox, WebKit, mobile emulation)
     runs-on: ubuntu-latest

@@ -1,6 +1,22 @@
 import { Schema, model, Document } from 'mongoose';
 
-export type SubmissionStatus = 'SUBMITTED' | 'PENDING' | 'ACCEPTED' | 'WRONG_ANSWER' | 'RUNTIME_ERROR';
+/**
+ * SUBMITTED: recorded without a verdict (a problem that is not judged automatically, and every attempt made before
+ * judging existed). PENDING is a legacy value. The rest are verdicts; JUDGING_ERROR means the judge could not finish
+ * (the execution service failed), not that the program was wrong.
+ */
+export type SubmissionStatus =
+  | 'SUBMITTED'
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'WRONG_ANSWER'
+  | 'RUNTIME_ERROR'
+  | 'COMPILATION_ERROR'
+  | 'TIME_LIMIT_EXCEEDED'
+  | 'JUDGING_ERROR';
+export const SUBMISSION_STATUSES: readonly SubmissionStatus[] = [
+  'SUBMITTED', 'PENDING', 'ACCEPTED', 'WRONG_ANSWER', 'RUNTIME_ERROR', 'COMPILATION_ERROR', 'TIME_LIMIT_EXCEEDED', 'JUDGING_ERROR',
+];
 
 export interface ISubmission extends Document {
   userId: Schema.Types.ObjectId;
@@ -12,6 +28,12 @@ export interface ISubmission extends Document {
   runtimeMs: number;
   memoryMb: number;
   message?: string;
+  /** judged submissions: tests passed and run (absent on unjudged and legacy records) */
+  testsPassed?: number;
+  testsTotal?: number;
+  /** the first failing test (1-based) and whether it is hidden */
+  failedTestNumber?: number;
+  failedTestHidden?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +46,7 @@ const SubmissionSchema = new Schema<ISubmission>(
     code: { type: String, required: true, maxlength: 50000 },
     status: {
       type: String,
-      enum: ['SUBMITTED', 'PENDING', 'ACCEPTED', 'WRONG_ANSWER', 'RUNTIME_ERROR'],
+      enum: SUBMISSION_STATUSES,
       default: 'SUBMITTED',
       index: true,
     },
@@ -32,6 +54,10 @@ const SubmissionSchema = new Schema<ISubmission>(
     runtimeMs: { type: Number, default: 0 },
     memoryMb: { type: Number, default: 0 },
     message: { type: String, default: 'Solution submitted for practice evaluation.' },
+    testsPassed: { type: Number, min: 0 },
+    testsTotal: { type: Number, min: 0 },
+    failedTestNumber: { type: Number, min: 1 },
+    failedTestHidden: { type: Boolean },
   },
   { timestamps: true }
 );

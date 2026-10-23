@@ -31,3 +31,7 @@ test-results
 playwright-report
 blob-report
 dist-e2e
+dist-real-e2e
+
+# practice-problem migration backups (server/scripts/migratePracticeProblems.ts)
+migration-backups

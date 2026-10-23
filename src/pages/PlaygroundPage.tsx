@@ -1,48 +1,59 @@
-import React, { useState } from 'react';
-import { Terminal, Play, RotateCcw, Copy, Check, Sliders, Globe } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Terminal, Play, RotateCcw, Copy, Check, Sliders, Globe, AlertTriangle } from 'lucide-react';
+import { apiClient, type ExecutionLanguageId, type ExecutionLanguages, type RunResult } from '../api';
 import { useVisualizerStore } from '../store/useVisualizerStore';
-import type { ProgrammingLanguage } from '../types/algorithm';
+import { DEFAULT_STDIN, SOURCE_FILE_NAMES, STARTER_PROGRAMS } from './playground/starterPrograms';
+import { runHeadline, runMetrics } from './playground/runOutput';
+
+const FALLBACK_NAMES: Record<ExecutionLanguageId, string> = { c: 'C', cpp: 'C++', java: 'Java', python: 'Python' };
+const TONE_CLASS = { success: 'text-emerald-400', error: 'text-rose-400', warning: 'text-amber-400' } as const;
+
+type RunState =
+  | { kind: 'idle' }
+  | { kind: 'running' }
+  | { kind: 'done'; result: RunResult }
+  | { kind: 'failed'; message: string };
 
 export const PlaygroundPage: React.FC = () => {
   const { selectedLanguage, setLanguage } = useVisualizerStore();
-  const [code, setCode] = useState<string>(`// AlgoFlow Interactive Playground
-#include <iostream>
-#include <vector>
+  const language = selectedLanguage as ExecutionLanguageId;
+  // one draft per language: switching shows that language's own program and never loses what was typed
+  const [drafts, setDrafts] = useState<Record<ExecutionLanguageId, string>>(() => ({ ...STARTER_PROGRAMS }));
+  const code = drafts[language];
+  const setCode = (value: string) => setDrafts(d => ({ ...d, [language]: value }));
 
-using namespace std;
-
-void processInput(vector<int>& arr) {
-    int n = arr.size();
-    for (int i = 0; i < n; i++) {
-        cout << "Element [" << i << "] = " << arr[i] << endl;
-    }
-}
-
-int main() {
-    vector<int> data = {8, 3, 5, 1, 6, 9, 2};
-    processInput(data);
-    return 0;
-}`);
-
-  const [inputArrayStr, setInputArrayStr] = useState('8, 3, 5, 1, 6, 9, 2');
-  const [outputConsole, setOutputConsole] = useState<string>('Ready to execute. Press "Run Code" to compile and run in sandbox.');
-  const [isRunning, setIsRunning] = useState(false);
+  const [stdin, setStdin] = useState(DEFAULT_STDIN);
   const [copied, setCopied] = useState(false);
+  const [run, setRun] = useState<RunState>({ kind: 'idle' });
+  const [info, setInfo] = useState<{ state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; data: ExecutionLanguages }>({ state: 'loading' });
 
-  const handleRun = () => {
-    setIsRunning(true);
-    setOutputConsole('Compiling source code with GCC / Clang sandbox...\nExecuting main()...');
+  const fetchLanguages = useCallback(() => {
+    apiClient.execution.getLanguages().then(
+      data => setInfo({ state: 'ready', data }),
+      (err: Error) => setInfo({ state: 'error', message: err.message || 'Could not reach the server.' })
+    );
+  }, []);
+  useEffect(fetchLanguages, [fetchLanguages]);
+  const retryLanguages = () => {
+    setInfo({ state: 'loading' });
+    fetchLanguages();
+  };
 
-    setTimeout(() => {
-      const parsedArr = inputArrayStr.split(',').map(s => s.trim()).filter(Boolean);
-      let simulatedOut = `=== EXECUTION SUCCESSFUL ===\nInput Array: [${parsedArr.join(', ')}]\n\n`;
-      parsedArr.forEach((val, i) => {
-        simulatedOut += `Element [${i}] = ${val}\n`;
-      });
-      simulatedOut += `\nProcess finished with exit code 0 (Execution Time: 18ms, Memory: 14.2MB)`;
-      setOutputConsole(simulatedOut);
-      setIsRunning(false);
-    }, 600);
+  const ready = info.state === 'ready' ? info.data : null;
+  const offered = ready?.languages.find(l => l.id === language);
+  const canRun = Boolean(ready?.available && offered) && run.kind !== 'running' && code.trim().length > 0;
+  const usedToday = run.kind === 'done' ? run.result.usedToday : ready?.usedToday;
+
+  const handleRun = async () => {
+    if (!canRun) return;
+    setRun({ kind: 'running' });
+    try {
+      const result = await apiClient.execution.run({ language, source: code, stdin });
+      setRun({ kind: 'done', result });
+    } catch (err) {
+      // no result: say so, never show output that was not produced
+      setRun({ kind: 'failed', message: (err as Error)?.message || 'The program could not be run.' });
+    }
   };
 
   const handleCopy = () => {
@@ -51,13 +62,16 @@ int main() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const labelFor = (id: ExecutionLanguageId) => ready?.languages.find(l => l.id === id)?.label ?? FALLBACK_NAMES[id];
+  const headline = run.kind === 'done' ? runHeadline(run.result) : null;
+
   return (
     <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 space-y-6 max-w-7xl mx-auto flex flex-col">
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-mono">
-            <Terminal className="w-3.5 h-3.5" />
+            <Terminal className="w-3.5 h-3.5" aria-hidden="true" />
             MULTI-LANGUAGE PLAYGROUND
           </div>
           <h1 className="text-2xl font-bold font-mono text-ink mt-2">
@@ -67,29 +81,54 @@ int main() {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-cyan-300">
-            <Globe className="w-3.5 h-3.5 mr-2 text-cyan-400" />
+            <Globe className="w-3.5 h-3.5 mr-2 text-cyan-400" aria-hidden="true" />
             <select
-              value={selectedLanguage}
-              onChange={(e) => setLanguage(e.target.value as ProgrammingLanguage)}
+              aria-label="Language to run"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as ExecutionLanguageId)}
               className="bg-transparent focus:outline-none cursor-pointer"
             >
-              <option value="cpp" className="bg-slate-900">C++ (GCC 13)</option>
-              <option value="c" className="bg-slate-900">C (GCC 13)</option>
-              <option value="java" className="bg-slate-900">Java (OpenJDK 21)</option>
-              <option value="python" className="bg-slate-900">Python (3.11)</option>
+              {(Object.keys(FALLBACK_NAMES) as ExecutionLanguageId[]).map(id => (
+                <option key={id} value={id} className="bg-slate-900">{labelFor(id)}</option>
+              ))}
             </select>
           </div>
 
           <button
             onClick={handleRun}
-            disabled={isRunning}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all"
+            disabled={!canRun}
+            aria-busy={run.kind === 'running'}
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Play className="w-4 h-4 fill-white" />
-            <span>{isRunning ? 'Running...' : 'Run Code'}</span>
+            <Play className="w-4 h-4 fill-white" aria-hidden="true" />
+            <span>{run.kind === 'running' ? 'Running...' : 'Run Code'}</span>
           </button>
         </div>
       </div>
+
+      {info.state === 'error' && (
+        <div role="alert" data-testid="playground-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1">Code execution could not be loaded: {info.message}</span>
+          <button type="button" onClick={retryLanguages} className="font-mono font-bold underline underline-offset-2">Retry</button>
+        </div>
+      )}
+      {ready && !ready.available && (
+        <div role="status" data-testid="playground-unavailable" className="flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Code execution is not available on this server, so programs cannot be run. You can still write and copy code.</span>
+        </div>
+      )}
+      {ready?.available && !offered && (
+        <div role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
+          {FALLBACK_NAMES[language]} cannot be run on this server.
+        </div>
+      )}
+      {ready?.provider === 'fake' && (
+        <div role="note" data-testid="playground-fake-provider" className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-mono text-slate-300">
+          Test mode: this server uses a fake execution provider. Programs are not compiled or run.
+        </div>
+      )}
 
       {/* Main Grid: Code Editor | Console */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
@@ -97,23 +136,25 @@ int main() {
         <div className="lg:col-span-7 bg-surface border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-xl min-h-[450px]">
           <div className="px-4 py-3 bg-page border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-mono font-bold text-slate-200">main.{selectedLanguage}</span>
+              <Terminal className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+              <span className="text-xs font-mono font-bold text-slate-200" data-testid="source-file-name">{SOURCE_FILE_NAMES[language]}</span>
             </div>
 
             <button
               onClick={handleCopy}
               className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400 hover:text-cyan-300"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" /> : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
 
           <div className="flex-1 p-3 bg-surface">
             <textarea
+              aria-label="Source code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              maxLength={ready?.limits.sourceMaxChars}
               className="w-full h-full min-h-[380px] bg-transparent text-slate-200 font-mono text-xs focus:outline-none resize-none leading-relaxed"
               spellCheck={false}
             />
@@ -122,18 +163,20 @@ int main() {
 
         {/* Input Config & Console Output Column */}
         <div className="lg:col-span-5 flex flex-col gap-4">
-          {/* Custom Input Config */}
+          {/* Standard input for the program */}
           <div className="bg-surface border border-slate-800 rounded-2xl p-4 space-y-2 shadow-lg">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300">
-              <Sliders className="w-4 h-4 text-cyan-400" />
-              <span>CUSTOM ARRAY INPUT</span>
-            </div>
-            <input
-              type="text"
-              value={inputArrayStr}
-              onChange={(e) => setInputArrayStr(e.target.value)}
-              placeholder="Comma separated integers..."
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500/50"
+            <label htmlFor="playground-stdin" className="flex items-center gap-2 text-xs font-mono font-bold text-slate-300">
+              <Sliders className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+              <span>STANDARD INPUT (STDIN)</span>
+            </label>
+            <textarea
+              id="playground-stdin"
+              rows={3}
+              value={stdin}
+              onChange={(e) => setStdin(e.target.value)}
+              maxLength={ready?.limits.stdinMaxChars}
+              placeholder="Input your program reads, e.g. comma separated integers..."
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500/50 resize-y"
             />
           </div>
 
@@ -141,20 +184,65 @@ int main() {
           <div className="flex-1 bg-[#05070D] light:bg-surface-raised border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl min-h-[300px]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3">
               <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
                 EXECUTION CONSOLE
               </span>
-              <button
-                onClick={() => setOutputConsole('')}
-                className="p-1 rounded text-slate-500 hover:text-slate-300"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-3">
+                {ready?.available && usedToday !== undefined && (
+                  <span data-testid="playground-usage" className="text-[10px] font-mono text-slate-400">
+                    {usedToday} / {ready.limits.dailyPerUser} runs today
+                  </span>
+                )}
+                <button
+                  onClick={() => setRun({ kind: 'idle' })}
+                  aria-label="Clear console"
+                  className="p-1 rounded text-slate-400 hover:text-slate-300"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
 
-            <pre className="flex-1 font-mono text-xs text-cyan-300/90 whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar">
-              {outputConsole}
-            </pre>
+            <div data-testid="run-console" className="flex-1 font-mono text-xs leading-relaxed overflow-y-auto custom-scrollbar space-y-3" aria-live="polite">
+              {run.kind === 'idle' && (
+                <p className="text-slate-400">
+                  {info.state === 'loading' ? 'Checking code execution…' : ready?.available ? 'Ready. Press "Run Code" to compile and run your program.' : 'Code execution is unavailable.'}
+                </p>
+              )}
+              {run.kind === 'running' && <p role="status" className="text-cyan-300">Running on the execution service…</p>}
+              {run.kind === 'failed' && (
+                <p role="alert" data-testid="run-failed" className="text-rose-400">
+                  Not run: {run.message}
+                </p>
+              )}
+              {run.kind === 'done' && headline && (
+                <>
+                  <p role="status" data-testid="run-status" data-status={run.result.status} className={`font-bold ${TONE_CLASS[headline.tone]}`}>
+                    {headline.text}
+                  </p>
+                  {run.result.compileOutput && (
+                    <section aria-label="Compiler output">
+                      <h2 className="text-[10px] font-bold text-slate-400 uppercase">Compiler output</h2>
+                      <pre data-testid="run-compile-output" className="whitespace-pre-wrap text-rose-300">{run.result.compileOutput}</pre>
+                    </section>
+                  )}
+                  <section aria-label="Standard output">
+                    <h2 className="text-[10px] font-bold text-slate-400 uppercase">Output (stdout)</h2>
+                    <pre data-testid="run-stdout" className="whitespace-pre-wrap text-cyan-300/90">{run.result.stdout || <span className="text-slate-400">(no output)</span>}</pre>
+                  </section>
+                  {run.result.stderr && (
+                    <section aria-label="Standard error">
+                      <h2 className="text-[10px] font-bold text-slate-400 uppercase">Errors (stderr)</h2>
+                      <pre data-testid="run-stderr" className="whitespace-pre-wrap text-amber-300">{run.result.stderr}</pre>
+                    </section>
+                  )}
+                  {run.result.truncated && <p className="text-amber-300">Output was cut short: it exceeded the size the server returns.</p>}
+                  <p data-testid="run-metrics" className="text-slate-400">
+                    {[run.result.language?.label, runMetrics(run.result)].filter(Boolean).join(' · ')}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

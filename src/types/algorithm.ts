@@ -290,7 +290,10 @@ export interface PracticeProblem {
   solved: boolean;
   description: string;
   starterCode: Record<ProgrammingLanguage, string>;
+  /** the visible tests only (hidden tests never reach the browser) */
   testCases: { input: string; expected: string }[];
+  /** judged by running the program on its tests; otherwise attempts are recorded without a verdict */
+  autoJudged?: boolean;
 }
 
 export interface DSAPattern {

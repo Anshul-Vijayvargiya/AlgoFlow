@@ -71,6 +71,8 @@ const problemInputSchema = z.strictObject({
     })
     .optional(),
   testCases: z.array(z.strictObject(testCaseShape)).min(1, 'At least one testcase is required'),
+  // 'stdio' only when the test cases are complete program inputs and outputs (see src/data/practiceProblems.ts)
+  judgeMode: z.enum(['none', 'stdio']).optional(),
   publicationStatus: problemFields.publicationStatus.default('published'),
 });
 
@@ -97,6 +99,7 @@ const problemUpdateSchema = z
       })
       .optional(),
     testCases: z.array(z.strictObject(testCaseShape)).min(1, 'At least one testcase is required').optional(),
+    judgeMode: z.enum(['none', 'stdio']).optional(),
     publicationStatus: problemFields.publicationStatus.optional(),
   })
   .refine((body) => Object.keys(body).some((key) => key !== 'problemId'), {

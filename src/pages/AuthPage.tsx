@@ -29,7 +29,8 @@ const IS_DEV = import.meta.env.DEV;
 const FEATURES = [
   { icon: Play,      label: 'Interactive Algorithm Visualizer', color: 'from-cyan-500 to-blue-500' },
   { icon: Code2,     label: 'Multi-Language Practice Arena',    color: 'from-blue-500 to-purple-500' },
-  { icon: Brain,     label: 'AI-Powered DSA Tutor',            color: 'from-purple-500 to-pink-500' },
+  // no AI claim here: whether the AI Tutor is enabled is only known after signing in (it may be off on this server)
+  { icon: Brain,     label: 'Step-by-Step Explanations',       color: 'from-purple-500 to-pink-500' },
   { icon: BarChart2, label: 'Progress Tracking & Analytics',   color: 'from-pink-500 to-cyan-500' },
 ];
 
@@ -191,7 +192,7 @@ export const AuthPage: React.FC = () => {
           {/* Item 1: Updated tagline */}
           <p className="text-slate-400 text-lg mb-10 leading-relaxed">
             A smarter way to learn Data Structures & Algorithms. Visualize, code, and
-            conquer every topic with AI guidance.
+            conquer every topic step by step.
           </p>
 
           {/* Feature list */}
@@ -482,13 +483,12 @@ export const AuthPage: React.FC = () => {
               )}
             </form>
 
-            {/* Terms (register mode) */}
+            {/* Privacy note (register mode) */}
             {mode === 'register' && (
               <p className="mt-5 text-center text-xs text-slate-500 leading-relaxed">
-                By creating an account, you agree to AlgoFlow's{' '}
-                <span className="text-cyan-500/70 cursor-pointer hover:text-cyan-400 transition-colors">Terms of Service</span>{' '}
-                and{' '}
-                <span className="text-cyan-500/70 cursor-pointer hover:text-cyan-400 transition-colors">Privacy Policy</span>.
+                {/* there are no Terms of Service yet: nothing to agree to or link to until they are written */}
+                How AlgoFlow handles your data is described in the draft{' '}
+                <Link to="/privacy" className="text-cyan-500/70 hover:text-cyan-400 transition-colors underline underline-offset-2">Privacy Policy</Link>.
               </p>
             )}
           </div>
@@ -497,19 +497,12 @@ export const AuthPage: React.FC = () => {
           <div className="mt-6 flex items-center justify-center gap-4" role="contentinfo">
             <span className="text-[11px] text-slate-600">© 2025 AlgoFlow</span>
             <span className="text-slate-700">·</span>
-            <button
-              type="button"
-              className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-500 rounded"
-            >
-              Terms
-            </button>
-            <span className="text-slate-700">·</span>
-            <button
-              type="button"
+            <Link
+              to="/privacy"
               className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-500 rounded"
             >
               Privacy
-            </button>
+            </Link>
             {IS_DEV && (
               <>
                 <span className="text-slate-700">·</span>

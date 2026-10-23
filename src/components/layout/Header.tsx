@@ -131,7 +131,7 @@ export const Header: React.FC = () => {
             id="header-ai-tutor-btn"
             onClick={() => setAiDrawerOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-purple-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 text-xs font-mono font-bold shadow-sm transition-all"
-            title="Open AI DSA Tutor"
+            title="Open the AI Tutor"
             aria-label="AI Tutor"
           >
             <Bot className="w-4 h-4 text-cyan-400" />
@@ -286,14 +286,19 @@ export const Header: React.FC = () => {
         </div>
       </header>
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-      />
+      {/* Settings Modal: mounted only while open, so its form always starts from the signed-in account's saved values */}
+      {settingsModalOpen && (
+        <SettingsModal
+          // sibling keys must differ: the AI Tutor drawer below is keyed by account too
+          key={`settings:${user?.id ?? 'signed-out'}`}
+          isOpen
+          onClose={() => setSettingsModalOpen(false)}
+        />
+      )}
 
       {/* AI Tutor Drawer Overlay */}
-      <AITutorDrawer isOpen={aiDrawerOpen} onClose={() => setAiDrawerOpen(false)} />
+      {/* keyed by account: a conversation never carries over to another account */}
+      <AITutorDrawer key={`tutor:${user?.id ?? 'signed-out'}`} isOpen={aiDrawerOpen} onClose={() => setAiDrawerOpen(false)} />
     </>
   );
 };

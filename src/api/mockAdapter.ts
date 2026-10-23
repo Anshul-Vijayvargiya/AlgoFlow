@@ -1,102 +1,89 @@
-import type { ApiClient, UserProfile, NoteRecord, UserProgressData } from './client';
+import type {
+  ApiClient,
+  UserProfile,
+  NoteRecord,
+  UserProgressData,
+  AlgorithmTrack,
+  VisualizerActivityResult,
+  LegacyActivityReport,
+  AlgorithmProgressReset,
+  ExecutionLanguages,
+  ExecutionLanguageId,
+  RunResult,
+  TutorStatus,
+  TutorQuestion,
+  TutorReply,
+  SubmissionRecord,
+  SubmissionResult,
+} from './client';
+import { FAKE_LANGUAGE_LABELS, FakeProviderUnavailableError, fakeExecute } from '../execution/fakeExecution';
+import { outputsMatch } from '../execution/judgeCore';
+import { PRACTICE_PROBLEMS } from '../data/practiceProblems';
 import { normalizeRole } from './client';
+import {
+  AVAILABLE_ALGORITHM_COUNT,
+  IMPLEMENTED_ALGORITHM_COUNT,
+  IMPLEMENTED_TOPICS,
+  isImplementedAlgorithm,
+  topicOfAlgorithm,
+} from '../data/algorithmCatalog';
 import type { PracticeProblem } from '../types/algorithm';
 
 
-const INITIAL_PROBLEMS: PracticeProblem[] = [
-  {
-    id: 'p1',
-    title: 'Two Sum',
-    difficulty: 'Easy',
-    category: 'Arrays',
-    tags: ['Arrays', 'Hash Table'],
-    solved: true,
-    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
-    starterCode: {
-      cpp: 'class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Your code here\n    }\n};',
-      c: 'int* twoSum(int* nums, int numsSize, int target, int* returnSize) {\n    // Your code here\n}',
-      java: 'class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Your code here\n    }\n}',
-      python: 'class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        pass'
-    },
-    testCases: [
-      { input: 'nums = [2,7,11,15], target = 9', expected: '[0,1]' },
-      { input: 'nums = [3,2,4], target = 6', expected: '[1,2]' }
-    ]
-  },
-  {
-    id: 'p2',
-    title: 'Valid Parentheses',
-    difficulty: 'Easy',
-    category: 'Stack',
-    tags: ['Stack', 'Strings'],
-    solved: true,
-    description: 'Given a string s containing characters `(`, `)`, `{`, `}`, `[` and `]`, determine if the input string is valid.',
-    starterCode: {
-      cpp: 'class Solution {\npublic:\n    bool isValid(string s) {\n        // Your code here\n    }\n};',
-      c: 'bool isValid(char * s) {\n    // Your code here\n}',
-      java: 'class Solution {\n    public boolean isValid(String s) {\n        // Your code here\n    }\n}',
-      python: 'class Solution:\n    def isValid(self, s: str) -> bool:\n        pass'
-    },
-    testCases: [
-      { input: 's = "()[]{}"', expected: 'true' },
-      { input: 's = "(]"', expected: 'false' }
-    ]
-  },
-  {
-    id: 'p3',
-    title: 'Merge Two Sorted Lists',
-    difficulty: 'Easy',
-    category: 'Linked List',
-    tags: ['Linked List', 'Recursion'],
-    solved: false,
-    description: 'You are given the heads of two sorted linked lists list1 and list2. Merge the two lists into one sorted list.',
-    starterCode: {
-      cpp: 'ListNode* mergeTwoLists(ListNode* list1, ListNode* list2) {\n    // Your code here\n}',
-      c: 'struct ListNode* mergeTwoLists(struct ListNode* list1, struct ListNode* list2) {\n    // Your code here\n}',
-      java: 'public ListNode mergeTwoLists(ListNode list1, ListNode list2) {\n    // Your code here\n}',
-      python: 'def mergeTwoLists(self, list1: Optional[ListNode], list2: Optional[ListNode]) -> Optional[ListNode]:\n    pass'
-    },
-    testCases: [
-      { input: 'l1 = [1,2,4], l2 = [1,3,4]', expected: '[1,1,2,3,4,4]' }
-    ]
-  },
-  {
-    id: 'p4',
-    title: 'Container With Most Water',
-    difficulty: 'Medium',
-    category: 'Arrays',
-    tags: ['Arrays', 'Two Pointers', 'Greedy'],
-    solved: false,
-    description: 'Find two lines that together with the x-axis form a container, such that the container contains the most water.',
-    starterCode: {
-      cpp: 'int maxArea(vector<int>& height) {\n    // Your code here\n}',
-      c: 'int maxArea(int* height, int heightSize) {\n    // Your code here\n}',
-      java: 'public int maxArea(int[] height) {\n    // Your code here\n}',
-      python: 'def maxArea(self, height: List[int]) -> int:\n    pass'
-    },
-    testCases: [
-      { input: 'height = [1,8,6,2,5,4,8,3,7]', expected: '49' }
-    ]
-  },
-  {
-    id: 'p5',
-    title: 'Binary Tree Level Order Traversal',
-    difficulty: 'Medium',
-    category: 'Trees',
-    tags: ['Trees', 'BFS'],
-    solved: false,
-    description: 'Given the root of a binary tree, return the level order traversal of its nodes values.',
-    starterCode: {
-      cpp: 'vector<vector<int>> levelOrder(TreeNode* root) {\n    // Your code here\n}',
-      c: 'int** levelOrder(struct TreeNode* root, int* returnSize, int** returnColumnSizes) {\n    // Your code here\n}',
-      java: 'public List<List<Integer>> levelOrder(TreeNode root) {\n    // Your code here\n}',
-      python: 'def levelOrder(self, root: Optional[TreeNode]) -> List[List[int]]:\n    pass'
-    },
-    testCases: [
-      { input: 'root = [3,9,20,null,null,15,7]', expected: '[[3],[9,20],[15,7]]' }
-    ]
-  },
-];
+/**
+ * The seeded practice problems as the server returns them (public part only: hidden tests are server-only). The mock
+ * API judges against these visible tests with the fake execution rules, for UI tests; it never runs code.
+ */
+const MOCK_PROBLEMS: PracticeProblem[] = PRACTICE_PROBLEMS.map(p => ({
+  id: p.problemId,
+  title: p.title,
+  difficulty: p.difficulty,
+  category: p.category,
+  tags: p.tags,
+  description: p.description,
+  starterCode: p.starterCode,
+  testCases: p.visibleTests,
+  autoJudged: true,
+  solved: false,
+}));
+
+/** practice history kept on the device (the server keeps it in the database) */
+const MOCK_PRACTICE_KEY = 'algoflow_practice_state';
+interface MockPracticeState {
+  submissions: Record<string, SubmissionRecord[]>;
+}
+function readPracticeState(): MockPracticeState {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MOCK_PRACTICE_KEY) ?? 'null');
+    if (parsed && typeof parsed.submissions === 'object') return parsed;
+  } catch {
+    // unreadable: start again
+  }
+  return { submissions: {} };
+}
+
+/** the server's judging rules (server/services/judging/judge.ts) applied with the fake execution rules */
+function mockJudge(source: string, tests: { input: string; expected: string }[]): SubmissionResult {
+  const base = { judged: true, runtimeMs: 1, memoryMb: 1, testsTotal: tests.length };
+  for (let i = 0; i < tests.length; i++) {
+    const t = tests[i];
+    let r;
+    try {
+      r = fakeExecute(source, t.input);
+    } catch (err) {
+      if (!(err instanceof FakeProviderUnavailableError)) throw err;
+      return { ...base, status: 'JUDGING_ERROR', passed: false, testsPassed: i, errorCode: 'provider_unavailable',
+        message: 'Judging error: The code execution service is unavailable, so judging could not finish. Your solution was not judged; please try again.' };
+    }
+    const tally = `${i} of ${tests.length} tests passed`;
+    const failedTest = (extra: object = {}) => ({ number: i + 1, hidden: false, input: t.input, expected: t.expected, ...extra });
+    if (r.status === 'compile_error') return { ...base, status: 'COMPILATION_ERROR', passed: false, testsPassed: 0, compileOutput: r.compileOutput, message: 'Compilation failed: no tests were run.' };
+    if (r.status === 'timeout') return { ...base, status: 'TIME_LIMIT_EXCEEDED', passed: false, testsPassed: i, failedTest: failedTest(), message: `Time limit exceeded on test ${i + 1} (${tally}).` };
+    if (r.status === 'runtime_error') return { ...base, status: 'RUNTIME_ERROR', passed: false, testsPassed: i, failedTest: failedTest({ stderr: r.stderr, actual: r.stdout }), message: `Runtime error on test ${i + 1} (${tally}).` };
+    if (!outputsMatch(r.stdout, t.expected)) return { ...base, status: 'WRONG_ANSWER', passed: false, testsPassed: i, failedTest: failedTest({ actual: r.stdout }), message: `Wrong answer on test ${i + 1} (${tally}).` };
+  }
+  return { ...base, status: 'ACCEPTED', passed: true, testsPassed: tests.length, message: `Accepted: all ${tests.length} tests passed.` };
+}
 
 const INITIAL_NOTES: NoteRecord[] = [
   {
@@ -119,6 +106,62 @@ const INITIAL_NOTES: NoteRecord[] = [
   }
 ];
 
+/** visualizer activity recorded by the mock API, kept on the device so it survives reloads (as the server keeps it) */
+const MOCK_VISUALIZER_ACTIVITY_KEY = 'algoflow_visualizer_activity';
+// the estimated minutes stay fixed demo values (the daily goal's tests use them); every count is derived from what
+// was done in this browser, the same way the server derives it
+const MOCK_DEMO_MINUTES = [45, 60, 30, 80, 65, 90, 75];
+// the AI Tutor's test controls (see tutor below and e2e/tests/tutor.spec.ts)
+const MOCK_TUTOR_STATUS_KEY = 'algoflow_mock_tutor_status';
+const MOCK_TUTOR_RELEASE_EVENT = 'algoflow-mock-tutor-release';
+interface MockVisualizerActivity {
+  /** date → algorithm → furthest step viewed (step index + 1) */
+  days: Record<string, Record<string, number>>;
+  tracks: Record<string, { lastStepIndex: number; lastActivityAt: string }>;
+}
+const mockDateString = (d: Date) => d.toISOString().slice(0, 10);
+
+/** the last 7 UTC days (today last), as the server builds them: walkthroughs and submissions recorded on each */
+function mockWeeklyActivity(activity: MockVisualizerActivity): UserProgressData['weeklyActivity'] {
+  const { submissions } = readPracticeState();
+  const submittedOn = Object.values(submissions)
+    .flat()
+    .filter(s => s.status !== 'JUDGING_ERROR' && s.createdAt)
+    .map(s => s.createdAt!.slice(0, 10));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - (6 - i));
+    const date = mockDateString(d);
+    const stepped = activity.days[date] ?? {};
+    return {
+      day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()],
+      date,
+      minutes: MOCK_DEMO_MINUTES[i],
+      steps: Object.values(stepped).reduce((a, b) => a + b, 0),
+      submissions: submittedOn.filter(day => day === date).length,
+      walkthroughs: Object.keys(stepped).length,
+    };
+  });
+}
+function readMockVisualizerActivity(): MockVisualizerActivity {
+  // a storage failure is reported to the caller, like a failed request
+  const saved = localStorage.getItem(MOCK_VISUALIZER_ACTIVITY_KEY);
+  try {
+    const parsed = JSON.parse(saved ?? 'null');
+    if (parsed && typeof parsed.days === 'object' && typeof parsed.tracks === 'object') return parsed;
+  } catch {
+    // unreadable: start again
+  }
+  return { days: {}, tracks: {} };
+}
+
+/** every note kept on the device (seeded with the demo notes on first use) */
+function readMockNotes(): NoteRecord[] {
+  const saved = localStorage.getItem('algoflow_notes');
+  if (!saved) localStorage.setItem('algoflow_notes', JSON.stringify(INITIAL_NOTES));
+  return saved ? JSON.parse(saved) : [...INITIAL_NOTES];
+}
+
 export class MockApiClient implements ApiClient {
   auth = {
     async login(email: string, _pass?: string): Promise<UserProfile> {
@@ -128,8 +171,9 @@ export class MockApiClient implements ApiClient {
         email,
         streakDays: 14,
         solvedCount: 42,
-        algorithmsLearned: 18,
-        progressPercent: 68,
+        // matches the progress data: nothing can be completed yet
+        algorithmsLearned: 0,
+        progressPercent: 0,
         role: email?.includes('admin') ? 'ADMIN' : 'USER',
         accountStatus: 'active',
         preferences: {
@@ -148,8 +192,8 @@ export class MockApiClient implements ApiClient {
         email,
         streakDays: 1,
         solvedCount: 0,
-        algorithmsLearned: 1,
-        progressPercent: 5,
+        algorithmsLearned: 0,
+        progressPercent: 0,
         role: 'USER',
         accountStatus: 'active',
         preferences: {
@@ -189,8 +233,9 @@ export class MockApiClient implements ApiClient {
         email: 'alex@algoflow.io',
         streakDays: 14,
         solvedCount: 42,
-        algorithmsLearned: 18,
-        progressPercent: 68,
+        // matches the progress data: nothing can be completed yet
+        algorithmsLearned: 0,
+        progressPercent: 0,
         role: 'USER',
         accountStatus: 'active',
         preferences: {
@@ -204,112 +249,165 @@ export class MockApiClient implements ApiClient {
 
   practice = {
     async getProblems(): Promise<{ problems: PracticeProblem[]; total: number; page: number; limit: number; totalPages: number }> {
-      const saved = localStorage.getItem('algoflow_problems');
-      const list = saved ? JSON.parse(saved) : INITIAL_PROBLEMS;
-      if (!saved) localStorage.setItem('algoflow_problems', JSON.stringify(INITIAL_PROBLEMS));
-      return {
-        problems: list,
-        total: list.length,
-        page: 1,
-        limit: list.length,
-        totalPages: 1,
-      };
+      const { submissions } = readPracticeState();
+      const problems = MOCK_PROBLEMS.map(p => ({ ...p, solved: (submissions[p.id] ?? []).some(s => s.passed) }));
+      return { problems, total: problems.length, page: 1, limit: problems.length, totalPages: 1 };
     },
     async getProblemById(id: string): Promise<PracticeProblem | undefined> {
       const res = await this.getProblems();
       return res.problems.find((p) => p.id === id);
     },
-    async submitSolution(problemId: string, _language?: string, _code?: string): Promise<{ passed: boolean; runtimeMs: number; memoryMb: number; message: string; submissionId?: string }> {
-      const res = await this.getProblems();
-      const updated = res.problems.map((p) => (p.id === problemId ? { ...p, solved: true } : p));
-      localStorage.setItem('algoflow_problems', JSON.stringify(updated));
-      return {
-        passed: true,
-        runtimeMs: Math.floor(Math.random() * 40) + 12,
-        memoryMb: 14.2,
-        message: 'All test cases passed successfully!',
-        submissionId: 'sub_' + Date.now(),
+    async submitSolution(problemId: string, language: string, code: string): Promise<SubmissionResult> {
+      const problem = MOCK_PROBLEMS.find(p => p.id === problemId);
+      if (!problem) throw new Error('Problem not found.');
+      const result = mockJudge(code, problem.testCases);
+      const state = readPracticeState();
+      const id = `sub_${Date.now()}`;
+      const record: SubmissionRecord = {
+        id, problemId, language, code, status: result.status, passed: result.passed, runtimeMs: result.runtimeMs, memoryMb: result.memoryMb,
+        message: result.message, testsPassed: result.testsPassed, testsTotal: result.testsTotal,
+        failedTestNumber: result.failedTest?.number, failedTestHidden: result.failedTest?.hidden, createdAt: new Date().toISOString(),
       };
+      state.submissions[problemId] = [record, ...(state.submissions[problemId] ?? [])];
+      localStorage.setItem(MOCK_PRACTICE_KEY, JSON.stringify(state));
+      return { ...result, submissionId: id };
     },
-    async getSubmissions(_problemId: string) {
-      return [];
+    async getSubmissions(problemId: string): Promise<SubmissionRecord[]> {
+      return readPracticeState().submissions[problemId] ?? [];
     },
   };
 
   progress = {
     async getUserProgress(): Promise<UserProgressData> {
+      // minutes, solved problems and the streak are fixed demo values; everything about algorithms, and the weekly
+      // counts, is derived from the activity recorded on this device, the same way the server derives it
+      const activity = readMockVisualizerActivity();
+      const tracks = Object.keys(activity.tracks).filter(isImplementedAlgorithm);
+      const topicCoverage = IMPLEMENTED_TOPICS.map(({ topic, algorithmIds }) => ({
+        topic,
+        implemented: algorithmIds.length,
+        practised: algorithmIds.filter(id => tracks.includes(id)).length,
+        completed: 0,
+      }));
       return {
-        weeklyActivity: [
-          { day: 'Mon', minutes: 45, steps: 120 },
-          { day: 'Tue', minutes: 60, steps: 180 },
-          { day: 'Wed', minutes: 30, steps: 90 },
-          { day: 'Thu', minutes: 80, steps: 240 },
-          { day: 'Fri', minutes: 65, steps: 195 },
-          { day: 'Sat', minutes: 90, steps: 310 },
-          { day: 'Sun', minutes: 75, steps: 220 },
-        ],
+        weeklyActivity: mockWeeklyActivity(activity),
         difficultyDistribution: [
           { name: 'Easy', value: 24, color: '#10B981' },
           { name: 'Medium', value: 14, color: '#F59E0B' },
           { name: 'Hard', value: 4, color: '#F43F5E' },
         ],
-        topicProficiency: [
-          { topic: 'Sorting', score: 90 },
-          { topic: 'Searching', score: 85 },
-          { topic: 'Arrays', score: 78 },
-          { topic: 'Trees', score: 65 },
-          { topic: 'Graphs', score: 55 },
-          { topic: 'DP', score: 45 },
-        ],
+        topicProficiency: topicCoverage.map(t => ({ topic: t.topic, score: 0 })),
+        topicCoverage,
+        algorithmTotals: {
+          available: AVAILABLE_ALGORITHM_COUNT,
+          implemented: IMPLEMENTED_ALGORITHM_COUNT,
+          practised: tracks.length,
+          completed: 0,
+        },
         streakDays: 14,
         solvedCount: 42,
-        algorithmsLearned: 18,
-        overallProgressPercent: 68,
+        // nothing can be completed: there is no verified completion rule
+        algorithmsLearned: 0,
+        overallProgressPercent: 0,
       };
     },
-    async getAlgorithmTracks() {
-      return [];
+    async getAlgorithmTracks(): Promise<AlgorithmTrack[]> {
+      const { tracks } = readMockVisualizerActivity();
+      return Object.entries(tracks)
+        .filter(([id]) => isImplementedAlgorithm(id))
+        .map(([algorithmId, t]) => ({
+          algorithmId,
+          topic: topicOfAlgorithm(algorithmId) ?? undefined,
+          status: 'in_progress' as const,
+          stepsCompleted: 0,
+          totalSteps: 0,
+          lastStepIndex: t.lastStepIndex,
+          executionCount: 0,
+          lastActivityAt: t.lastActivityAt,
+        }));
     },
-    async recordActivity(activity: any): Promise<UserProgressData> {
-      const current = await this.getUserProgress();
-      current.weeklyActivity[6].minutes += activity.minutes || 0;
-      current.weeklyActivity[6].steps += activity.steps || 0;
-      return current;
+    async recordActivity(activity: LegacyActivityReport): Promise<UserProgressData> {
+      // the same rules as POST /api/progress/activity: visualizer steps of an implemented algorithm, kept as the day's
+      // maximum; minutes are ignored; no track is created
+      if ((activity.activityType ?? 'visualizer_step') !== 'visualizer_step') throw new Error('Validation failed');
+      if (!isImplementedAlgorithm(activity.algorithmId)) throw new Error('Unknown algorithm.');
+      if (!Number.isInteger(activity.steps) || activity.steps < 2) throw new Error('Validation failed');
+      const stored = readMockVisualizerActivity();
+      const day = (stored.days[mockDateString(new Date())] ??= {});
+      day[activity.algorithmId] = Math.max(day[activity.algorithmId] ?? 0, activity.steps);
+      localStorage.setItem(MOCK_VISUALIZER_ACTIVITY_KEY, JSON.stringify(stored));
+      return this.getUserProgress();
     },
-    async updateAlgorithmProgress(algorithmId: string, data: any) {
+    async updateAlgorithmProgress(algorithmId: string, data: AlgorithmProgressReset): Promise<AlgorithmTrack> {
+      // the same rules as PUT /api/progress/algorithms/:id: only a reset of an existing record
+      if (!isImplementedAlgorithm(algorithmId)) throw new Error('Unknown algorithm.');
+      if (data?.status !== 'not_started') throw new Error('Validation failed');
+      const stored = readMockVisualizerActivity();
+      const track = stored.tracks[algorithmId];
+      if (!track) throw new Error('No progress has been recorded for this algorithm.');
+      // the mock keeps only started tracks, so a reset removes it
+      delete stored.tracks[algorithmId];
+      localStorage.setItem(MOCK_VISUALIZER_ACTIVITY_KEY, JSON.stringify(stored));
       return {
         algorithmId,
-        status: data.status || 'completed',
-        stepsCompleted: data.stepsCompleted || 10,
-        totalSteps: data.totalSteps || 10,
-        lastStepIndex: data.lastStepIndex || 9,
-        executionCount: 1,
-        lastActivityAt: new Date().toISOString(),
+        topic: topicOfAlgorithm(algorithmId) ?? undefined,
+        status: 'not_started',
+        stepsCompleted: 0,
+        totalSteps: 0,
+        lastStepIndex: track.lastStepIndex,
+        executionCount: 0,
+        lastActivityAt: track.lastActivityAt,
       };
+    },
+    async recordVisualizerActivity(algorithmId: string, stepIndex: number): Promise<VisualizerActivityResult> {
+      // the same rules as POST /api/progress/visualizer-activity: implemented algorithms only, step >= 1, furthest step kept
+      if (!isImplementedAlgorithm(algorithmId)) throw new Error('Unknown algorithm.');
+      if (!Number.isInteger(stepIndex) || stepIndex < 1) throw new Error('Validation failed');
+      const now = new Date();
+      const date = mockDateString(now);
+      const activity = readMockVisualizerActivity();
+      const day = (activity.days[date] ??= {});
+      day[algorithmId] = Math.max(day[algorithmId] ?? 0, stepIndex + 1);
+      activity.tracks[algorithmId] = {
+        lastStepIndex: Math.max(activity.tracks[algorithmId]?.lastStepIndex ?? 0, stepIndex),
+        lastActivityAt: now.toISOString(),
+      };
+      localStorage.setItem(MOCK_VISUALIZER_ACTIVITY_KEY, JSON.stringify(activity));
+      return { recorded: true, algorithmId, date, stepsViewed: day[algorithmId] };
     },
   };
 
   notes = {
-    async getNotes(): Promise<{ notes: NoteRecord[]; total: number; page: number; limit: number; totalPages: number }> {
-      const saved = localStorage.getItem('algoflow_notes');
-      const list = saved ? JSON.parse(saved) : INITIAL_NOTES;
-      if (!saved) localStorage.setItem('algoflow_notes', JSON.stringify(INITIAL_NOTES));
+    // the server's rules (GET /api/notes): filter all notes, newest first, then one page
+    async getNotes(params: { page?: number; limit?: number; search?: string; tag?: string; algorithmId?: string } = {}): Promise<{ notes: NoteRecord[]; total: number; page: number; limit: number; totalPages: number }> {
+      const page = params.page ?? 1;
+      const limit = params.limit ?? 20;
+      if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid query parameters.');
+      const q = params.search?.trim().toLowerCase();
+      const matching = readMockNotes()
+        .filter(n => !params.tag || params.tag === 'All' || n.tags.includes(params.tag))
+        .filter(n => !params.algorithmId || n.algorithmId === params.algorithmId)
+        .filter(n => !q || [n.title, n.content, ...n.tags].some(f => f.toLowerCase().includes(q)))
+        .sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
       return {
-        notes: list,
-        total: list.length,
-        page: 1,
-        limit: list.length,
-        totalPages: 1,
+        notes: matching.slice((page - 1) * limit, page * limit),
+        total: matching.length,
+        page,
+        limit,
+        totalPages: Math.ceil(matching.length / limit) || 1,
       };
     },
+    async getTags(): Promise<string[]> {
+      return [...new Set(readMockNotes().flatMap(n => n.tags))].filter(Boolean).sort((x, y) => x.localeCompare(y));
+    },
     async getNoteById(id: string): Promise<NoteRecord> {
-      const { notes } = await this.getNotes();
+      const notes = readMockNotes();
       const n = notes.find((item) => item.id === id);
       if (!n) throw new Error('Note not found');
       return n;
     },
     async createNote(note: { title: string; content: string; tags?: string[]; algorithmId?: string }): Promise<NoteRecord> {
-      const { notes } = await this.getNotes();
+      const notes = readMockNotes();
       const newNote: NoteRecord = {
         id: 'n_' + Date.now(),
         title: note.title,
@@ -330,7 +428,7 @@ export class MockApiClient implements ApiClient {
       return this.createNote(note);
     },
     async updateNote(id: string, note: any): Promise<NoteRecord> {
-      const { notes } = await this.getNotes();
+      const notes = readMockNotes();
       const existing = notes.find((n) => n.id === id);
       if (!existing) throw new Error('Note not found');
       if (note.title !== undefined) existing.title = note.title;
@@ -342,7 +440,7 @@ export class MockApiClient implements ApiClient {
       return existing;
     },
     async deleteNote(id: string): Promise<void> {
-      const { notes } = await this.getNotes();
+      const notes = readMockNotes();
       const filtered = notes.filter((n) => n.id !== id);
       localStorage.setItem('algoflow_notes', JSON.stringify(filtered));
     },
@@ -392,6 +490,59 @@ export class MockApiClient implements ApiClient {
       return p;
     },
     async deleteProblem(_id: string): Promise<void> {},
+  };
+
+  // the same fake as the server's EXECUTION_PROVIDER=fake: it never runs code and says so in its labels
+  execution = {
+    async getLanguages(): Promise<ExecutionLanguages> {
+      return {
+        available: true,
+        provider: 'fake',
+        languages: (Object.keys(FAKE_LANGUAGE_LABELS) as ExecutionLanguageId[]).map(id => ({ id, label: FAKE_LANGUAGE_LABELS[id] })),
+        limits: { sourceMaxChars: 50_000, stdinMaxChars: 10_000, dailyPerUser: 100 },
+        usedToday: 0,
+      };
+    },
+    async run({ language, source, stdin }: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<RunResult> {
+      try {
+        const result = fakeExecute(source, stdin);
+        return { ...result, truncated: false, language: { id: language, label: FAKE_LANGUAGE_LABELS[language] }, provider: 'fake', usedToday: 1, dailyLimit: 100 };
+      } catch (err) {
+        if (err instanceof FakeProviderUnavailableError) {
+          throw new Error('The code execution service is unavailable right now. Your program was not run; please try again later.');
+        }
+        throw err;
+      }
+    },
+  };
+
+  // automated tests only (the mock API never ships in a deployable build): never a model, and it says so.
+  // A test picks the server state the drawer sees with localStorage[MOCK_TUTOR_STATUS_KEY]: 'unavailable' (no
+  // provider), 'gemini' (the status a Gemini server reports, to check the data-use notice; answers stay fake) or
+  // 'error-once' (the next status check fails). A question containing FAKE:HOLD waits for MOCK_TUTOR_RELEASE_EVENT.
+  tutor = {
+    async getStatus(): Promise<TutorStatus> {
+      const scenario = localStorage.getItem(MOCK_TUTOR_STATUS_KEY);
+      const limits = { questionMaxChars: 500, dailyPerUser: 30 };
+      if (scenario === 'error-once') {
+        localStorage.removeItem(MOCK_TUTOR_STATUS_KEY);
+        throw new Error('Network error. Please check your connection.');
+      }
+      if (scenario === 'unavailable') return { available: false, provider: null, model: null, limits, usedToday: 0 };
+      if (scenario === 'gemini') return { available: true, provider: 'gemini', model: 'gemini-mock-model', limits, usedToday: 0 };
+      return { available: true, provider: 'fake', model: 'fake-tutor', limits, usedToday: 0 };
+    },
+    async ask(q: TutorQuestion): Promise<TutorReply> {
+      if (q.question.includes('FAKE:HOLD')) await new Promise(resolve => window.addEventListener(MOCK_TUTOR_RELEASE_EVENT, resolve, { once: true }));
+      if (q.question.includes('FAKE:UNAVAILABLE')) throw new Error('The AI Tutor could not get an answer right now. Please try again.');
+      return {
+        answer: `[Test answer from the fake provider] Algorithm: ${q.algorithmId}. Step: ${q.stepIndex + 1}. Turns received: ${q.history.length + 1}. Question: ${q.question.slice(0, 120)}`,
+        truncated: q.question.includes('FAKE:TRUNCATED'),
+        model: 'fake-tutor',
+        usedToday: 1,
+        dailyLimit: 30,
+      };
+    },
   };
 }
 

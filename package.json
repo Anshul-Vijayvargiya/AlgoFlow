@@ -7,6 +7,7 @@
     "dev": "vite",
     "server": "tsx server/index.ts",
     "admin:bootstrap": "tsx server/scripts/bootstrapAdmin.ts",
+    "problems:migrate": "tsx server/scripts/migratePracticeProblems.ts",
     "env:secrets": "tsx server/scripts/generateLocalSecrets.ts",
     "test": "vitest run",
     "build": "tsc -b && vite build",
@@ -21,7 +22,10 @@
     "e2e:install": "playwright install chromium firefox webkit",
     "verify": "npm test && npm run typecheck && npm run lint && npm run build && npm run e2e",
     "e2e:cross": "playwright test --project=firefox --project=webkit --project=mobile-chromium --project=mobile-webkit",
-    "e2e:all": "playwright test"
+    "e2e:all": "playwright test",
+    "e2e:real": "playwright test --config playwright.real.config.ts --project=chromium-real",
+    "e2e:real:cross": "playwright test --config playwright.real.config.ts --project=firefox-real --project=webkit-real",
+    "e2e:real:api": "tsx server/e2e/startE2eApi.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
