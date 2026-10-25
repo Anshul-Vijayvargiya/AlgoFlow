@@ -138,6 +138,20 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'O(1) range sum queries after O(n) build.',
     implemented: false,
   },
+  {
+    id: 'two-sum',
+    name: 'Two Sum',
+    category: 'ARRAYS',
+    subtitle: 'Hash map of earlier values: one pass, O(n).',
+    implemented: true,
+  },
+  {
+    id: 'majority-element',
+    name: 'Majority Element',
+    category: 'ARRAYS',
+    subtitle: 'Boyer–Moore voting, then a verifying count.',
+    implemented: true,
+  },
 
   // ─── LINKED LIST ────────────────────────────────────────
   {

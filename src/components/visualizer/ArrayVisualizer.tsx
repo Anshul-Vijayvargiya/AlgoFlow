@@ -4,6 +4,8 @@ import { Bar } from './Bar';
 import { barHeightPercent, barTransitionMs, deriveStepVisuals, pointerLabel } from './barVisuals';
 import type { Outcome } from './barVisuals';
 import { CheckCircle2, SearchX, Flag, Inbox } from 'lucide-react';
+import { ValueCard } from './ValueCards';
+import { HashMapPanel } from './HashMapPanel';
 
 interface ArrayVisualizerProps {
   currentStep: ExecutionStep;
@@ -53,6 +55,8 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   const target = typeof vars.target === 'number' ? vars.target : undefined;
   const pivot = typeof vars.pivot === 'number' ? vars.pivot : undefined;
   const buffers = currentStep.buffers ?? [];
+  const tracker = currentStep.tracker ?? [];
+  const hashMap = currentStep.hashMap;
   const outcomeInfo = outcome ? OUTCOME_TEXT[outcome] : null;
 
   return (
@@ -89,6 +93,20 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
         ))}
       </div>
 
+      {/* Values kept beside the array (Two Sum's complement, Boyer–Moore's candidate and count) and a hash map */}
+      {(tracker.length > 0 || hashMap) && (
+        <div className="flex flex-col md:flex-row md:items-start gap-2 px-1">
+          {tracker.length > 0 && (
+            <dl aria-label="Values at this step" data-testid="tracker" className="flex flex-wrap gap-2">
+              {tracker.map(cell => (
+                <ValueCard key={cell.name} cell={cell} transitionMs={transitionMs} size="compact" />
+              ))}
+            </dl>
+          )}
+          {hashMap && <HashMapPanel map={hashMap} transitionMs={transitionMs} />}
+        </div>
+      )}
+
       {/* Temporary buffers (e.g. Merge Sort): values that are NOT on any bar */}
       {buffers.length > 0 && (
         <div data-testid="buffers" className="flex flex-wrap gap-x-6 gap-y-2 px-1">
@@ -121,7 +139,8 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-mono font-bold ${outcomeInfo.tone}`}
         >
           <outcomeInfo.Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-          {outcomeInfo.text}
+          {/* the trace's own words for what it found (e.g. the pair), when it gives them */}
+          {currentStep.outcomeText ?? outcomeInfo.text}
         </div>
       )}
     </div>

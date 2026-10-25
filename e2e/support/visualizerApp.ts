@@ -84,6 +84,17 @@ export interface UiState {
   stateText: string | null;
   /** the number view (null unless a number algorithm is selected) */
   numbers: NumberViewState | null;
+  /** the value cards beside an array's bars (Two Sum, Majority Element): name → value and role; {} when there are none */
+  tracker: Record<string, { value: string; role: string }>;
+  /** the hash map panel beside an array's bars (Two Sum), or null */
+  hashMap: HashMapState | null;
+}
+
+/** What the hash map panel shows. */
+export interface HashMapState {
+  entries: { key: number; value: number; mark: string }[];
+  /** the lookup line ("lookup 6: not in seen"), or null */
+  lookup: { text: string; found: boolean } | null;
 }
 
 /** What the number view shows: the value cards, the divisor checks so far and the result banner. */
@@ -315,14 +326,25 @@ export class VisualizerApp {
       const text = (sel: string) => document.querySelector(sel)?.textContent?.trim() ?? null;
       const rect = (el: Element) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
       const button = (prefix: string) => [...document.querySelectorAll('button')].find(b => b.textContent?.trim().startsWith(prefix));
+      const readCards = (sel: string) =>
+        Object.fromEntries([...document.querySelectorAll<HTMLElement>(sel)].map(e => [
+          e.dataset.numberCell!,
+          { value: e.querySelector('[data-number-value]')!.childNodes[0].textContent!.trim(), role: e.dataset.role ?? '' },
+        ]));
+      const readHashMap = () => {
+        const root = document.querySelector('[data-testid="hash-map"]');
+        if (!root) return null;
+        const lookup = root.querySelector<HTMLElement>('[data-testid="hash-lookup"]');
+        return {
+          entries: [...root.querySelectorAll<HTMLElement>('li[data-key]')].map(e => ({ key: Number(e.dataset.key), value: Number(e.dataset.value), mark: e.dataset.mark ?? '' })),
+          lookup: lookup ? { text: lookup.textContent?.trim() ?? '', found: lookup.dataset.found === 'true' } : null,
+        };
+      };
       const readNumbers = () => {
         if (!document.querySelector('[data-testid="number-visualizer"]')) return null;
         const banner = document.querySelector<HTMLElement>('[data-testid="number-result"]');
         return {
-          cells: Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-number-cell]')].map(e => [
-            e.dataset.numberCell!,
-            { value: e.querySelector('[data-number-value]')!.childNodes[0].textContent!.trim(), role: e.dataset.role ?? '' },
-          ])),
+          cells: readCards('[data-number-cell]'),
           operation: text('[data-testid="number-operation"]'),
           divisors: [...document.querySelectorAll<HTMLElement>('[data-testid="divisor-checks"] li')].map(e => ({
             divisor: Number(e.dataset.divisor),
@@ -435,6 +457,8 @@ export class VisualizerApp {
         pointerReadouts: [...document.querySelectorAll<HTMLElement>('[data-pointer-readout]')].map(e => [e.dataset.pointerReadout!, e.textContent?.trim() ?? '']),
         stateText: text('[data-testid="step-state"]'),
         numbers: readNumbers(),
+        tracker: readCards('[data-testid="tracker"] [data-number-cell]'),
+        hashMap: readHashMap(),
       } as UiState;
       };
 

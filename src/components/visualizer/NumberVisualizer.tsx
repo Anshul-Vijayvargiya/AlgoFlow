@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, XCircle, ArrowLeftRight } from 'lucide-react';
-import type { ExecutionStep, NumberCell } from '../../types/algorithm';
+import type { ExecutionStep } from '../../types/algorithm';
+import { ValueCard } from './ValueCards';
 
 interface NumberVisualizerProps {
   currentStep: ExecutionStep;
@@ -8,39 +9,11 @@ interface NumberVisualizerProps {
   stepIntervalMs?: number;
 }
 
-const CELL_TONE: Record<'changed' | 'current' | 'none', string> = {
-  changed: 'bg-emerald-500/15 border-emerald-400 text-emerald-300 scale-105 shadow-lg shadow-emerald-500/10',
-  current: 'bg-amber-500/15 border-amber-400/70 text-amber-200',
-  none: 'bg-slate-900/80 border-slate-700 text-slate-300',
-};
-
 const RESULT_TONE = {
   prime: { tone: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', Icon: CheckCircle2 },
   'not-prime': { tone: 'bg-rose-500/15 border-rose-500/40 text-rose-300', Icon: XCircle },
   swapped: { tone: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', Icon: ArrowLeftRight },
 } as const;
-
-/** how a cell's role is said in words (the colour is never the only signal) */
-const ROLE_TEXT = { changed: 'changed', current: 'in use' } as const;
-
-const Cell: React.FC<{ cell: NumberCell; transitionMs: number }> = ({ cell, transitionMs }) => {
-  const role = cell.role ?? 'none';
-  return (
-    <div
-      data-number-cell={cell.name}
-      data-role={cell.role ?? ''}
-      style={{ transitionDuration: `${transitionMs}ms` }}
-      className={`min-w-[5.5rem] flex-1 sm:flex-none rounded-2xl border px-4 py-3 text-center transition-[transform,background-color,border-color] motion-reduce:transition-none motion-reduce:scale-100 ${CELL_TONE[role]}`}
-    >
-      <dt className="text-[11px] font-mono text-slate-400">{cell.name}</dt>
-      <dd className="text-2xl sm:text-3xl font-mono font-bold text-ink tabular-nums" data-number-value>
-        {cell.value === null ? <span className="text-slate-500">—</span> : cell.value}
-        {cell.value === null && <span className="sr-only">not set</span>}
-      </dd>
-      {cell.role && <dd className="text-[10px] font-mono uppercase tracking-wide mt-0.5">{ROLE_TEXT[cell.role]}</dd>}
-    </div>
-  );
-};
 
 /**
  * Number algorithms (visual: 'numbers'): the named values of the current step as cards, the divisors a prime check
@@ -70,7 +43,7 @@ export const NumberVisualizer: React.FC<NumberVisualizerProps> = ({ currentStep,
 
         <dl aria-label="Values at this step" className="relative z-10 w-full flex flex-wrap justify-center gap-3">
           {view.cells.map(cell => (
-            <Cell key={cell.name} cell={cell} transitionMs={transitionMs} />
+            <ValueCard key={cell.name} cell={cell} transitionMs={transitionMs} />
           ))}
         </dl>
 

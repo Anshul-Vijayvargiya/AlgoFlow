@@ -295,6 +295,38 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     // Java and Python return the swapped pair; the C and C++ functions are void (they change the caller's variables)
     'fn-exit': /return new int\[\] \{ a, b \}|^\s*return a, b\s*$|void swapNumbers\(/,
   },
+
+  // ─── Arrays: hash map and voting ───
+  'two-sum': {
+    'fn-entry': /two_?sum\(/i,
+    // C creates its open-addressing table (the lines before clear and size it); the others create an empty map
+    'init-map': /\bseen = (\{\}|new HashMap)|unordered_map<int, int> seen|Map seen = \{/,
+    'loop-condition': /for \(?(int )?i\b.*(i < |range\(len\(nums\)\))/,
+    'calc-complement': /\bcomplement = target - nums\[i\]/,
+    // C finds the complement's slot on the line before this test
+    lookup: /if \(?(seen\.count\(complement\)|seen\.containsKey\(complement\)|complement in seen|seen\.index\[s\] != -1)/,
+    'return-pair': /return (\{seen\[complement\], i\}|new int\[\] \{ seen\.get\(complement\), i \}|seen\[complement\], i|true)/,
+    store: /seen\[nums\[i\]\] = i|seen\.put\(nums\[i\], i\)|seen\.index\[s\] = i/,
+    'return-none': /return (\{\}|new int\[0\]|None|false)/,
+  },
+  'majority-element': {
+    'fn-entry': /majority_?element\(/i,
+    'init-vars': /candidate.*count.*=|candidate, count = None, 0/,
+    'loop-condition': /for \(?(int |size_t )?i\b/,
+    'check-zero': /if \(?count == 0/,
+    'set-candidate': /^\s*candidate = nums\[i\];?$/,
+    'check-match': /if \(?nums\[i\] == candidate/,
+    'increment-count': /count(\+\+| \+= 1)/,
+    'decrement-count': /count(--| -= 1)/,
+    'init-freq': /^\s*(int )?freq = 0;?$/,
+    'verify-loop': /for \(?(int |size_t )?i\b/,
+    'verify-match': /if \(?nums\[i\] == candidate/,
+    'increment-freq': /freq(\+\+| \+= 1)/,
+    'check-majority': /if \(?freq > (n|\(int\)nums\.size\(\)|nums\.length|len\(nums\)) \/\/? 2/,
+    // C and C++ write the out-parameter on the line before `return true;`
+    'return-majority': /return (candidate|true)/,
+    'return-none': /return (false|null|None)/,
+  },
 };
 
 /**

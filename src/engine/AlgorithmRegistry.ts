@@ -32,6 +32,8 @@ import { llDeleteAtDefinition } from './algorithms/linkedList/deleteAt';
 import { reverseLinkedListDefinition } from './algorithms/linkedList/reverse';
 import { primeCheckDefinition } from './algorithms/primeCheck';
 import { swapTwoNumbersDefinition } from './algorithms/swapTwoNumbers';
+import { twoSumDefinition } from './algorithms/twoSum';
+import { majorityElementDefinition } from './algorithms/majorityElement';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
@@ -61,6 +63,8 @@ register(llDeleteAtDefinition);
 register(reverseLinkedListDefinition);
 register(primeCheckDefinition);
 register(swapTwoNumbersDefinition);
+register(twoSumDefinition);
+register(majorityElementDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
