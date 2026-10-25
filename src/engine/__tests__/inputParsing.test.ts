@@ -126,11 +126,11 @@ describe('sortedness helpers', () => {
 });
 
 describe('algorithm input specs (declared on the real definitions)', () => {
-  it('exactly Linear Search, Binary Search and Two Pointer take a target', () => {
+  it('exactly Linear Search, Binary Search, Two Pointer and Two Sum take a target', () => {
     const withTarget = getAllAlgorithms().filter(d => d.inputSpec?.target).map(d => d.id).sort();
-    expect(withTarget).toEqual(['binary-search', 'linear-search', 'two-pointer']);
+    expect(withTarget).toEqual(['binary-search', 'linear-search', 'two-pointer', 'two-sum']);
   });
-  it('exactly Binary Search and Two Pointer require sorted input; Linear Search and the sorts do not', () => {
+  it('exactly Binary Search and Two Pointer require sorted input; Linear Search, Two Sum and the sorts do not', () => {
     const sortedReq = getAllAlgorithms().filter(d => d.inputSpec?.sortedRequired).map(d => d.id).sort();
     expect(sortedReq).toEqual(['binary-search', 'two-pointer']);
   });

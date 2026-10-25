@@ -54,7 +54,9 @@ export type AlgorithmId =
   | 'activity-selection'
   | 'n-queens'
   | 'prime-check'
-  | 'swap-two-numbers';
+  | 'swap-two-numbers'
+  | 'two-sum'
+  | 'majority-element';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -172,6 +174,21 @@ export interface ExecutionStep {
    */
   numbers?: NumberView;
 
+  /**
+   * Array algorithms: named values the algorithm keeps beside the array (Two Sum's complement, Boyer–Moore's candidate
+   * and count), shown as cards next to the bars. Each step carries the values as they are after it.
+   */
+  tracker?: readonly NumberCell[];
+
+  /** Array algorithms that keep a hash map (Two Sum): its entries after this step, and what this step did with it */
+  hashMap?: HashMapView;
+
+  /**
+   * The last ('complete') step only: what the run found, in words (e.g. the pair and its indices). Replaces the
+   * generic text of the outcome banner; the outcome itself is still derived from the trace.
+   */
+  outcomeText?: string;
+
   /** Extra metadata */
   extraInfo?: {
     pivotIndex?: number;
@@ -194,6 +211,20 @@ export interface NumberView {
   readonly divisorChecks?: readonly { readonly divisor: number; readonly remainder: number }[];
   /** the final answer, on the last step only */
   readonly result?: { readonly kind: 'prime' | 'not-prime' | 'swapped'; readonly text: string };
+}
+
+/** A hash map at one step: its entries in insertion order, and the lookup / write the step performed. */
+export interface HashMapView {
+  /** e.g. "seen" */
+  readonly name: string;
+  /** what keys and values mean, e.g. "value" → "index" */
+  readonly keyLabel: string;
+  readonly valueLabel: string;
+  readonly entries: readonly { readonly key: number; readonly value: number }[];
+  /** this step looked up `key`; `found` says whether the map had it */
+  readonly lookup?: { readonly key: number; readonly found: boolean };
+  /** this step wrote `key`: a new entry, or a new value for a key already in the map */
+  readonly write?: { readonly key: number; readonly kind: 'insert' | 'update' };
 }
 
 // ─── Algorithm Definition (single source of truth) ───────────────────────────

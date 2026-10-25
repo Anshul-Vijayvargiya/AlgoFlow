@@ -22,6 +22,8 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'linear-search': { id: 'linear-search', label: 'Linear Search', heading: 'Linear Search' },
   'binary-search': { id: 'binary-search', label: 'Binary Search', heading: 'Binary Search' },
   'two-pointer': { id: 'two-pointer', label: 'Two Pointer', heading: 'Two Pointer Technique' },
+  'two-sum': { id: 'two-sum', label: 'Two Sum', heading: 'Two Sum' },
+  'majority-element': { id: 'majority-element', label: 'Majority Element', heading: 'Majority Element' },
 };
 
 /** Linked-list operations: drawn as nodes, with their own input form (kept apart from ALGORITHMS, whose specs expect bars). */
