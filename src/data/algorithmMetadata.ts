@@ -45,6 +45,7 @@ export const ALGORITHM_CATEGORIES: { id: AlgorithmCategory; label: string }[] = 
   { id: 'DP', label: 'DYNAMIC PROGRAMMING' },
   { id: 'GREEDY', label: 'GREEDY' },
   { id: 'BACKTRACKING', label: 'BACKTRACKING' },
+  { id: 'FUNDAMENTALS', label: 'FUNDAMENTALS' },
 ];
 
 export const ALGORITHM_NAV: AlgorithmNavItem[] = [
@@ -332,6 +333,21 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     category: 'BACKTRACKING',
     subtitle: 'Place N queens so none attack each other.',
     implemented: false,
+  },
+  // ─── FUNDAMENTALS (implemented; listed last so the order above is unchanged) ───
+  {
+    id: 'prime-check',
+    name: 'Prime Number Checker',
+    category: 'FUNDAMENTALS',
+    subtitle: 'Tests divisors from 2 while i × i ≤ n.',
+    implemented: true,
+  },
+  {
+    id: 'swap-two-numbers',
+    name: 'Swap of Two Numbers',
+    category: 'FUNDAMENTALS',
+    subtitle: 'Exchanges a and b through a temporary variable.',
+    implemented: true,
   },
 ];
 

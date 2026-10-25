@@ -1,11 +1,15 @@
 import type { Page } from '@playwright/test';
 import { VisualizerApp } from '../support/visualizerApp';
+import { ALGORITHM_NAV } from '../../src/data/algorithmMetadata';
 import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, tracksOf, waitForDashboard, API_ORIGIN } from './fixtures';
 
 /**
  * Visualizer activity, Learning Paths and Progress against the real API and database (no mock). Persistence is
  * checked by reading it back from the server: after a reload, after signing out and in, and from a fresh browser.
  */
+
+/** the visualized algorithms, from the catalogue */
+const IMPLEMENTED = ALGORITHM_NAV.filter(a => a.implemented).length;
 
 /** steps once in the visualizer (Bubble Sort, the default) and waits for the server to accept the activity */
 async function stepBubbleSort(page: Page) {
@@ -99,8 +103,8 @@ test.describe('Real backend — progress', () => {
     await stepBubbleSort(page);
     await page.goto('/progress');
     await expect(page.getByTestId('progress-stats')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.getByTestId('stat-explored')).toContainText('1 / 19');
-    await expect(page.getByTestId('stat-learned')).toContainText('0 / 19');
+    await expect(page.getByTestId('stat-explored')).toContainText(`1 / ${IMPLEMENTED}`);
+    await expect(page.getByTestId('stat-learned')).toContainText(`0 / ${IMPLEMENTED}`);
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-stats')).toHaveAttribute('aria-busy', 'false');
     await expect(page.getByTestId('continue-learning')).toContainText('Bubble Sort');
@@ -127,7 +131,7 @@ test.describe('Real backend — progress', () => {
     await expect(page.locator('[data-status="explored"]')).toHaveCount(0);
     await page.goto('/progress');
     await expect(page.getByTestId('progress-stats')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.getByTestId('stat-explored')).toContainText('0 / 19');
+    await expect(page.getByTestId('stat-explored')).toContainText(`0 / ${IMPLEMENTED}`);
     expect(await tracksOf(page)).toEqual([]);
   });
 });

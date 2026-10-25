@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BarChart2,
   Trophy,
@@ -26,7 +26,7 @@ import {
 } from 'recharts';
 import { useChartColors } from '../theme/chartColors';
 import { useProgressStore } from '../store/useProgressStore';
-import { algorithmTotals, dailyStepsSummary, percent, topicCoverageSummary } from './progress/progressData';
+import { algorithmTotals, dailyStepsSummary, percent, radarOuterRadius, topicCoverageSummary } from './progress/progressData';
 
 const card = 'bg-surface border border-cyan-500/15 rounded-2xl shadow-lg';
 const sectionHeading = 'text-sm font-mono font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2';
@@ -55,6 +55,8 @@ const Meter: React.FC<{ label: string; value: number; max: number; testId: strin
 export const ProgressPage: React.FC = () => {
   const chart = useChartColors();
   const { progress, isLoading, error, recordingError, fetchProgress } = useProgressStore();
+  // the radar's drawn size, so its radius leaves room for the topic names on narrow screens
+  const [radarSize, setRadarSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     fetchProgress();
@@ -271,8 +273,14 @@ export const ProgressPage: React.FC = () => {
                 {/* a radar needs three or more axes; with fewer topics the list below is the whole view */}
                 {topics.topics.length >= 3 && (
                   <div className="h-60 sm:h-72 w-full" aria-hidden="true">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="65%" data={topics.topics} accessibilityLayer={false}>
+                    <ResponsiveContainer width="100%" height="100%" onResize={(width, height) => setRadarSize({ width, height })}>
+                      <RadarChart
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={radarOuterRadius(radarSize.width, radarSize.height, topics.topics.map(t => t.topic))}
+                        data={topics.topics}
+                        accessibilityLayer={false}
+                      >
                         <PolarGrid stroke={chart.grid} />
                         <PolarAngleAxis dataKey="topic" stroke={chart.polarAngle} fontSize={11} />
                         {/* no tick labels: they crowd the centre on small screens; the list gives the exact values */}

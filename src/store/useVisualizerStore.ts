@@ -20,7 +20,7 @@
  */
 import { create } from 'zustand';
 import type { AlgorithmId, ExecutionStep, ProgrammingLanguage } from '../types/algorithm';
-import { getAlgorithmDefinition, resolveCodeRange, resolveCodeRef } from '../engine/AlgorithmRegistry';
+import { getAlgorithmDefinition, resolveCodeRange, resolveCodeRef, visualKindOf } from '../engine/AlgorithmRegistry';
 import { buildExecution } from '../engine/buildExecution';
 import type { ExecutionBuild, ExecutionFailure } from '../engine/buildExecution';
 import { defaultListIndex, lastListIndex, maxInputLength, sortedCopy, validateAlgorithmInput } from '../engine/inputParsing';
@@ -135,6 +135,9 @@ function runExecution(id: AlgorithmId, arr: number[], target: number | null, ind
   };
 }
 
+/** a whole number from min to max, inclusive */
+const randomInt = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
+
 function randomArray(size: number, ascending: boolean): number[] {
   const arr = Array.from({ length: size }, () => Math.floor(Math.random() * 85) + 10);
   return ascending ? sortedCopy(arr) : arr;
@@ -224,7 +227,12 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       const spec = def?.inputSpec;
       // a search target and a linked-list value share the number field
       const numberSpec = spec?.target ?? spec?.value;
-      if (s.inputSource === 'custom') {
+      // a number algorithm's values (n; a, b) and an array are different kinds of input: switching between them loads
+      // the new algorithm's own example (array ↔ linked list keeps a custom input, as before)
+      const fromKind = visualKindOf(getAlgorithmDefinition(s.selectedAlgorithm));
+      const toKind = visualKindOf(def);
+      const sameKindOfInput = fromKind === toKind || (fromKind !== 'numbers' && toKind !== 'numbers');
+      if (s.inputSource === 'custom' && sameKindOfInput) {
         const target = numberSpec ? (s.target ?? numberSpec.defaultValue) : s.target;
         const index = spec?.index ? (s.index ?? defaultListIndex(spec.index, s.array.length)) : s.index;
         commit(id, s.array, target, index, 'custom', null);
@@ -287,6 +295,13 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       const def = getAlgorithmDefinition(s.selectedAlgorithm);
       if (!def) return;
       const spec = def.inputSpec;
+      if (def.visual === 'numbers') {
+        // Randomize: one value per field, from the field's own range (there is no size to choose)
+        const values = (spec?.numbers ?? []).map(f => randomInt(...(f.random ?? [f.min, f.max])));
+        const kept = s.inputSource === 'custom' ? { kind: 'replaced-custom' as const, original: s.array } : s.inputNotice?.kind === 'replaced-custom' ? s.inputNotice : null;
+        commit(s.selectedAlgorithm, values, null, null, 'random', kept);
+        return;
+      }
       // deleting at a position needs at least one node
       const n = Math.max(spec?.index?.bound === 'delete' ? 1 : 0, Math.min(maxInputLength(def), Math.floor(size)));
       const numberSpec = spec?.target ?? spec?.value;

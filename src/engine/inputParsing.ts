@@ -6,7 +6,7 @@
  * never "fixed" silently. The only transformation offered anywhere is the explicit, user-triggered
  * `sortedCopy`, which the UI discloses.
  */
-import type { AlgorithmDefinition } from '../types/algorithm';
+import type { AlgorithmDefinition, NumberField } from '../types/algorithm';
 
 /** Keeps bars and pointer labels legible; far above anything the traces need to demonstrate. */
 export const MAX_ARRAY_SIZE = 16;
@@ -22,15 +22,15 @@ const DECIMAL = /^-?\d*\.\d+$/;
 
 const show = (token: string) => (token.length > 12 ? `${token.slice(0, 12)}…` : token);
 
-function parseWholeNumber(token: string, what: string): ParseResult<number> {
+function parseWholeNumber(token: string, what: string, min = MIN_VALUE, max = MAX_VALUE): ParseResult<number> {
   if (!WHOLE_NUMBER.test(token)) {
     if (DECIMAL.test(token)) return { ok: false, message: `${what} ("${show(token)}") is a decimal — only whole numbers are supported.` };
     if (/\s/.test(token)) return { ok: false, message: `${what} ("${show(token)}") contains a space — separate values with commas.` };
     return { ok: false, message: `${what} ("${show(token)}") is not a whole number.` };
   }
   const value = Number(token);
-  if (!Number.isSafeInteger(value) || value < MIN_VALUE || value > MAX_VALUE) {
-    return { ok: false, message: `${what} (${show(token)}) is out of range — use values from ${MIN_VALUE} to ${MAX_VALUE}.` };
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    return { ok: false, message: `${what} (${show(token)}) is out of range — use values from ${min} to ${max}.` };
   }
   return { ok: true, value: value === 0 ? 0 : value }; // normalises "-0"
 }
@@ -62,6 +62,41 @@ export function parseTargetInput(text: string, label = 'Target'): ParseResult<nu
   const token = text.trim();
   if (token === '') return { ok: false, message: `Enter a value for "${label}".` };
   return parseWholeNumber(token, label);
+}
+
+/** one field of a number algorithm (n; a, b): a whole number within the field's own range */
+export function parseNumberField(text: string, field: Pick<NumberField, 'label' | 'min' | 'max'>): ParseResult<number> {
+  const token = text.trim();
+  if (token === '') return { ok: false, message: `Enter a value for "${field.label}".` };
+  return parseWholeNumber(token, `"${field.label}"`, field.min, field.max);
+}
+
+/** the values of a number algorithm: exactly one per declared field, each a whole number within its range */
+function validateNumbers(def: Pick<AlgorithmDefinition, 'name' | 'inputSpec'>, values: number[]): InputValidation {
+  const fields = def.inputSpec?.numbers ?? [];
+  if (values.length !== fields.length) {
+    return { ok: false, canSortCopy: false, message: `${def.name} takes ${fields.map(f => f.label).join(' and ')} (${fields.length} value${fields.length === 1 ? '' : 's'}).` };
+  }
+  for (let i = 0; i < fields.length; i++) {
+    if (!Number.isInteger(values[i])) return { ok: false, canSortCopy: false, message: `Enter a whole number for "${fields[i].label}".` };
+    const r = parseNumberField(String(values[i]), fields[i]);
+    if (!r.ok) return { ok: false, canSortCopy: false, message: r.message };
+  }
+  return { ok: true };
+}
+
+export type NumberDraftValidation = { ok: true; values: number[] } | { ok: false; field: number; message: string };
+
+/** what the user has typed into a number algorithm's fields, in order; the first invalid field is reported */
+export function validateNumberDraft(def: Pick<AlgorithmDefinition, 'inputSpec'>, texts: readonly string[]): NumberDraftValidation {
+  const fields = def.inputSpec?.numbers ?? [];
+  const values: number[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const r = parseNumberField(texts[i] ?? '', fields[i]);
+    if (!r.ok) return { ok: false, field: i, message: r.message };
+    values.push(r.value);
+  }
+  return { ok: true, values };
 }
 
 /** Index i such that a[i-1] > a[i], or -1 when the array is non-decreasing. */
@@ -113,6 +148,7 @@ export function validateAlgorithmInput(
   index: number | null = null
 ): InputValidation {
   const spec = def.inputSpec;
+  if (def.visual === 'numbers') return validateNumbers(def, array);
   if (def.visual === 'linked-list') {
     if (array.length > maxInputLength(def)) return { ok: false, canSortCopy: false, message: tooManyNodesMessage(def, array.length) };
   } else if (array.length > MAX_ARRAY_SIZE) {

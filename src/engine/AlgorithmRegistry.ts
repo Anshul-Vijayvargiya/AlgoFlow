@@ -10,7 +10,7 @@
  * FAIL-SAFE: If an algorithm is not in this registry, the visualizer never falls back
  * to another algorithm. See buildExecution.ts for how the failure kinds are reported.
  */
-import type { AlgorithmId, AlgorithmDefinition, ProgrammingLanguage } from '../types/algorithm';
+import type { AlgorithmId, AlgorithmDefinition, ProgrammingLanguage, VisualKind } from '../types/algorithm';
 import { bubbleSortDefinition } from './algorithms/bubbleSort';
 import { selectionSortDefinition } from './algorithms/selectionSort';
 import { insertionSortDefinition } from './algorithms/insertionSort';
@@ -30,6 +30,8 @@ import { llBuildDefinition } from './algorithms/linkedList/build';
 import { llInsertAtDefinition } from './algorithms/linkedList/insertAt';
 import { llDeleteAtDefinition } from './algorithms/linkedList/deleteAt';
 import { reverseLinkedListDefinition } from './algorithms/linkedList/reverse';
+import { primeCheckDefinition } from './algorithms/primeCheck';
+import { swapTwoNumbersDefinition } from './algorithms/swapTwoNumbers';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
@@ -57,6 +59,8 @@ register(llBuildDefinition);
 register(llInsertAtDefinition);
 register(llDeleteAtDefinition);
 register(reverseLinkedListDefinition);
+register(primeCheckDefinition);
+register(swapTwoNumbersDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -99,7 +103,7 @@ export function resolveCodeRange(
 }
 
 /** How a definition's trace is drawn: 'array' unless it declares otherwise (every existing algorithm is 'array'). */
-export const visualKindOf = (def: Pick<AlgorithmDefinition, 'visual'> | undefined): 'array' | 'linked-list' =>
+export const visualKindOf = (def: Pick<AlgorithmDefinition, 'visual'> | undefined): VisualKind =>
   def?.visual ?? 'array';
 
 /**

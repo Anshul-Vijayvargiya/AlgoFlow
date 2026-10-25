@@ -274,6 +274,27 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'advance-curr': /^\s*curr = next(_node)?\b/,
     'set-head': /^\s*(list->|self\.)?head = prev\b/,
   },
+  'prime-check': {
+    // bool isPrime(int n) / boolean isPrime(int n) / def is_prime(n)
+    'fn-entry': /\bis_?prime\(\s*(int\s+)?n\s*\)/i,
+    'check-small': /\bif \(?n <= 1\)?/,
+    'return-small': /^\s*return (false|False);?\s*$/,
+    // C, C++ and Java start i in the for header; Python assigns it before the while loop
+    'init-i': /\bi = 2\b/,
+    'loop-condition': /\bi \* i <= n\b/,
+    'check-divisor': /\bif \(?n % i == 0\)?/,
+    'return-divisor': /^\s*return (false|False);?\s*$/,
+    'increment-i': /\bi\+\+|\bi \+= 1\b/,
+    'return-prime': /^\s*return (true|True);?\s*$/,
+  },
+  'swap-two-numbers': {
+    'fn-entry': /\bswap\w*\(/i,
+    'assign-temp': /\btemp = \*?a\b/,
+    'assign-a': /^\s*\*?a = \*?b;?\s*$/,
+    'assign-b': /^\s*\*?b = temp;?\s*$/,
+    // Java and Python return the swapped pair; the C and C++ functions are void (they change the caller's variables)
+    'fn-exit': /return new int\[\] \{ a, b \}|^\s*return a, b\s*$|void swapNumbers\(/,
+  },
 };
 
 /**

@@ -12,6 +12,8 @@ import { UnimplementedCard } from '../components/visualizer/UnimplementedCard';
 import { ExecutionErrorCard } from '../components/visualizer/ExecutionErrorCard';
 import { InputPanel } from '../components/visualizer/InputPanel';
 import { LinkedListInputPanel } from '../components/visualizer/LinkedListInputPanel';
+import { NumberVisualizer } from '../components/visualizer/NumberVisualizer';
+import { NumberInputPanel } from '../components/visualizer/NumberInputPanel';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
@@ -210,6 +212,7 @@ export const VisualizerPage: React.FC = () => {
                         stepIntervalMs={speed}
                       />
                     )}
+                    {currentStep && visual === 'numbers' && <NumberVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"
@@ -223,8 +226,8 @@ export const VisualizerPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Array / target input, or the linked-list form */}
-                  {visual === 'array' ? <InputPanel /> : <LinkedListInputPanel />}
+                  {/* Array / target input, the linked-list form, or a number algorithm's values */}
+                  {visual === 'array' ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : <NumberInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

@@ -8,6 +8,7 @@ import {
   arrayAlgorithms,
   def,
   hasDefaultRun,
+  inputsWithNumbers,
   randomArrays,
   sameMultiset,
   sortedCopy,
@@ -167,9 +168,7 @@ describe('searching algorithms — correct results (real generators)', () => {
 
 describe('execution-step consistency (all registered algorithms)', () => {
   const inputsFor = (d: { id: string }) =>
-    (d.id === 'binary-search' || d.id === 'two-pointer' ? [...Object.values(EDGE_INPUTS), ...FUZZ] : SORT_INPUTS).filter(input =>
-      hasDefaultRun(def(d.id), input)
-    );
+    inputsWithNumbers(def(d.id), d.id === 'binary-search' || d.id === 'two-pointer' ? [...Object.values(EDGE_INPUTS), ...FUZZ] : SORT_INPUTS);
 
   it('step ids are contiguous, first step is init and last step is complete', () => {
     for (const d of getAllAlgorithms()) {
@@ -339,7 +338,7 @@ describe('final positions vs Insertion Sort\'s sorted prefix (audit M1)', () => 
 
   it('only Insertion Sort reports a sorted prefix', () => {
     for (const d of getAllAlgorithms().filter(a => a.id !== 'insertion-sort')) {
-      for (const input of SORT_INPUTS.filter(i => hasDefaultRun(d, i))) {
+      for (const input of inputsWithNumbers(d, SORT_INPUTS)) {
         for (const s of d.generateSteps([...input], { target: 5 })) expect(s.sortedPrefixIndices, `${d.id} step ${s.id}`).toBeUndefined();
       }
     }
