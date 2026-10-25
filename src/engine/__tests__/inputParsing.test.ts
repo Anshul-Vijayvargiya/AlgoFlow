@@ -255,8 +255,10 @@ describe('linked-list input validation (rejected before execution)', () => {
     expect(validateAlgorithmInput(def('bubble-sort'), list(11), null, -5).ok).toBe(true);
   });
 
-  it('exactly the LINKED_LIST operations are drawn as linked lists; every other algorithm is still an array', () => {
-    for (const d of getAllAlgorithms()) expect(visualKindOf(d), d.id).toBe(d.category === 'LINKED_LIST' ? 'linked-list' : 'array');
+  it('exactly the LINKED_LIST operations are drawn as linked lists and the FUNDAMENTALS as numbers; every other algorithm is still an array', () => {
+    for (const d of getAllAlgorithms()) {
+      expect(visualKindOf(d), d.id).toBe(d.category === 'LINKED_LIST' ? 'linked-list' : d.category === 'FUNDAMENTALS' ? 'numbers' : 'array');
+    }
     expect(visualKindOf(undefined)).toBe('array');
     expect(visualKindOf(traverse)).toBe('linked-list');
   });

@@ -11,7 +11,8 @@ export type AlgorithmCategory =
   | 'GRAPHS'
   | 'DP'
   | 'GREEDY'
-  | 'BACKTRACKING';
+  | 'BACKTRACKING'
+  | 'FUNDAMENTALS';
 
 export type AlgorithmId =
   | 'bubble-sort'
@@ -51,7 +52,9 @@ export type AlgorithmId =
   | 'knapsack'
   | 'lcs'
   | 'activity-selection'
-  | 'n-queens';
+  | 'n-queens'
+  | 'prime-check'
+  | 'swap-two-numbers';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -163,11 +166,34 @@ export interface ExecutionStep {
    */
   list?: ListSnapshot;
 
+  /**
+   * Number algorithms only (visual: 'numbers'): the named values shown as cards at this step. `state` still holds the
+   * input values ([n] or [a, b]) as they are at this step, so generic consumers keep working.
+   */
+  numbers?: NumberView;
+
   /** Extra metadata */
   extraInfo?: {
     pivotIndex?: number;
     subRange?: [number, number];
   };
+}
+
+/** One named value shown by the number visualizer (n, i, n % i; a, b, temp). */
+export interface NumberCell {
+  readonly name: string;
+  /** null: not set yet (e.g. temp before it is assigned) */
+  readonly value: number | null;
+  /** 'changed': this step's statement wrote it; 'current': it is being read or tested */
+  readonly role?: 'changed' | 'current';
+}
+
+export interface NumberView {
+  readonly cells: readonly NumberCell[];
+  /** Prime checking: every divisor tried so far, in order, with n % divisor */
+  readonly divisorChecks?: readonly { readonly divisor: number; readonly remainder: number }[];
+  /** the final answer, on the last step only */
+  readonly result?: { readonly kind: 'prime' | 'not-prime' | 'swapped'; readonly text: string };
 }
 
 // ─── Algorithm Definition (single source of truth) ───────────────────────────
@@ -229,7 +255,23 @@ export interface AlgorithmInputSpec {
   };
   /** The operation adds a node, so the input list must leave room for it (at most MAX_LIST_SIZE - 1 nodes) */
   addsNode?: boolean;
+  /**
+   * Number algorithms (visual: 'numbers'): the named whole numbers the user enters, in order. They are passed as the
+   * input array ([n], or [a, b]); each must be an integer from min to max (inclusive).
+   */
+  numbers?: readonly NumberField[];
 }
+
+export interface NumberField {
+  label: string;
+  hint: string;
+  min: number;
+  max: number;
+  /** range Randomize picks from (defaults to min..max) */
+  random?: readonly [number, number];
+}
+
+export type VisualKind = 'array' | 'linked-list' | 'numbers';
 
 export interface AlgorithmDefinition {
   id: AlgorithmId;
@@ -244,10 +286,11 @@ export interface AlgorithmDefinition {
   inputSpec?: AlgorithmInputSpec;
 
   /**
-   * How the trace is drawn: 'array' (bars, the default when omitted) or 'linked-list' (nodes and links; every step
-   * then carries `list`). Existing definitions omit it and are unaffected.
+   * How the trace is drawn: 'array' (bars, the default when omitted), 'linked-list' (nodes and links; every step
+   * then carries `list`) or 'numbers' (named value cards; every step then carries `numbers`, and the input is the
+   * values declared by inputSpec.numbers). Existing definitions omit it and are unaffected.
    */
-  visual?: 'array' | 'linked-list';
+  visual?: VisualKind;
 
   /** Source code for each language. Missing languages show "Code unavailable." */
   code: AlgorithmCode;

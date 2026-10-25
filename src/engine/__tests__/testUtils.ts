@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import type { AlgorithmDefinition, ExecutionStep, ProgrammingLanguage } from '../../types/algorithm';
 import { getAllAlgorithms, visualKindOf } from '../AlgorithmRegistry';
-import { defaultListIndex } from '../inputParsing';
+import { defaultListIndex, validateAlgorithmInput } from '../inputParsing';
 
 export const LANGUAGES: ProgrammingLanguage[] = ['c', 'cpp', 'java', 'python'];
 
@@ -45,13 +45,30 @@ export const SORT_IDS = [
 export const arrayAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'array');
 /** Linked-list operations: their list can grow or shrink, so array-length invariants do not apply to them. */
 export const listAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'linked-list');
+/** Number algorithms (Prime Number Checker, Swap of Two Numbers): their input is named values ([n]; [a, b]), not an array. */
+export const numberAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'numbers');
+
+/**
+ * Representative valid inputs for each number algorithm, covering every path (for the prime check: n ≤ 1, the
+ * smallest primes with no loop iteration, a square, composites found at 2 and later, primes near the limits).
+ */
+export const NUMBER_INPUTS: Record<string, number[][]> = {
+  'prime-check': [[-999], [-5], [0], [1], [2], [3], [4], [9], [15], [25], [29], [49], [97], [1000], [9973], [10000]],
+  'swap-two-numbers': [[5, 9], [0, 0], [7, 7], [-3, 12], [999, -999], [-999, 999]],
+};
+
+/** the inputs a generic test should run: the given array inputs, plus a number algorithm's own representative values */
+export const inputsWithNumbers = (d: AlgorithmDefinition, arrays: readonly number[][]): number[][] =>
+  visualKindOf(d) === 'numbers' ? [d.defaultInput, ...(NUMBER_INPUTS[d.id] ?? [])] : arrays.filter(input => hasDefaultRun(d, input));
 
 /**
  * Whether a call with default parameters has a valid trace: every array algorithm runs on any array, while Delete
- * at Position has no node to delete in an empty list (the app rejects that input before running anything). Generic
- * registry tests skip such inputs, and a test checks that the generator refuses each one.
+ * at Position has no node to delete in an empty list, and a number algorithm runs only on its own values ([n];
+ * [a, b], each in range). The app rejects such inputs before running anything; generic registry tests skip them,
+ * and a test checks that the generator refuses each one.
  */
 export function hasDefaultRun(d: AlgorithmDefinition, input: readonly number[]): boolean {
+  if (visualKindOf(d) === 'numbers') return validateAlgorithmInput(d, [...input], null).ok;
   const index = d.inputSpec?.index;
   return !index || defaultListIndex(index, input.length) !== null;
 }

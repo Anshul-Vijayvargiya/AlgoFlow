@@ -106,7 +106,9 @@ describe('registry ↔ navigation consistency', () => {
 
   it('every nav entry builds without an error status', () => {
     for (const nav of ALGORITHM_NAV) {
-      const r = buildExecution(nav.id, [5, 3, 8, 1]);
+      // a number algorithm takes its own values ([n]; [a, b]), not an array: it builds from its example
+      const d = getAlgorithmDefinition(nav.id);
+      const r = buildExecution(nav.id, d?.visual === 'numbers' ? d.defaultInput : [5, 3, 8, 1]);
       expect(['ok', 'unimplemented'], nav.id).toContain(r.status);
     }
   });

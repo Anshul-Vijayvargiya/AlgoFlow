@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { ALGORITHMS, LIST_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
+import { ALGORITHMS, LIST_ALGORITHMS, NUMBER_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
 
 export interface BarState {
   index: number;
@@ -82,6 +82,17 @@ export interface UiState {
   pointerReadouts: [string, string][];
   /** the explanation panel's state read-out ("4 → 7 → NULL" for lists) */
   stateText: string | null;
+  /** the number view (null unless a number algorithm is selected) */
+  numbers: NumberViewState | null;
+}
+
+/** What the number view shows: the value cards, the divisor checks so far and the result banner. */
+export interface NumberViewState {
+  /** name → value as shown ("—" when not set) and role ('changed', 'current' or '') */
+  cells: Record<string, { value: string; role: string }>;
+  operation: string | null;
+  divisors: { divisor: number; current: boolean; divides: boolean; text: string }[];
+  result: { kind: string; text: string } | null;
 }
 
 export type Speed = 'fast' | 'medium';
@@ -160,7 +171,7 @@ export class VisualizerApp {
   }
 
   async selectAlgorithm(id: AlgorithmId) {
-    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id];
+    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id] ?? NUMBER_ALGORITHMS[id];
     const name = new RegExp(`^${label}(?![a-z])`);
     const drawerToggle = this.page.getByRole('button', { name: 'Open algorithm list' });
     if (await drawerToggle.isVisible()) {
@@ -304,6 +315,24 @@ export class VisualizerApp {
       const text = (sel: string) => document.querySelector(sel)?.textContent?.trim() ?? null;
       const rect = (el: Element) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
       const button = (prefix: string) => [...document.querySelectorAll('button')].find(b => b.textContent?.trim().startsWith(prefix));
+      const readNumbers = () => {
+        if (!document.querySelector('[data-testid="number-visualizer"]')) return null;
+        const banner = document.querySelector<HTMLElement>('[data-testid="number-result"]');
+        return {
+          cells: Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-number-cell]')].map(e => [
+            e.dataset.numberCell!,
+            { value: e.querySelector('[data-number-value]')!.childNodes[0].textContent!.trim(), role: e.dataset.role ?? '' },
+          ])),
+          operation: text('[data-testid="number-operation"]'),
+          divisors: [...document.querySelectorAll<HTMLElement>('[data-testid="divisor-checks"] li')].map(e => ({
+            divisor: Number(e.dataset.divisor),
+            current: e.dataset.current === 'true',
+            divides: e.dataset.divides === 'true',
+            text: e.textContent?.trim() ?? '',
+          })),
+          result: banner ? { kind: banner.dataset.resultKind ?? '', text: banner.textContent?.trim() ?? '' } : null,
+        };
+      };
       const readList = () => {
         const root = document.querySelector('[data-testid="list-visualizer"]');
         if (!root) return null;
@@ -405,6 +434,7 @@ export class VisualizerApp {
         indexValue: document.querySelector<HTMLInputElement>('#index-input')?.value ?? null,
         pointerReadouts: [...document.querySelectorAll<HTMLElement>('[data-pointer-readout]')].map(e => [e.dataset.pointerReadout!, e.textContent?.trim() ?? '']),
         stateText: text('[data-testid="step-state"]'),
+        numbers: readNumbers(),
       } as UiState;
       };
 

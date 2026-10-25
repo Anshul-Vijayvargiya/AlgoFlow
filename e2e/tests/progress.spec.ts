@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { ALGORITHM_NAV } from '../../src/data/algorithmMetadata';
+import { IMPLEMENTED_TOPICS } from '../../src/data/algorithmCatalog';
 
 /**
  * Progress accuracy and visualizer activity (UI sprint, phase 2). The E2E build uses the mock API, which applies the
@@ -153,9 +154,17 @@ test.describe('Progress', () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await openProgress(page);
     const radar = page.getByTestId('topic-coverage').locator('.recharts-polar-radius-axis');
-    await expect(page.getByTestId('topic-coverage').locator('.recharts-polar-angle-axis-tick')).toHaveCount(4);
+    const ticks = page.getByTestId('topic-coverage').locator('.recharts-polar-angle-axis-tick');
+    await expect(ticks).toHaveCount(IMPLEMENTED_TOPICS.length);
+    // every topic name is drawn whole, inside the chart (a long name beside a side vertex was cut off at the edge)
+    const chart = await page.getByTestId('topic-coverage').locator('svg.recharts-surface').boundingBox();
+    for (const box of await ticks.locator('text').evaluateAll(els => els.map(e => e.getBoundingClientRect()).map(r => ({ left: r.left, right: r.right })))) {
+      expect(box.left).toBeGreaterThanOrEqual(chart!.x - 0.5);
+      expect(box.right).toBeLessThanOrEqual(chart!.x + chart!.width + 0.5);
+    }
     await expect(radar.locator('.recharts-polar-radius-axis-tick')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect(page.getByTestId('topic-coverage-list')).toContainText('Linked List');
+    await expect(page.getByTestId('topic-coverage-list')).toContainText('Fundamentals');
   });
 });

@@ -38,6 +38,12 @@ export const LIST_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; h
   'reverse-linked-list': { id: 'reverse-linked-list', label: 'Reverse Linked List', heading: 'Reverse Linked List' },
 };
 
+/** The number algorithms (visual 'numbers'): their input is the values n, or a and b. */
+export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
+  'prime-check': { id: 'prime-check', label: 'Prime Number Checker', heading: 'Prime Number Checker' },
+  'swap-two-numbers': { id: 'swap-two-numbers', label: 'Swap of Two Numbers', heading: 'Swap of Two Numbers' },
+};
+
 /** The parameters a linked-list operation takes, as the app passes them ({ value } and/or { index }). */
 export interface ListParams {
   value?: number;

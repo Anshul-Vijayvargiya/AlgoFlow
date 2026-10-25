@@ -34,3 +34,20 @@ export function topicCoverageSummary(coverage: TopicCoverage[] | undefined) {
       : 'Topic coverage is not available.',
   };
 }
+
+/** the radar's default radius: a share of the chart's smaller side */
+const RADAR_RADIUS_SHARE = 0.65;
+/** width of one character of an 11px axis label, rounded up, and the gap between the label and its vertex */
+const LABEL_CHAR_PX = 6.5;
+const LABEL_GAP_PX = 12;
+
+/**
+ * The topic radar's outer radius for a chart of this size: the default share of the smaller side, reduced on narrow
+ * screens so the longest topic name still fits beside the left and right vertices (it is drawn outside the radius).
+ */
+export function radarOuterRadius(width: number, height: number, labels: readonly string[]): number | string {
+  if (!(width > 0 && height > 0)) return `${RADAR_RADIUS_SHARE * 100}%`;
+  const preferred = (RADAR_RADIUS_SHARE * Math.min(width, height)) / 2;
+  const labelRoom = Math.max(0, ...labels.map(l => l.length)) * LABEL_CHAR_PX + LABEL_GAP_PX;
+  return Math.max(40, Math.min(preferred, width / 2 - labelRoom));
+}
