@@ -152,6 +152,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Boyer–Moore voting, then a verifying count.',
     implemented: true,
   },
+  {
+    id: 'container-most-water',
+    name: 'Container With Most Water',
+    category: 'ARRAYS',
+    subtitle: 'Two pointers; the shorter line moves inward.',
+    implemented: true,
+  },
 
   // ─── LINKED LIST ────────────────────────────────────────
   {

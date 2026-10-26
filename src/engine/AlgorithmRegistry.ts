@@ -34,6 +34,7 @@ import { primeCheckDefinition } from './algorithms/primeCheck';
 import { swapTwoNumbersDefinition } from './algorithms/swapTwoNumbers';
 import { twoSumDefinition } from './algorithms/twoSum';
 import { majorityElementDefinition } from './algorithms/majorityElement';
+import { containerMostWaterDefinition } from './algorithms/containerMostWater';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
@@ -65,6 +66,7 @@ register(primeCheckDefinition);
 register(swapTwoNumbersDefinition);
 register(twoSumDefinition);
 register(majorityElementDefinition);
+register(containerMostWaterDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

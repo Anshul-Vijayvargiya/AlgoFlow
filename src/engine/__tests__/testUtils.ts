@@ -68,7 +68,11 @@ export const inputsWithNumbers = (d: AlgorithmDefinition, arrays: readonly numbe
  * and a test checks that the generator refuses each one.
  */
 export function hasDefaultRun(d: AlgorithmDefinition, input: readonly number[]): boolean {
-  if (visualKindOf(d) === 'numbers') return validateAlgorithmInput(d, [...input], null).ok;
+  // number algorithms, and array algorithms with input rules (Container With Most Water: two or more heights, none
+  // negative), run only on input the app would accept
+  if (visualKindOf(d) === 'numbers' || d.inputSpec?.minLength !== undefined || d.inputSpec?.minValue !== undefined) {
+    return validateAlgorithmInput(d, [...input], null).ok;
+  }
   const index = d.inputSpec?.index;
   return !index || defaultListIndex(index, input.length) !== null;
 }

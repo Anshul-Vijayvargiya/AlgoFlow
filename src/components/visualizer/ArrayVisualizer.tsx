@@ -1,11 +1,12 @@
-import React from 'react';
-import type { ExecutionStep } from '../../types/algorithm';
+import React, { useMemo, useRef } from 'react';
+import type { ExecutionStep, HashMapView } from '../../types/algorithm';
 import { Bar } from './Bar';
 import { barHeightPercent, barTransitionMs, deriveStepVisuals, pointerLabel } from './barVisuals';
 import type { Outcome } from './barVisuals';
 import { CheckCircle2, SearchX, Flag, Inbox } from 'lucide-react';
 import { ValueCard } from './ValueCards';
 import { HashMapPanel } from './HashMapPanel';
+import { ContainerOverlay } from './ContainerOverlay';
 
 interface ArrayVisualizerProps {
   currentStep: ExecutionStep;
@@ -15,6 +16,11 @@ interface ArrayVisualizerProps {
   outcome?: Outcome | null;
   /** current playback interval (ms per step); bar animations are kept shorter than it (see barTransitionMs) */
   stepIntervalMs?: number;
+  /**
+   * The trace's hash map (name and labels), when any of its steps has one: its panel then keeps its place on the
+   * steps before the map is created, so the layout below does not move when it appears.
+   */
+  hashMapShape?: Pick<HashMapView, 'name' | 'keyLabel' | 'valueLabel'>;
 }
 
 const OUTCOME_TEXT: Record<Outcome, { text: string; tone: string; Icon: React.ElementType }> = {
@@ -45,23 +51,27 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   positionPointers,
   outcome = null,
   stepIntervalMs,
+  hashMapShape,
 }) => {
   const transitionMs = barTransitionMs(stepIntervalMs);
   const { bars, offArray } = deriveStepVisuals(currentStep, { positionPointers, outcome });
   const state = currentStep.state;
   const compact = state.length > 10;
-  const heightFor = barHeightPercent(state);
+  // one scale per step (the container overlay measures with it too)
+  const heightFor = useMemo(() => barHeightPercent(state), [state]);
+  const plotRef = useRef<HTMLDivElement>(null);
   const vars = currentStep.variables ?? {};
   const target = typeof vars.target === 'number' ? vars.target : undefined;
   const pivot = typeof vars.pivot === 'number' ? vars.pivot : undefined;
   const buffers = currentStep.buffers ?? [];
   const tracker = currentStep.tracker ?? [];
   const hashMap = currentStep.hashMap;
+  const mapShape = hashMap ?? hashMapShape;
   const outcomeInfo = outcome ? OUTCOME_TEXT[outcome] : null;
 
   return (
     <div className="w-full flex flex-col gap-2" data-testid="array-visualizer" data-outcome={outcome ?? ''}>
-      <div className={`w-full h-72 sm:h-80 md:h-96 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex items-end justify-center ${compact ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'} relative overflow-hidden shadow-inner`}>
+      <div ref={plotRef} className={`w-full h-72 sm:h-80 md:h-96 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex items-end justify-center ${compact ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'} relative overflow-hidden shadow-inner`}>
         {/* Background Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--af-grid)_1px,transparent_1px),linear-gradient(to_bottom,var(--af-grid)_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none" />
 
@@ -81,6 +91,11 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           </div>
         )}
 
+        {/* Container With Most Water: the container being measured, and the best one so far */}
+        {currentStep.container && (
+          <ContainerOverlay view={currentStep.container} plotRef={plotRef} heightFor={heightFor} transitionMs={transitionMs} />
+        )}
+
         {bars.map((b, i) => (
           <Bar
             key={`bar-${b.index}`}
@@ -94,7 +109,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
       </div>
 
       {/* Values kept beside the array (Two Sum's complement, Boyer–Moore's candidate and count) and a hash map */}
-      {(tracker.length > 0 || hashMap) && (
+      {(tracker.length > 0 || mapShape) && (
         <div className="flex flex-col md:flex-row md:items-start gap-2 px-1">
           {tracker.length > 0 && (
             <dl aria-label="Values at this step" data-testid="tracker" className="flex flex-wrap gap-2">
@@ -103,7 +118,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
               ))}
             </dl>
           )}
-          {hashMap && <HashMapPanel map={hashMap} transitionMs={transitionMs} />}
+          {mapShape && <HashMapPanel map={hashMap ?? null} shape={mapShape} transitionMs={transitionMs} />}
         </div>
       )}
 

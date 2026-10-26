@@ -302,8 +302,9 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
         commit(s.selectedAlgorithm, values, null, null, 'random', kept);
         return;
       }
-      // deleting at a position needs at least one node
-      const n = Math.max(spec?.index?.bound === 'delete' ? 1 : 0, Math.min(maxInputLength(def), Math.floor(size)));
+      // deleting at a position needs at least one node; some array algorithms need a few values (two lines for a container)
+      const fewest = Math.max(spec?.index?.bound === 'delete' ? 1 : 0, spec?.minLength ?? 0);
+      const n = Math.max(fewest, Math.min(maxInputLength(def), Math.floor(size)));
       const numberSpec = spec?.target ?? spec?.value;
       const notice: InputNotice | null =
         s.inputSource === 'custom'

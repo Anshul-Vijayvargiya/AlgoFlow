@@ -3,7 +3,7 @@ import { getAlgorithmDefinition } from '../../../engine/AlgorithmRegistry';
 import type { AlgorithmId, ExecutionStep } from '../../../types/algorithm';
 import { deriveOutcome, deriveStepVisuals } from '../barVisuals';
 import type { BarRole } from '../barVisuals';
-import { EDGE_INPUTS, arrayAlgorithms, randomArrays } from '../../../engine/__tests__/testUtils';
+import { EDGE_INPUTS, arrayAlgorithms, hasDefaultRun, randomArrays } from '../../../engine/__tests__/testUtils';
 
 // bars are drawn for array algorithms only; linked-list operations have their own visuals
 const ALL = arrayAlgorithms();
@@ -19,7 +19,8 @@ const rolesWhere = (v: ReturnType<typeof deriveStepVisuals>, role: BarRole) =>
 describe('deriveStepVisuals — only the bars the step names are emphasized (all real traces)', () => {
   it('never highlights a bar the step did not name', () => {
     for (const d of ALL) {
-      for (const input of INPUTS) {
+      // inputs the algorithm accepts (Container With Most Water refuses fewer than two or negative heights)
+      for (const input of INPUTS.filter(a => hasDefaultRun(d, a))) {
         const steps = d.generateSteps([...input]);
         steps.forEach((s, i) => {
           const v = visuals(d.id, s, steps, i);
@@ -43,7 +44,7 @@ describe('deriveStepVisuals — only the bars the step names are emphasized (all
 
   it('compare / swap / found steps emphasize exactly their indices (a pivot keeps its own role during compare)', () => {
     for (const d of ALL) {
-      for (const input of INPUTS.filter(a => a.length > 0)) {
+      for (const input of INPUTS.filter(a => a.length > 0 && hasDefaultRun(d, a))) {
         const steps = d.generateSteps([...input]);
         steps.forEach((s, i) => {
           if (!['compare', 'swap', 'found'].includes(s.type) || !s.indices) return;
@@ -126,7 +127,8 @@ describe('deriveStepVisuals — pointers follow the current step', () => {
   it('every in-range pointer is drawn exactly once on its own index; the rest are off-array', () => {
     const label = (n: string) => ({ minIdx: 'min', pivotIndex: 'pivot', inserted: 'ins', largest: 'max' } as Record<string, string>)[n] ?? n;
     for (const d of ALL) {
-      for (const input of INPUTS) {
+      // inputs the algorithm accepts (Container With Most Water refuses fewer than two or negative heights)
+      for (const input of INPUTS.filter(a => hasDefaultRun(d, a))) {
         const steps = d.generateSteps([...input]);
         steps.forEach((s, i) => {
           const v = visuals(d.id, s, steps, i);

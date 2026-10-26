@@ -327,6 +327,20 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'return-majority': /return (candidate|true)/,
     'return-none': /return (false|null|None)/,
   },
+  'container-most-water': {
+    'fn-entry': /max_?area\(/i,
+    init: /\bleft\b.*\bright\b.*=/,
+    'while-condition': /\bwhile \(?left < right\)?/,
+    'calc-width': /\bwidth = right - left/,
+    'calc-height': /\bh = (min\(|Math\.min\(|height\[left\] < height\[right\] \?)/,
+    'calc-area': /\barea = h \* width/,
+    'check-best': /if \(?area > best(\.area|\[0\])/,
+    'update-best': /best = .*area, left, right/,
+    'compare-heights': /if \(?height\[left\] < height\[right\]/,
+    'move-left': /\bleft(\+\+| \+= 1)/,
+    'move-right': /\bright(--| -= 1)/,
+    return: /return best/,
+  },
 };
 
 /**

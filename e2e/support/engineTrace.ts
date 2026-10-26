@@ -24,6 +24,7 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'two-pointer': { id: 'two-pointer', label: 'Two Pointer', heading: 'Two Pointer Technique' },
   'two-sum': { id: 'two-sum', label: 'Two Sum', heading: 'Two Sum' },
   'majority-element': { id: 'majority-element', label: 'Majority Element', heading: 'Majority Element' },
+  'container-most-water': { id: 'container-most-water', label: 'Container With Most Water', heading: 'Container With Most Water' },
 };
 
 /** Linked-list operations: drawn as nodes, with their own input form (kept apart from ALGORITHMS, whose specs expect bars). */

@@ -174,18 +174,25 @@ export const VisualizerPage: React.FC = () => {
                 }`}>
                   {/* Visualization Card Header */}
                   <div role="region" aria-label="Visualization" className="bg-surface border border-cyan-500/20 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                    {/* One line at every step: a long message is cut with "…" rather than wrapping, which would change the
+                        header's height and move everything below it (the playback controls) during playback. The full
+                        message stays in the DOM (read by screen readers), in the tooltip and in "What's happening?". */}
+                    <div className="flex items-center justify-between gap-3 min-w-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Sparkles className="w-4 h-4 text-cyan-400" />
-                        <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
+                        <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200 whitespace-nowrap">
                           LIVE VISUALIZATION
                         </span>
                       </div>
 
                       {currentStep && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-mono text-slate-400">Current Action:</span>
-                          <span data-testid="current-action" className="text-xs font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="hidden sm:inline text-[11px] font-mono text-slate-400 whitespace-nowrap">Current Action:</span>
+                          <span
+                            data-testid="current-action"
+                            title={currentStep.message}
+                            className="min-w-0 truncate text-xs font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded"
+                          >
                             {currentStep.message}
                           </span>
                         </div>
@@ -199,6 +206,7 @@ export const VisualizerPage: React.FC = () => {
                         positionPointers={def?.positionPointers}
                         outcome={outcome}
                         stepIntervalMs={speed}
+                        hashMapShape={steps.find(s => s.hashMap)?.hashMap}
                       />
                     )}
                     {currentStep && visual === 'linked-list' && (

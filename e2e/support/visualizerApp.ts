@@ -86,8 +86,19 @@ export interface UiState {
   numbers: NumberViewState | null;
   /** the value cards beside an array's bars (Two Sum, Majority Element): name → value and role; {} when there are none */
   tracker: Record<string, { value: string; role: string }>;
-  /** the hash map panel beside an array's bars (Two Sum), or null */
+  /** the hash map beside an array's bars (Two Sum), or null when there is none yet (its panel may hold its place) */
   hashMap: HashMapState | null;
+  /** Container With Most Water: the containers drawn over the bars, by kind ('current', 'best') */
+  containers: Record<string, ContainerState>;
+}
+
+/** A container drawn over the bars: what it stands for, and where it is on screen (null while not yet measured). */
+export interface ContainerState {
+  left: number;
+  right: number;
+  level: number;
+  area: number;
+  box: { x: number; y: number; w: number; h: number } | null;
 }
 
 /** What the hash map panel shows. */
@@ -332,8 +343,9 @@ export class VisualizerApp {
           { value: e.querySelector('[data-number-value]')!.childNodes[0].textContent!.trim(), role: e.dataset.role ?? '' },
         ]));
       const readHashMap = () => {
-        const root = document.querySelector('[data-testid="hash-map"]');
-        if (!root) return null;
+        const root = document.querySelector<HTMLElement>('[data-testid="hash-map"]');
+        // a panel holding the map's place before the trace creates it has no map to read
+        if (!root || root.dataset.created === 'false') return null;
         const lookup = root.querySelector<HTMLElement>('[data-testid="hash-lookup"]');
         return {
           entries: [...root.querySelectorAll<HTMLElement>('li[data-key]')].map(e => ({ key: Number(e.dataset.key), value: Number(e.dataset.value), mark: e.dataset.mark ?? '' })),
@@ -459,6 +471,16 @@ export class VisualizerApp {
         numbers: readNumbers(),
         tracker: readCards('[data-testid="tracker"] [data-number-cell]'),
         hashMap: readHashMap(),
+        containers: Object.fromEntries([...document.querySelectorAll<HTMLElement>('[data-container]')].map(e => [
+          e.dataset.container!,
+          {
+            left: Number(e.dataset.left),
+            right: Number(e.dataset.right),
+            level: Number(e.dataset.level),
+            area: Number(e.dataset.area),
+            box: e.style.visibility === 'hidden' ? null : rect(e),
+          },
+        ])),
       } as UiState;
       };
 
