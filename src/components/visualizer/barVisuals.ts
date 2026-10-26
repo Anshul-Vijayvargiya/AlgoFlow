@@ -23,8 +23,9 @@
  *  sortedIndices                   sorted | found   locked-in bars (final position); shown as "found" when the run is a
  *                                                   successful search
  *  sortedPrefixIndices             prefix           sorted relative to each other but not final (Insertion Sort's prefix)
+ *  keptIndices                     kept             the result built so far, in place (Remove Duplicates' unique prefix)
  *
- *  Priority when several apply: found > swap > pivot > compare > min/insert > assign > focus > sorted / prefix.
+ *  Priority when several apply: found > swap > pivot > compare > min/insert > assign > focus > sorted / prefix / kept.
  *
  *  Bars outside the current working range (extraInfo.subRange, else pointers low/high, else
  *  left/right) are dimmed, but locked (sorted/found) bars never are.
@@ -38,6 +39,7 @@ export type BarRole =
   | 'default'
   | 'sorted'
   | 'prefix'
+  | 'kept'
   | 'focus'
   | 'assign'
   | 'min'
@@ -76,6 +78,8 @@ const RANK: Record<BarRole, number> = {
   sorted: 1,
   // never on the same bar as sorted (the two index lists are disjoint)
   prefix: 1,
+  // the in-place result so far (never on a sorted bar)
+  kept: 1,
   focus: 2,
   assign: 3,
   min: 4,
@@ -143,6 +147,7 @@ export function deriveStepVisuals(
   const lockedRole: BarRole = options.outcome === 'found' ? 'found' : 'sorted';
   for (const i of step.sortedIndices ?? []) raise(i, lockedRole);
   for (const i of step.sortedPrefixIndices ?? []) raise(i, 'prefix');
+  for (const i of step.keptIndices ?? []) raise(i, 'kept');
 
   // event bars
   const typeRole = step.type === 'sorted' ? undefined : ROLE_BY_TYPE[step.type];

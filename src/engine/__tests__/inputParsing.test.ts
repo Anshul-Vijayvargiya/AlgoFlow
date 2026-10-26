@@ -130,9 +130,9 @@ describe('algorithm input specs (declared on the real definitions)', () => {
     const withTarget = getAllAlgorithms().filter(d => d.inputSpec?.target).map(d => d.id).sort();
     expect(withTarget).toEqual(['binary-search', 'linear-search', 'two-pointer', 'two-sum']);
   });
-  it('exactly Binary Search and Two Pointer require sorted input; Linear Search, Two Sum and the sorts do not', () => {
+  it('exactly Binary Search, Two Pointer and Remove Duplicates require sorted input; Linear Search, Two Sum and the sorts do not', () => {
     const sortedReq = getAllAlgorithms().filter(d => d.inputSpec?.sortedRequired).map(d => d.id).sort();
-    expect(sortedReq).toEqual(['binary-search', 'two-pointer']);
+    expect(sortedReq).toEqual(['binary-search', 'remove-duplicates-sorted', 'two-pointer']);
   });
   it('every default input satisfies its own algorithm\'s requirements with its default target', () => {
     for (const d of getAllAlgorithms()) {

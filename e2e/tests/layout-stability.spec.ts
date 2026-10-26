@@ -55,6 +55,8 @@ const CASES: { id: AlgorithmId; input?: number[]; target?: number }[] = [
   { id: 'majority-element' },
   // steps with and without roles on every card
   { id: 'container-most-water' },
+  // in-place writes, skipped duplicates and a growing kept prefix
+  { id: 'remove-duplicates-sorted', input: [1, 1, 2, 2, 2, 3, 4, 4, 5, 5, 5, 6] },
 ];
 
 for (const viewport of [{ name: 'desktop', width: 1500, height: 1000 }, { name: 'phone', width: 375, height: 800 }]) {

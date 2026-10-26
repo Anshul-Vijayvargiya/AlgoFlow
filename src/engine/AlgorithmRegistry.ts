@@ -35,6 +35,7 @@ import { swapTwoNumbersDefinition } from './algorithms/swapTwoNumbers';
 import { twoSumDefinition } from './algorithms/twoSum';
 import { majorityElementDefinition } from './algorithms/majorityElement';
 import { containerMostWaterDefinition } from './algorithms/containerMostWater';
+import { removeDuplicatesSortedDefinition } from './algorithms/removeDuplicatesSorted';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
@@ -67,6 +68,7 @@ register(swapTwoNumbersDefinition);
 register(twoSumDefinition);
 register(majorityElementDefinition);
 register(containerMostWaterDefinition);
+register(removeDuplicatesSortedDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

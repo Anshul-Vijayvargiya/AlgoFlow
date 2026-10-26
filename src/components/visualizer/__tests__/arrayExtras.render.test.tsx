@@ -144,7 +144,7 @@ describe('Majority Element in the array view', () => {
 
 describe('other array algorithms are unchanged', () => {
   it('no value cards or map panel, and the generic outcome text', () => {
-    const withPanels = ['two-sum', 'majority-element', 'container-most-water'];
+    const withPanels = ['two-sum', 'majority-element', 'container-most-water', 'remove-duplicates-sorted'];
     for (const d of getAllAlgorithms().filter(a => (a.visual ?? 'array') === 'array' && !withPanels.includes(a.id))) {
       const steps = d.generateSteps([...d.defaultInput], d.inputSpec?.target ? { target: d.inputSpec.target.defaultValue } : undefined);
       for (const k of [0, steps.length - 1]) {
