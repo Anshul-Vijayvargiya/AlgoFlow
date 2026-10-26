@@ -159,6 +159,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Two pointers; the shorter line moves inward.',
     implemented: true,
   },
+  {
+    id: 'remove-duplicates-sorted',
+    name: 'Remove Duplicates from Sorted Array',
+    category: 'ARRAYS',
+    subtitle: 'Slow/fast pointers keep one copy of each value, in place.',
+    implemented: true,
+  },
 
   // ─── LINKED LIST ────────────────────────────────────────
   {
