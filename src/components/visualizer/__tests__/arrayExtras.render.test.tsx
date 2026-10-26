@@ -77,8 +77,40 @@ describe('Two Sum in the array view', () => {
     expect(renderStep('two-sum', s2, s2.length - 1)).toMatch(/data-outcome-kind="not-found"[^>]*>.*No pair sums to 7<\/div>/);
   });
 
-  it('before the map is created there is no map panel', () => {
-    expect(renderStep('two-sum', steps, 0)).not.toContain('data-testid="hash-map"');
+  it('before the map is created its panel holds its place: "not created yet", no entries, no lookup', () => {
+    const html = renderStep('two-sum', steps, 0);
+    expect(html).toMatch(/data-testid="hash-map" data-created="false" aria-label="Hash map seen \(value → index\)"/);
+    expect(html).toContain('>not created yet</span>');
+    expect(entries(html)).toEqual([]);
+    expect(html).not.toContain('data-testid="hash-lookup"');
+  });
+});
+
+describe('a stable layout: the value cards and the map panel keep their shape at every step', () => {
+  /** the structure that decides their height: per card, its dd lines; for the map, the fixed entries area and the lookup line */
+  const shape = (html: string) => ({
+    cardLines: [...html.matchAll(/data-number-cell="[^"]+"[^>]*>(.*?)<\/div>/g)].map(m => (m[1].match(/<dd/g) ?? []).length),
+    entriesArea: /data-testid="hash-map-entries" class="h-\[4\.75rem\] overflow-y-auto/.test(html),
+    lookupLine: /data-testid="hash-lookup"|<p aria-hidden="true" class="mt-1\.5 text-\[11px\] font-mono invisible">/.test(html),
+  });
+
+  it.each([
+    ['two-sum', [3, 8, 11, 5, 2, 7, 4], { target: 9 }],
+    ['majority-element', [2, 2, 1, 1, 1, 2, 2], undefined],
+    ['container-most-water', [1, 8, 6, 2, 5, 4, 8, 3, 7], undefined],
+  ] as const)('%s: every card always has its role line (a hidden placeholder when it has no role)', (id, input, params) => {
+    const steps = trace(id, [...input], params);
+    const shapes = steps.map((_, k) => shape(renderStep(id, steps, k)));
+    const first = shapes[0];
+    expect(first.cardLines.every(n => n === 2)).toBe(true);
+    for (const [k, s] of shapes.entries()) expect(s, `step ${k + 1}`).toEqual(first);
+  });
+
+  it('the hidden placeholder is not read out: aria-hidden, invisible, and only where a card has no role', () => {
+    const steps = trace('container-most-water', [1, 8, 6]);
+    const html = renderStep('container-most-water', steps, steps.findIndex(s => s.codeRef === 'calc-area'));
+    expect(html).toMatch(/data-number-cell="area" data-role="changed"[^>]*>.*?<dd class="[^"]*">changed<\/dd><\/div>/);
+    expect(html).toMatch(/data-number-cell="maxArea" data-role=""[^>]*>.*?<dd aria-hidden="true" class="[^"]*invisible"> <\/dd><\/div>/);
   });
 });
 
@@ -112,7 +144,8 @@ describe('Majority Element in the array view', () => {
 
 describe('other array algorithms are unchanged', () => {
   it('no value cards or map panel, and the generic outcome text', () => {
-    for (const d of getAllAlgorithms().filter(a => (a.visual ?? 'array') === 'array' && !['two-sum', 'majority-element'].includes(a.id))) {
+    const withPanels = ['two-sum', 'majority-element', 'container-most-water'];
+    for (const d of getAllAlgorithms().filter(a => (a.visual ?? 'array') === 'array' && !withPanels.includes(a.id))) {
       const steps = d.generateSteps([...d.defaultInput], d.inputSpec?.target ? { target: d.inputSpec.target.defaultValue } : undefined);
       for (const k of [0, steps.length - 1]) {
         const html = renderStep(d.id, steps, k);

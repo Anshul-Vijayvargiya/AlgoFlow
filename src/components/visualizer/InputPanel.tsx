@@ -125,9 +125,10 @@ const InputPanelForm: React.FC = () => {
       <p id="input-hint" className="flex items-start gap-1.5 text-[11px] text-slate-400">
         <Info className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
         <span>
-          Up to {MAX_ARRAY_SIZE} whole numbers ({MIN_VALUE} to {MAX_VALUE}), separated by commas
+          {spec?.minLength ? `${spec.minLength} to ${MAX_ARRAY_SIZE}` : `Up to ${MAX_ARRAY_SIZE}`} whole numbers ({spec?.minValue ?? MIN_VALUE} to {MAX_VALUE}), separated by commas
           {spec?.sortedRequired ? '; must be sorted ascending' : ''}.
-          {spec?.target ? ` ${spec.target.hint}.` : ''} Leave the array blank for an empty array.
+          {spec?.target ? ` ${spec.target.hint}.` : ''}
+          {spec?.minLength ? '' : ' Leave the array blank for an empty array.'}
           {spec?.sortedRequired
             ? ' Your order is never changed unless you choose "Sort a copy".'
             : ' Your order is preserved exactly.'}

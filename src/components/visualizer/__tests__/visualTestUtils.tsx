@@ -19,6 +19,7 @@ export function renderStep(id: AlgorithmId, steps: ExecutionStep[], index: numbe
       currentStep={steps[index]}
       positionPointers={def?.positionPointers}
       outcome={deriveOutcome(steps, index)}
+      hashMapShape={steps.find(s => s.hashMap)?.hashMap}
     />
   );
 }

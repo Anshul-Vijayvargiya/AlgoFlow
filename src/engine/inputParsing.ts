@@ -108,7 +108,8 @@ export function firstUnsortedIndex(array: number[]): number {
 /** The ONLY transformation the app offers; always a copy, always user-triggered and disclosed in the UI. */
 export const sortedCopy = (array: number[]): number[] => [...array].sort((a, b) => a - b);
 
-export type InputValidation = { ok: true } | { ok: false; message: string; canSortCopy: boolean };
+/** `field: 'array'` marks a problem with the values themselves (too few, too small), not with their order */
+export type InputValidation = { ok: true } | { ok: false; message: string; canSortCopy: boolean; field?: 'array' };
 
 const nodes = (n: number) => `${n} node${n === 1 ? '' : 's'}`;
 
@@ -153,6 +154,25 @@ export function validateAlgorithmInput(
     if (array.length > maxInputLength(def)) return { ok: false, canSortCopy: false, message: tooManyNodesMessage(def, array.length) };
   } else if (array.length > MAX_ARRAY_SIZE) {
     return { ok: false, canSortCopy: false, message: `Too many values (${array.length}). The visualizer supports at most ${MAX_ARRAY_SIZE}.` };
+  }
+  if (spec?.minLength !== undefined && array.length < spec.minLength) {
+    return {
+      ok: false,
+      canSortCopy: false,
+      field: 'array',
+      message: `${def.name} needs at least ${spec.minLength} values; ${array.length === 0 ? 'the array is empty' : `got ${array.length}`}.`,
+    };
+  }
+  if (spec?.minValue !== undefined) {
+    const i = array.findIndex(v => v < spec.minValue!);
+    if (i !== -1) {
+      return {
+        ok: false,
+        canSortCopy: false,
+        field: 'array',
+        message: `Value ${i + 1} (${array[i]}) is below ${spec.minValue}: ${def.name} takes values from ${spec.minValue} to ${MAX_VALUE}.`,
+      };
+    }
   }
   if (spec?.target && (target === null || !Number.isInteger(target))) {
     return { ok: false, canSortCopy: false, message: `Enter a value for "${spec.target.label}".` };
@@ -212,7 +232,7 @@ export function validateDraft(
     target = t.value;
   }
   const v = validateAlgorithmInput(def, a.value, target);
-  if (!v.ok) return { ok: false, field: 'order', message: v.message, canSortCopy: v.canSortCopy, array: a.value, target };
+  if (!v.ok) return { ok: false, field: v.field ?? 'order', message: v.message, canSortCopy: v.canSortCopy, array: a.value, target };
   return { ok: true, array: a.value, target };
 }
 

@@ -16,19 +16,24 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
   // is never used before count == 0 replaces it)
   let candidate: number | null = null;
   let count = 0;
+  // freq is null ("—") until pass 2 starts counting
+  let freq: number | null = null;
   type Roles = Record<string, NumberCell['role']>;
-  const vote = (i: number | null, roles: Roles = {}): NumberCell[] => [
+  // the same six cards in both passes, so the card row never changes shape (or wraps differently) mid-run
+  const cards = (i: number | null, roles: Roles = {}): NumberCell[] => [
     { name: 'i', value: i, role: roles.i },
     { name: 'nums[i]', value: i === null || i >= n ? null : nums[i], role: roles['nums[i]'] },
     { name: 'candidate', value: candidate, role: roles.candidate },
     { name: 'count', value: count, role: roles.count },
+    { name: 'freq', value: freq, role: roles.freq },
+    { name: 'n / 2', value: half, role: roles['n / 2'] },
   ];
 
   push({
     type: 'init',
     codeRef: 'fn-entry',
     variables: { n, 'n / 2': half },
-    tracker: vote(null),
+    tracker: cards(null),
     message: `Majority element: is any value in more than ⌊${n}/2⌋ = ${half} positions?`,
     explanation:
       'Pass 1 (Boyer–Moore voting) finds the only possible majority value. Pass 2 counts it, because the input may have no majority.',
@@ -39,7 +44,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
     type: 'assign',
     codeRef: 'init-vars',
     variables: { candidate: 'none', count },
-    tracker: vote(null, { candidate: 'changed', count: 'changed' }),
+    tracker: cards(null, { candidate: 'changed', count: 'changed' }),
     message: 'candidate = none, count = 0',
     explanation: 'No candidate yet: with count = 0, the first element becomes the candidate.',
     actionLabel: 'Init',
@@ -54,7 +59,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
       variables: { i, n, candidate: candidate ?? 'none', count },
       pointers: inLoop ? { i } : {},
       indices: inLoop ? [i] : [],
-      tracker: vote(i, { i: 'changed' }),
+      tracker: cards(i, { i: 'changed' }),
       result: inLoop ? 'true' : 'false',
       message: `${i > 0 ? `i++ → i = ${i};  ` : ''}i < n?  ${i} < ${n} → ${inLoop}`,
       explanation: inLoop
@@ -74,7 +79,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
       variables: { i, 'nums[i]': x, count },
       pointers: { i },
       indices: [i],
-      tracker: vote(i, { count: 'current' }),
+      tracker: cards(i, { count: 'current' }),
       comparedValues: { val1: count, val2: 0 },
       result: empty ? 'true' : 'false',
       message: `count == 0?  ${count} == 0 → ${empty}`,
@@ -94,7 +99,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
         variables: { i, candidate },
         pointers: { i },
         indices: [i],
-        tracker: vote(i, { 'nums[i]': 'current', candidate: 'changed' }),
+        tracker: cards(i, { 'nums[i]': 'current', candidate: 'changed' }),
         message: `candidate = nums[${i}] = ${x}`,
         explanation: `${x} is the candidate now.`,
         actionLabel: 'New candidate',
@@ -108,7 +113,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
       variables: { i, 'nums[i]': x, candidate },
       pointers: { i },
       indices: [i],
-      tracker: vote(i, { 'nums[i]': 'current', candidate: 'current' }),
+      tracker: cards(i, { 'nums[i]': 'current', candidate: 'current' }),
       comparedValues: { val1: x, val2: candidate! },
       result: same ? 'true' : 'false',
       message: `nums[${i}] == candidate?  ${x} == ${candidate} → ${same}`,
@@ -123,7 +128,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
       variables: { i, candidate, count },
       pointers: { i },
       indices: [i],
-      tracker: vote(i, { count: 'changed' }),
+      tracker: cards(i, { count: 'changed' }),
       message: `count${same ? '++' : '--'} → count = ${count}`,
       explanation: same
         ? `The candidate ${candidate} has ${count} uncancelled vote${count === 1 ? '' : 's'}.`
@@ -135,21 +140,14 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
   }
 
   // ── pass 2: verification ──
-  let freq = 0;
-  const verify = (i: number | null, roles: Roles = {}): NumberCell[] => [
-    { name: 'i', value: i, role: roles.i },
-    { name: 'nums[i]', value: i === null || i >= n ? null : nums[i], role: roles['nums[i]'] },
-    { name: 'candidate', value: candidate, role: roles.candidate },
-    { name: 'freq', value: freq, role: roles.freq },
-    { name: 'n / 2', value: half, role: roles['n / 2'] },
-  ];
+  freq = 0;
   const counted: number[] = [];
 
   push({
     type: 'assign',
     codeRef: 'init-freq',
     variables: { candidate: candidate ?? 'none', freq },
-    tracker: verify(null, { freq: 'changed' }),
+    tracker: cards(null, { freq: 'changed' }),
     message: 'freq = 0',
     explanation:
       n === 0
@@ -166,7 +164,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
       variables: { i, n, candidate: candidate ?? 'none', freq },
       pointers: inLoop ? { i } : {},
       indices: inLoop ? [i] : [],
-      tracker: verify(i, { i: 'changed' }),
+      tracker: cards(i, { i: 'changed' }),
       result: inLoop ? 'true' : 'false',
       message: `${i > 0 ? `i++ → i = ${i};  ` : ''}i < n?  ${i} < ${n} → ${inLoop}`,
       explanation: inLoop ? `Pass 2 reads index ${i} (value ${nums[i]}).` : `Pass 2 is done: ${candidate ?? 'the candidate'} occurs ${freq} time${freq === 1 ? '' : 's'}.`,
@@ -181,7 +179,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
       variables: { i, 'nums[i]': nums[i], candidate },
       pointers: { i },
       indices: [i],
-      tracker: verify(i, { 'nums[i]': 'current', candidate: 'current' }),
+      tracker: cards(i, { 'nums[i]': 'current', candidate: 'current' }),
       comparedValues: { val1: nums[i], val2: candidate! },
       result: same ? 'true' : 'false',
       message: `nums[${i}] == candidate?  ${nums[i]} == ${candidate} → ${same}`,
@@ -197,7 +195,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
         variables: { i, candidate, freq },
         pointers: { i },
         indices: [i],
-        tracker: verify(i, { freq: 'changed' }),
+        tracker: cards(i, { freq: 'changed' }),
         message: `freq++ → freq = ${freq}`,
         explanation: `${candidate} has been counted ${freq} time${freq === 1 ? '' : 's'} so far.`,
         actionLabel: 'freq++',
@@ -210,7 +208,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
     type: 'condition',
     codeRef: 'check-majority',
     variables: { candidate: candidate ?? 'none', freq, 'n / 2': half },
-    tracker: verify(null, { freq: 'current', 'n / 2': 'current' }),
+    tracker: cards(null, { freq: 'current', 'n / 2': 'current' }),
     comparedValues: { val1: freq, val2: half },
     result: isMajority ? 'true' : 'false',
     message: `freq > n / 2?  ${freq} > ⌊${n}/2⌋ = ${half} → ${isMajority}`,
@@ -230,7 +228,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
           variables: { candidate, freq },
           indices: [...counted],
           sortedIndices: [...counted],
-          tracker: verify(null, { candidate: 'current' }),
+          tracker: cards(null, { candidate: 'current' }),
           message: `Return ${candidate}`,
           explanation: `${candidate} is the majority element.`,
           actionLabel: 'Majority',
@@ -239,7 +237,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
           type: 'not-found',
           codeRef: 'return-none',
           variables: { candidate: candidate ?? 'none', freq },
-          tracker: verify(null),
+          tracker: cards(null),
           message: 'Return none: no majority element',
           explanation: 'No value occurs more than ⌊n/2⌋ times.',
           actionLabel: 'No majority',
@@ -251,7 +249,7 @@ function generateMajoritySteps(input: number[]): ExecutionStep[] {
     codeRef: isMajority ? 'return-majority' : 'return-none',
     variables: { candidate: candidate ?? 'none', freq, 'n / 2': half },
     sortedIndices: isMajority ? [...counted] : [],
-    tracker: verify(null),
+    tracker: cards(null),
     outcomeText: isMajority
       ? `Majority element: ${candidate} (${freq} of ${n}, more than ⌊${n}/2⌋ = ${half})`
       : n === 0

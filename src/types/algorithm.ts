@@ -56,7 +56,8 @@ export type AlgorithmId =
   | 'prime-check'
   | 'swap-two-numbers'
   | 'two-sum'
-  | 'majority-element';
+  | 'majority-element'
+  | 'container-most-water';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -189,6 +190,12 @@ export interface ExecutionStep {
    */
   outcomeText?: string;
 
+  /**
+   * Container With Most Water: the container this step is looking at (between `left` and `right`, as high as the
+   * shorter line) and the best one found so far. Drawn over the bars; `level` is a height in array values.
+   */
+  container?: ContainerView;
+
   /** Extra metadata */
   extraInfo?: {
     pivotIndex?: number;
@@ -211,6 +218,21 @@ export interface NumberView {
   readonly divisorChecks?: readonly { readonly divisor: number; readonly remainder: number }[];
   /** the final answer, on the last step only */
   readonly result?: { readonly kind: 'prime' | 'not-prime' | 'swapped'; readonly text: string };
+}
+
+/** A container between two lines: its ends (indices), its water level (the shorter line's height) and its area. */
+export interface ContainerSpan {
+  readonly left: number;
+  readonly right: number;
+  readonly level: number;
+  readonly area: number;
+}
+
+export interface ContainerView {
+  /** the pair being evaluated (absent once the pointers have met) */
+  readonly current?: ContainerSpan;
+  /** the largest container found so far (absent before the first area is computed) */
+  readonly best?: ContainerSpan;
 }
 
 /** A hash map at one step: its entries in insertion order, and the lookup / write the step performed. */
@@ -268,6 +290,10 @@ export interface AlgorithmInputSpec {
   };
   /** The array must already be sorted ascending (non-decreasing); the user's order is never changed silently */
   sortedRequired?: boolean;
+  /** Array algorithms: the fewest values the algorithm accepts (Container With Most Water needs two lines) */
+  minLength?: number;
+  /** Array algorithms: the smallest value allowed (heights cannot be negative: 0) */
+  minValue?: number;
   /** Linked-list operations: the value to insert or search for; passed to generateSteps as params.value */
   value?: {
     label: string;
