@@ -75,7 +75,8 @@ export type AlgorithmId =
   | 'tree-inorder'
   | 'tree-preorder'
   | 'tree-postorder'
-  | 'tree-level-order';
+  | 'tree-level-order'
+  | 'remove-duplicates-sorted';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -161,6 +162,12 @@ export interface ExecutionStep {
    * prefix: a later key can still shift them). Never overlaps sortedIndices; shown as "sorted so far".
    */
   sortedPrefixIndices?: number[];
+
+  /**
+   * Indices holding the result built so far, in place (Remove Duplicates' unique prefix). Shown as "kept", so the
+   * prefix reads apart from the rest of the array. Never overlaps sortedIndices.
+   */
+  keptIndices?: number[];
 
   /** The condition result for loop/condition steps */
   result?: 'true' | 'false';
@@ -444,6 +451,9 @@ export interface AlgorithmInputSpec {
     /** the example shown with the default input */
     defaultValue: readonly number[];
   };
+  /** Array algorithms: the range Randomize draws values from, when the default would rarely show the algorithm's
+   *  point (Remove Duplicates needs repeated values: 1 to 9) */
+  randomValues?: readonly [number, number];
   /** Linked-list operations: the value to insert or search for; passed to generateSteps as params.value */
   value?: {
     label: string;

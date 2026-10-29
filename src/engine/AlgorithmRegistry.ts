@@ -1,3 +1,4 @@
+
 /**
  * AlgorithmRegistry — The single source of truth for ALL algorithm definitions.
  *
@@ -10,7 +11,13 @@
  * FAIL-SAFE: If an algorithm is not in this registry, the visualizer never falls back
  * to another algorithm. See buildExecution.ts for how the failure kinds are reported.
  */
-import type { AlgorithmId, AlgorithmDefinition, ProgrammingLanguage, VisualKind } from '../types/algorithm';
+import type {
+  AlgorithmId,
+  AlgorithmDefinition,
+  ProgrammingLanguage,
+  VisualKind,
+} from '../types/algorithm';
+
 import { bubbleSortDefinition } from './algorithms/bubbleSort';
 import { selectionSortDefinition } from './algorithms/selectionSort';
 import { insertionSortDefinition } from './algorithms/insertionSort';
@@ -20,6 +27,7 @@ import { mergeSortDefinition } from './algorithms/mergeSort';
 import { quickSortDefinition } from './algorithms/quickSort';
 import { heapSortDefinition } from './algorithms/heapSort';
 import { twoPointerDefinition } from './algorithms/twoPointer';
+
 import { llTraverseDefinition } from './algorithms/linkedList/traverse';
 import { llSearchDefinition } from './algorithms/linkedList/search';
 import { llInsertHeadDefinition } from './algorithms/linkedList/insertHead';
@@ -30,16 +38,19 @@ import { llBuildDefinition } from './algorithms/linkedList/build';
 import { llInsertAtDefinition } from './algorithms/linkedList/insertAt';
 import { llDeleteAtDefinition } from './algorithms/linkedList/deleteAt';
 import { reverseLinkedListDefinition } from './algorithms/linkedList/reverse';
+
 import { primeCheckDefinition } from './algorithms/primeCheck';
 import { swapTwoNumbersDefinition } from './algorithms/swapTwoNumbers';
 import { twoSumDefinition } from './algorithms/twoSum';
 import { majorityElementDefinition } from './algorithms/majorityElement';
 import { containerMostWaterDefinition } from './algorithms/containerMostWater';
+
 import { mergeSortedArrayDefinition } from './algorithms/mergeSortedArray';
 import { trappingRainWaterDefinition } from './algorithms/trappingRainWater';
 import { validPerfectSquareDefinition } from './algorithms/validPerfectSquare';
 import { sqrtXDefinition } from './algorithms/sqrtX';
 import { arrangingCoinsDefinition } from './algorithms/arrangingCoins';
+
 import { romanToIntegerDefinition } from './algorithms/strings/romanToInteger';
 import { longestCommonPrefixDefinition } from './algorithms/strings/longestCommonPrefix';
 import { validParenthesesDefinition } from './algorithms/strings/validParentheses';
@@ -48,12 +59,16 @@ import { lengthOfLastWordDefinition } from './algorithms/strings/lengthOfLastWor
 import { addBinaryDefinition } from './algorithms/strings/addBinary';
 import { validPalindromeDefinition } from './algorithms/strings/validPalindrome';
 import { validPalindromeIIDefinition } from './algorithms/strings/validPalindromeII';
+
 import { treeInorderDefinition } from './algorithms/tree/inorder';
 import { treePreorderDefinition } from './algorithms/tree/preorder';
 import { treePostorderDefinition } from './algorithms/tree/postorder';
 import { treeLevelOrderDefinition } from './algorithms/tree/levelOrder';
 
+import { removeDuplicatesSortedDefinition } from './algorithms/removeDuplicatesSorted';
+
 // ─── Registry ──────────────────────────────────────────────────────────────────
+
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
 
 function register(def: AlgorithmDefinition) {
@@ -69,6 +84,7 @@ register(mergeSortDefinition);
 register(quickSortDefinition);
 register(heapSortDefinition);
 register(twoPointerDefinition);
+
 register(llTraverseDefinition);
 register(llSearchDefinition);
 register(llInsertHeadDefinition);
@@ -79,16 +95,19 @@ register(llBuildDefinition);
 register(llInsertAtDefinition);
 register(llDeleteAtDefinition);
 register(reverseLinkedListDefinition);
+
 register(primeCheckDefinition);
 register(swapTwoNumbersDefinition);
 register(twoSumDefinition);
 register(majorityElementDefinition);
 register(containerMostWaterDefinition);
+
 register(mergeSortedArrayDefinition);
 register(trappingRainWaterDefinition);
 register(validPerfectSquareDefinition);
 register(sqrtXDefinition);
 register(arrangingCoinsDefinition);
+
 register(romanToIntegerDefinition);
 register(longestCommonPrefixDefinition);
 register(validParenthesesDefinition);
@@ -97,15 +116,20 @@ register(lengthOfLastWordDefinition);
 register(addBinaryDefinition);
 register(validPalindromeDefinition);
 register(validPalindromeIIDefinition);
+
 register(treeInorderDefinition);
 register(treePreorderDefinition);
 register(treePostorderDefinition);
 register(treeLevelOrderDefinition);
 
+register(removeDuplicatesSortedDefinition);
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /** Returns the full algorithm definition or undefined if not implemented. */
-export function getAlgorithmDefinition(id: AlgorithmId): AlgorithmDefinition | undefined {
+export function getAlgorithmDefinition(
+  id: AlgorithmId
+): AlgorithmDefinition | undefined {
   return REGISTRY.get(id);
 }
 
@@ -121,13 +145,15 @@ export function resolveCodeRef(
   codeRef: string | undefined
 ): number | null {
   if (!codeRef) return null;
+
   const line = def.lineMap[lang]?.[codeRef];
   return typeof line === 'number' ? line : null;
 }
 
 /**
- * The inclusive range of lines a codeRef highlights: `lineLeads` lines before its mapped line (default 0) through
- * `lineSpans` lines from it (default 1). The range always contains what resolveCodeRef returns, and is null in
+ * The inclusive range of lines a codeRef highlights: `lineLeads` lines before its
+ * mapped line (default 0) through `lineSpans` lines from it (default 1).
+ * The range always contains what resolveCodeRef returns, and is null in
  * exactly the same cases.
  */
 export function resolveCodeRange(
@@ -137,14 +163,17 @@ export function resolveCodeRange(
 ): { start: number; end: number } | null {
   const line = resolveCodeRef(def, lang, codeRef);
   if (line === null) return null;
+
   const lead = def.lineLeads?.[lang]?.[codeRef!] ?? 0;
   const span = def.lineSpans?.[lang]?.[codeRef!] ?? 1;
+
   return { start: line - lead, end: line + span - 1 };
 }
 
 /** How a definition's trace is drawn: 'array' unless it declares otherwise. */
-export const visualKindOf = (def: Pick<AlgorithmDefinition, 'visual'> | undefined): VisualKind =>
-  def?.visual ?? 'array';
+export const visualKindOf = (
+  def: Pick<AlgorithmDefinition, 'visual'> | undefined
+): VisualKind => def?.visual ?? 'array';
 
 /**
  * Returns the source code string for the given algorithm and language.
@@ -157,6 +186,7 @@ export function getAlgorithmCode(
 ): string | null {
   const def = REGISTRY.get(id);
   if (!def) return null;
+
   return def.code[lang] || null;
 }
 
@@ -169,5 +199,7 @@ export function getAllAlgorithms(): AlgorithmDefinition[] {
 export function getAlgorithmsByCategory(
   category: AlgorithmDefinition['category']
 ): AlgorithmDefinition[] {
-  return Array.from(REGISTRY.values()).filter(d => d.category === category);
+  return Array.from(REGISTRY.values()).filter(
+    definition => definition.category === category
+  );
 }

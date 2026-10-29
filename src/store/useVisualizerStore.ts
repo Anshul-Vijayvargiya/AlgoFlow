@@ -151,8 +151,9 @@ function runExecution(id: AlgorithmId, arr: number[], target: number | null, ind
 /** a whole number from min to max, inclusive */
 const randomInt = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
 
-function randomArray(size: number, ascending: boolean): number[] {
-  const arr = Array.from({ length: size }, () => Math.floor(Math.random() * 85) + 10);
+/** random values from 10 to 94, or from the algorithm's own range (inputSpec.randomValues) */
+function randomArray(size: number, ascending: boolean, [min, max]: readonly [number, number] = [10, 94]): number[] {
+  const arr = Array.from({ length: size }, () => randomInt(min, max));
   return ascending ? sortedCopy(arr) : arr;
 }
 
@@ -361,11 +362,12 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       const m = spec?.secondArray ? randomInt(0, n) : n;
       commit(
         s.selectedAlgorithm,
-        randomArray(m, sorted),
+        // values from the algorithm's own range when it declares one (inputSpec.randomValues), for both arrays
+        randomArray(m, sorted, spec?.randomValues),
         numberSpec ? (s.target ?? numberSpec.defaultValue) : s.target,
         // a position is kept when the new list has it; otherwise it moves to the nearest valid one
         spec?.index ? Math.max(0, Math.min(s.index ?? spec.index.defaultValue, lastListIndex(spec.index.bound, n))) : s.index,
-        spec?.secondArray ? randomArray(n - m, sorted) : null,
+        spec?.secondArray ? randomArray(n - m, sorted, spec?.randomValues) : null,
         'random',
         notice
       );

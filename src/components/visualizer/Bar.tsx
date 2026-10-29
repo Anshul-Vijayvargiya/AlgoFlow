@@ -48,6 +48,15 @@ const ROLE_STYLES: Record<BarRole, RoleStyle> = {
     badge: '',
     label: 'sorted so far',
   },
+  // The result kept so far (Remove Duplicates' unique prefix): a solid violet fill, apart from both the finished green
+  // and the dashed "sorted so far"; the accessible name says what it is, not the colour alone
+  kept: {
+    gradient: 'from-violet-500/80 via-purple-600/70 to-indigo-700/80 border-violet-300',
+    text: 'text-violet-200 font-semibold',
+    glow: '',
+    badge: '',
+    label: 'kept (unique prefix)',
+  },
   focus: {
     gradient: 'from-cyan-400/60 via-sky-500/50 to-slate-800/80 border-cyan-300',
     text: 'text-cyan-100 font-semibold',

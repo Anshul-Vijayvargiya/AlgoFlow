@@ -79,6 +79,12 @@ test.describe('every algorithm renders its default trace faithfully (real UI, no
         // its answer is a computed total, not an element: the run completes, with the total in words and no bar marked found
         expect(final.outcome).toEqual({ kind: 'complete', text: 'Trapped water: 6 units' });
         expect(final.bars.every(b => b.role === 'default')).toBe(true);
+      } else if (id === 'remove-duplicates-sorted') {
+        // returns a count, not a found element: the run completes with the unique prefix kept, the rest left over
+        const unique = new Set(d.defaultInput).size;
+        expect(final.outcome?.kind).toBe('complete');
+        expect(final.bars.filter(b => b.role === 'kept').map(b => b.index)).toEqual([...Array(unique).keys()]);
+        expect(final.bars.slice(unique).every(b => b.role === 'default' && !b.inRange)).toBe(true);
       } else {
         expect(final.outcome?.kind).toBe('found');
         expect(final.bars.filter(b => b.role === 'found').length).toBeGreaterThan(0);

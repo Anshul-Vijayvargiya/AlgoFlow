@@ -559,6 +559,17 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'range-move': /^\s*(i\+\+|i \+= 1);?\s*$/,
     'range-true': /^\s*return (true|True);?\s*$/,
   },
+  'remove-duplicates-sorted': {
+    'fn-entry': /remove_?duplicates\(/i,
+    'check-empty': /if \(?(n == 0|nums\.empty\(\)|nums\.length == 0|not nums)/,
+    'return-empty': /^\s*return 0;?$/,
+    'init-slow': /^\s*(int )?slow = 0;?$/,
+    'loop-condition': /\bfor \(?(int |size_t )?fast\b/,
+    compare: /if \(?nums\[fast\] != nums\[slow\]/,
+    'increment-slow': /\bslow(\+\+| \+= 1)/,
+    write: /\bnums\[slow\] = nums\[fast\]/,
+    return: /return slow \+ 1/,
+  },
 };
 
 /**

@@ -161,6 +161,7 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+
     id: 'merge-sorted-array',
     name: 'Merge Sorted Array',
     category: 'ARRAYS',
@@ -230,6 +231,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     name: 'Valid Palindrome II',
     category: 'STRINGS',
     subtitle: 'Two pointers; at the first mismatch, try deleting either side.',
+     implemented: true,
+  },
+  {
+    id: 'remove-duplicates-sorted',
+    name: 'Remove Duplicates from Sorted Array',
+    category: 'ARRAYS',
+    subtitle: 'Slow/fast pointers keep one copy of each value, in place.',
     implemented: true,
   },
 

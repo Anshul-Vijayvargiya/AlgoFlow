@@ -27,6 +27,7 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'container-most-water': { id: 'container-most-water', label: 'Container With Most Water', heading: 'Container With Most Water' },
   'trapping-rain-water': { id: 'trapping-rain-water', label: 'Trapping Rain Water', heading: 'Trapping Rain Water' },
   'merge-sorted-array': { id: 'merge-sorted-array', label: 'Merge Sorted Array', heading: 'Merge Sorted Array' },
+  'remove-duplicates-sorted': { id: 'remove-duplicates-sorted', label: 'Remove Duplicates from Sorted Array', heading: 'Remove Duplicates from Sorted Array' },
 };
 
 /** Linked-list operations: drawn as nodes, with their own input form (kept apart from ALGORITHMS, whose specs expect bars). */
