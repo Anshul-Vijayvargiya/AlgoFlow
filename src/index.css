@@ -13,13 +13,17 @@
   --color-surface: var(--af-surface);
   --color-surface-raised: var(--af-surface-raised);
   --color-ink: var(--af-text-strong);
+  --color-console: var(--af-console);
 }
 
 @layer base {
   /*
-   * Theme foundation. <html data-theme="dark|light"> is set before first paint by public/theme-init.js and kept in
-   * sync by src/theme/theme.ts. Dark is the default: these :root values ARE the existing dark appearance. Everything
-   * light is scoped under [data-theme="light"] below.
+   * Theme foundation. <html data-theme="dark|light" data-palette="dark|light|galaxy|sunset"> is set before first
+   * paint by public/theme-init.js and kept in sync by src/theme/theme.ts. data-theme is the base (light or dark) and
+   * data-palette the named theme (src/theme/themes.ts): Midnight Neon is 'dark', Arctic Light 'light', Purple Galaxy
+   * 'galaxy' (on the dark base) and Sunset Warm 'sunset' (on the light base). Dark is the default: these :root values
+   * ARE Midnight Neon. Everything light is scoped under [data-theme="light"], and each other theme adds its own
+   * overrides under [data-palette] at the end of this layer.
    */
   :root {
     color-scheme: dark;
@@ -48,6 +52,10 @@
     --af-chart-tooltip-text: #f8fafc;
     --af-code-bg: #070a12;
     --af-code-fg: #cbd5e1;
+    --af-console: #05070d; /* program output and stdin panes */
+    --af-scrollbar-track: rgba(15, 23, 42, 0.6);
+    --af-scrollbar-thumb: rgba(51, 65, 85, 0.6);
+    --af-scrollbar-thumb-hover: rgba(56, 189, 248, 0.5);
   }
 
   :root[data-theme='light'] {
@@ -76,6 +84,9 @@
     --af-chart-tooltip-text: #0f172a;
     --af-code-bg: #ffffff;
     --af-code-fg: #1e293b;
+    --af-console: var(--af-surface-raised);
+    --af-scrollbar-track: rgba(226, 232, 240, 0.8);
+    --af-scrollbar-thumb: rgba(100, 116, 139, 0.5);
 
     /*
      * Light versions of the Tailwind palette the components use (generated from tailwindcss/theme.css). Utilities such
@@ -116,6 +127,193 @@
     --color-teal-50: oklch(27.7% 0.046 192.524); --color-teal-100: oklch(38.6% 0.063 188.416); --color-teal-200: oklch(43.7% 0.078 188.216); --color-teal-300: oklch(43.7% 0.078 188.216); --color-teal-400: oklch(43.7% 0.078 188.216); --color-teal-800: oklch(91% 0.096 180.426); --color-teal-900: oklch(95.3% 0.051 180.801); --color-teal-950: oklch(98.4% 0.014 180.72);
   }
 
+  /*
+   * The other named themes. Generated (each colour re-tinted to the theme's hue with its WCAG luminance kept, so every
+   * contrast ratio equals the base theme's, which the axe-core specs check): Purple Galaxy from the dark values above,
+   * Sunset Warm from the light ones, and Arctic Light's icy tints from the light ones. Success, warning and error keep
+   * their hue in every theme. Higher specificity than [data-theme='light'], so they win over the light overrides.
+   */
+
+  /* Purple Galaxy (dark): generated, see the note above */
+  :root[data-theme][data-palette='galaxy'] {
+    --af-console: oklch(13.2% 0.036 295);
+    --af-scrollbar-track: color-mix(in oklab, var(--af-surface-raised) 60%, transparent);
+    --af-scrollbar-thumb: color-mix(in oklab, var(--af-chart-grid) 60%, transparent);
+    --af-scrollbar-thumb-hover: color-mix(in oklab, var(--af-accent) 50%, transparent);
+    --af-bg: oklch(14.9% 0.041 295);
+    --af-text: oklch(93.1% 0.032 295);
+    --af-text-strong: #ffffff;
+    --af-text-muted: oklch(71.6% 0.068 295);
+    --af-surface: oklch(17.4% 0.047 295);
+    --af-surface-raised: oklch(21.5% 0.076 295);
+    --af-border: oklch(28.6% 0.071 295);
+    --af-input-bg: oklch(21.5% 0.076 295);
+    --af-hover: oklch(28.6% 0.071 295);
+    --af-selected: oklch(73.7% 0.126 300 / 0.2);
+    --af-accent: oklch(81.9% 0.105 300);
+    --af-focus: oklch(81.9% 0.105 300);
+    --af-canvas: oklch(17.4% 0.047 295 / 0.9);
+    --af-grid: oklch(28.6% 0.071 295 / 0.0824);
+    --af-chart-axis: oklch(56.1% 0.077 295);
+    --af-chart-grid: oklch(37.8% 0.075 295);
+    --af-chart-tooltip-bg: oklch(21.5% 0.076 295);
+    --af-chart-tooltip-border: oklch(37.8% 0.075 295);
+    --af-chart-tooltip-text: oklch(98.5% 0.008 295);
+    --af-code-bg: oklch(14.9% 0.041 295);
+    --af-code-fg: oklch(87.3% 0.044 295);
+    /* neutrals: violet-tinted slate */
+    --color-slate-50: oklch(98.5% 0.008 295);
+    --color-slate-100: oklch(96.9% 0.016 295);
+    --color-slate-200: oklch(93.1% 0.033 295);
+    --color-slate-300: oklch(87.3% 0.047 295);
+    --color-slate-400: oklch(71.0% 0.076 295);
+    --color-slate-500: oklch(56.1% 0.086 295);
+    --color-slate-600: oklch(45.3% 0.081 295);
+    --color-slate-700: oklch(37.9% 0.082 295);
+    --color-slate-800: oklch(28.6% 0.078 295);
+    --color-slate-900: oklch(21.5% 0.079 295);
+    --color-slate-950: oklch(13.8% 0.077 295);
+    /* the brand accent (cyan, sky, blue) becomes lavender, violet and indigo */
+    --color-cyan-50: oklch(98.7% 0.007 300);
+    --color-cyan-100: oklch(96.3% 0.020 300);
+    --color-cyan-200: oklch(92.9% 0.040 300);
+    --color-cyan-300: oklch(88.3% 0.065 300);
+    --color-cyan-400: oklch(81.3% 0.110 300);
+    --color-cyan-500: oklch(74.1% 0.143 300);
+    --color-cyan-600: oklch(63.0% 0.126 300);
+    --color-cyan-700: oklch(53.7% 0.105 300);
+    --color-cyan-800: oklch(46.4% 0.085 300);
+    --color-cyan-900: oklch(40.9% 0.070 300);
+    --color-cyan-950: oklch(31.0% 0.056 300);
+    --color-sky-50: oklch(97.8% 0.011 290);
+    --color-sky-100: oklch(95.4% 0.023 290);
+    --color-sky-200: oklch(90.8% 0.047 290);
+    --color-sky-300: oklch(84.0% 0.084 290);
+    --color-sky-400: oklch(76.3% 0.129 290);
+    --color-sky-500: oklch(70.4% 0.164 290);
+    --color-sky-600: oklch(60.5% 0.158 290);
+    --color-sky-700: oklch(51.4% 0.134 290);
+    --color-sky-800: oklch(45.5% 0.110 290);
+    --color-sky-900: oklch(40.1% 0.090 290);
+    --color-sky-950: oklch(30.0% 0.066 290);
+    --color-blue-50: oklch(97.1% 0.014 280);
+    --color-blue-100: oklch(93.4% 0.032 280);
+    --color-blue-200: oklch(88.5% 0.056 280);
+    --color-blue-300: oklch(81.5% 0.093 280);
+    --color-blue-400: oklch(71.5% 0.151 280);
+    --color-blue-500: oklch(63.1% 0.201 280);
+    --color-blue-600: oklch(55.5% 0.245 280);
+    --color-blue-700: oklch(49.6% 0.243 280);
+    --color-blue-800: oklch(43.0% 0.199 280);
+    --color-blue-900: oklch(38.3% 0.146 280);
+    --color-blue-950: oklch(28.4% 0.091 280);
+    /* purple (the second brand colour, and the pivot / call-highlight state) moves to magenta, apart from the lavender accent */
+    --color-purple-50: oklch(97.7% 0.014 335);
+    --color-purple-100: oklch(94.7% 0.033 335);
+    --color-purple-200: oklch(90.4% 0.063 335);
+    --color-purple-300: oklch(83.0% 0.119 335);
+    --color-purple-400: oklch(71.8% 0.203 335);
+    --color-purple-500: oklch(63.0% 0.265 335);
+    --color-purple-600: oklch(55.1% 0.240 335);
+    --color-purple-700: oklch(48.8% 0.214 335);
+    --color-purple-800: oklch(43.5% 0.193 335);
+    --color-purple-900: oklch(38.0% 0.166 335);
+    --color-purple-950: oklch(28.8% 0.128 335);
+    --color-violet-50: oklch(97.0% 0.016 335);
+    --color-violet-100: oklch(94.5% 0.029 335);
+    --color-violet-200: oklch(89.7% 0.057 335);
+    --color-violet-300: oklch(81.6% 0.111 335);
+    --color-violet-400: oklch(70.9% 0.183 335);
+    --color-violet-500: oklch(61.1% 0.250 335);
+    --color-violet-600: oklch(53.6% 0.234 335);
+    --color-violet-700: oklch(48.3% 0.212 335);
+    --color-violet-800: oklch(42.7% 0.187 335);
+    --color-violet-900: oklch(37.9% 0.167 335);
+    --color-violet-950: oklch(28.2% 0.125 335);
+  }
+
+  /* Arctic Light: the light theme with icy-blue page and panel tints */
+  :root[data-theme][data-palette='light'] {
+    --af-bg: oklch(98.4% 0.009 230);
+    --af-surface-raised: oklch(96.7% 0.019 230);
+    --af-border: oklch(86.7% 0.034 230);
+    --af-hover: oklch(92.7% 0.027 230);
+  }
+
+  /* Sunset Warm (light): generated, see the note above */
+  :root[data-theme][data-palette='sunset'] {
+    --af-scrollbar-track: color-mix(in oklab, var(--af-hover) 80%, transparent);
+    --af-scrollbar-thumb: color-mix(in oklab, var(--af-text-muted) 45%, transparent);
+    --af-scrollbar-thumb-hover: color-mix(in oklab, var(--af-accent) 50%, transparent);
+    --af-bg: oklch(98.5% 0.009 60);
+    --af-text: oklch(21.0% 0.050 60);
+    --af-text-strong: oklch(21.0% 0.050 60);
+    --af-text-muted: oklch(45.0% 0.059 60);
+    --af-surface: oklch(100.0% 0.000 60);
+    --af-surface-raised: oklch(97.0% 0.019 60);
+    --af-border: oklch(87.2% 0.038 60);
+    --af-input-bg: oklch(100.0% 0.000 60);
+    --af-hover: oklch(93.1% 0.029 60);
+    --af-selected: oklch(63.5% 0.178 42 / 0.14);
+    --af-accent: oklch(54.3% 0.160 42);
+    --af-focus: oklch(54.3% 0.160 42);
+    --af-canvas: oklch(100.0% 0.000 60);
+    --af-grid: oklch(87.2% 0.038 60 / 0.251);
+    --af-chart-axis: oklch(45.0% 0.059 60);
+    --af-chart-grid: oklch(93.1% 0.029 60);
+    --af-chart-tooltip-bg: oklch(100.0% 0.000 60);
+    --af-chart-tooltip-border: oklch(87.2% 0.038 60);
+    --af-chart-tooltip-text: oklch(21.0% 0.050 60);
+    --af-code-bg: oklch(100.0% 0.000 60);
+    --af-code-fg: oklch(28.3% 0.058 60);
+    /* neutrals: warm (the light theme's reversed slate scale, re-tinted) */
+    --color-slate-50: oklch(12.9% 0.032 60);
+    --color-slate-100: oklch(21.0% 0.049 60);
+    --color-slate-200: oklch(28.3% 0.063 60);
+    --color-slate-300: oklch(37.7% 0.067 60);
+    --color-slate-400: oklch(45.0% 0.066 60);
+    --color-slate-500: oklch(45.0% 0.066 60);
+    --color-slate-600: oklch(70.8% 0.062 60);
+    --color-slate-700: oklch(87.2% 0.040 60);
+    --color-slate-800: oklch(93.1% 0.030 60);
+    --color-slate-900: oklch(96.9% 0.019 60);
+    --color-slate-950: oklch(98.5% 0.009 60);
+    /* the brand accent (cyan, sky, blue) becomes coral, orange and red-coral */
+    --color-cyan-50: oklch(31.5% 0.095 42);
+    --color-cyan-100: oklch(41.5% 0.119 42);
+    --color-cyan-200: oklch(47.0% 0.140 42);
+    --color-cyan-300: oklch(47.0% 0.140 42);
+    --color-cyan-400: oklch(47.0% 0.140 42);
+    --color-cyan-500: oklch(74.3% 0.159 42);
+    --color-cyan-600: oklch(63.8% 0.190 42);
+    --color-cyan-700: oklch(54.4% 0.163 42);
+    --color-cyan-800: oklch(92.9% 0.038 42);
+    --color-cyan-900: oklch(96.3% 0.019 42);
+    --color-cyan-950: oklch(98.7% 0.007 42);
+    --color-sky-50: oklch(30.6% 0.099 35);
+    --color-sky-100: oklch(40.9% 0.135 35);
+    --color-sky-200: oklch(46.4% 0.160 35);
+    --color-sky-300: oklch(46.4% 0.160 35);
+    --color-sky-400: oklch(46.4% 0.160 35);
+    --color-sky-500: oklch(71.1% 0.181 35);
+    --color-sky-600: oklch(61.5% 0.210 35);
+    --color-sky-700: oklch(52.3% 0.183 35);
+    --color-sky-800: oklch(90.9% 0.047 35);
+    --color-sky-900: oklch(95.5% 0.023 35);
+    --color-sky-950: oklch(97.9% 0.010 35);
+    --color-blue-50: oklch(28.8% 0.091 25);
+    --color-blue-100: oklch(38.9% 0.146 25);
+    --color-blue-200: oklch(43.1% 0.171 25);
+    --color-blue-300: oklch(43.1% 0.171 25);
+    --color-blue-400: oklch(43.1% 0.171 25);
+    --color-blue-500: oklch(64.1% 0.214 25);
+    --color-blue-600: oklch(55.9% 0.224 25);
+    --color-blue-700: oklch(49.4% 0.196 25);
+    --color-blue-800: oklch(88.9% 0.057 25);
+    --color-blue-900: oklch(93.6% 0.032 25);
+    --color-blue-950: oklch(97.2% 0.014 25);
+  }
+
   /* One consistent, high-contrast keyboard focus indicator. :where() keeps specificity at 0
      so components can still refine it. */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
@@ -141,24 +339,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--af-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.6);
+  background: var(--af-scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.5);
-}
-
-[data-theme='light'] ::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.8);
-}
-
-[data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
+  background: var(--af-scrollbar-thumb-hover);
 }
 
 /* Glassmorphism card utilities */

@@ -10,7 +10,7 @@ interface ExecutionErrorCardProps {
 export const ExecutionErrorCard: React.FC<ExecutionErrorCardProps> = ({ error }) => (
   <div
     role="alert"
-    className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0B0F19]/80 light:bg-surface/80 border border-rose-500/30 rounded-3xl shadow-2xl my-4"
+    className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-surface/80 border border-rose-500/30 rounded-3xl shadow-2xl my-4"
   >
     <AlertTriangle className="w-10 h-10 text-rose-400 mb-3" />
     <h2 className="text-lg font-bold font-mono text-ink">Visualization unavailable</h2>

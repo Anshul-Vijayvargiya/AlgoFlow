@@ -167,13 +167,13 @@ test.describe('Light Mode — surfaces, components and switching back', () => {
     await setTheme(page, 'light');
     const light = await read();
     expect(light).toEqual({
-      page: 'rgba(248, 250, 252, 1)',
+      page: 'rgba(244, 251, 255, 1)', // Arctic Light's icy page
       text: 'rgba(15, 23, 42, 1)',
       panel: 'rgba(255, 255, 255, 1)',
       header: light.header, // checked below: oklab mixing can round a channel by one
       heading: 'rgba(15, 23, 42, 1)',
     });
-    expect(close(light.header, 'rgba(248, 250, 252, 0.9)')).toBe(true);
+    expect(close(light.header, 'rgba(244, 251, 255, 0.9)')).toBe(true);
     await setTheme(page, 'dark');
     expect(await read()).toEqual(dark);
   });
@@ -182,7 +182,7 @@ test.describe('Light Mode — surfaces, components and switching back', () => {
     void app;
     await page.emulateMedia({ colorScheme: 'light' });
     await setTheme(page, 'system');
-    expect(await bg(page, 'body')).toBe('rgba(248, 250, 252, 1)');
+    expect(await bg(page, 'body')).toBe('rgba(244, 251, 255, 1)');
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect.poll(() => bg(page, 'body')).toBe('rgba(7, 10, 18, 1)');
   });
@@ -250,7 +250,7 @@ test.describe('Light Mode — surfaces, components and switching back', () => {
     const name = page.locator('input').first();
     await name.fill('Light Tester');
     expect(contrast(await styleOfLocator(page, name, 'color'), await styleOfLocator(page, name, 'backgroundColor'))).toBeGreaterThan(4.5);
-    await page.getByRole('group', { name: 'Interface Theme' }).getByRole('button', { name: 'Dark' }).click();
+    await page.getByRole('group', { name: 'Interface Theme' }).getByRole('button', { name: 'Midnight Neon' }).click();
     expect(await bg(page, 'body')).toBe('rgba(7, 10, 18, 1)');
   });
 });

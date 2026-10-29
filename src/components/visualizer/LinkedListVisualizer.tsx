@@ -257,7 +257,7 @@ export const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-2" data-testid="list-visualizer" data-outcome={outcome ?? ''}>
-      <div className="w-full min-h-60 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex flex-col gap-4 relative overflow-hidden shadow-inner">
+      <div className="w-full min-h-60 bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex flex-col gap-4 relative overflow-hidden shadow-inner">
         {(value !== undefined || index !== undefined) && (
           <div className="absolute top-2 left-3 flex gap-2 z-10">
             {value !== undefined && (

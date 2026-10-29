@@ -66,12 +66,14 @@ export const Header: React.FC = () => {
     { to: '/progress',   label: 'Progress',    icon: BarChart2  },
   ];
 
-  const languages: { id: ProgrammingLanguage; label: string }[] = [
-    { id: 'cpp',    label: 'C++'    },
-    { id: 'c',      label: 'C'      },
-    { id: 'java',   label: 'Java'   },
-    { id: 'python', label: 'Python' },
+  // `short` is the visible label on phones, where the select itself is drawn transparently over it
+  const languages: { id: ProgrammingLanguage; label: string; short: string }[] = [
+    { id: 'cpp',    label: 'C++',    short: 'C++'  },
+    { id: 'c',      label: 'C',      short: 'C'    },
+    { id: 'java',   label: 'Java',   short: 'Java' },
+    { id: 'python', label: 'Python', short: 'Py'   },
   ];
+  const currentLanguage = languages.find((l) => l.id === selectedLanguage) ?? languages[0];
 
   async function handleLogout() {
     setShowProfileModal(false);
@@ -86,15 +88,16 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-16 bg-[#070A12]/90 light:bg-page/90 backdrop-blur-md border-b border-cyan-500/15 px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-40">
-        {/* Brand Logo */}
-        <NavLink to="/dashboard" className="flex items-center gap-3 group min-w-0 shrink">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-300">
+      <header className="h-16 bg-page/90 backdrop-blur-md border-b border-cyan-500/15 px-2.5 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-40">
+        {/* Brand Logo (phones: tighter spacing here and in the controls, so the name fits at 360px) */}
+        <NavLink to="/dashboard" className="flex items-center gap-2 sm:gap-3 group min-w-0 shrink">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-300">
             <div className="w-full h-full bg-page rounded-[10px] flex items-center justify-center">
               <Play className="w-4 h-4 text-cyan-400 fill-cyan-400/20 ml-0.5" />
             </div>
           </div>
-          <div className="flex flex-col min-w-0">
+          {/* logo only beside the compact navigation (1024–1279px); the name stays the link's accessible name */}
+          <div className="flex flex-col min-w-0 lg:max-xl:sr-only">
             <span className="truncate font-bold text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 font-mono">
               AlgoFlow
             </span>
@@ -104,33 +107,34 @@ export const Header: React.FC = () => {
           </div>
         </NavLink>
 
-        {/* Main Navigation */}
+        {/* Main Navigation: below 1400px the links drop their icons (and below 1280px tighten their padding) so the
+            eight labels, the brand and the controls fit without overflowing the viewport */}
         <nav className="hidden lg:flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800/80">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                `flex items-center gap-1.5 px-3 lg:max-xl:px-2 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
                   isActive
                     ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                 }`
               }
             >
-              <item.icon className="w-3.5 h-3.5" />
+              <item.icon className="w-3.5 h-3.5 shrink-0 lg:max-[1400px]:hidden" aria-hidden="true" />
               {item.label}
             </NavLink>
           ))}
         </nav>
 
         {/* Top Right Quick Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
           {/* AI Tutor Button */}
           <button
             id="header-ai-tutor-btn"
             onClick={() => setAiDrawerOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-purple-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 text-xs font-mono font-bold shadow-sm transition-all"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-purple-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 text-xs font-mono font-bold shadow-sm transition-all"
             title="Open the AI Tutor"
             aria-label="AI Tutor"
           >
@@ -142,15 +146,22 @@ export const Header: React.FC = () => {
           {/* Theme (Dark / Light / System), shared with Settings */}
           <ThemeSelect id="header-theme-select" compact />
 
-          {/* Language Selector */}
-          <div className="relative flex items-center bg-slate-900/80 border border-slate-700/60 rounded-lg px-2.5 py-1">
-            <Globe className="w-3.5 h-3.5 text-cyan-400 mr-1.5" />
+          {/* Language Selector. Phones: a fixed-width short label (C++, C, Java, Py) with the (still focusable, still
+              named) select laid transparently over it, as the compact theme picker does; the wrapper draws its focus ring */}
+          <div
+            title={`Programming language: ${currentLanguage.label}`}
+            className="relative flex items-center bg-slate-900/80 border border-slate-700/60 rounded-lg px-2.5 py-1 max-sm:w-11 max-sm:px-0 max-sm:justify-center max-sm:has-[select:focus-visible]:outline-2 max-sm:has-[select:focus-visible]:outline-[var(--af-focus)] max-sm:has-[select:focus-visible]:outline-offset-2"
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400 mr-1.5 max-sm:hidden" aria-hidden="true" />
+            <span aria-hidden="true" data-testid="header-language-short" className="hidden max-sm:inline h-6 leading-6 text-xs font-mono font-bold text-cyan-200">
+              {currentLanguage.short}
+            </span>
             <select
               id="header-language-select"
               aria-label="Programming language"
               value={selectedLanguage}
               onChange={(e) => setLanguage(e.target.value as ProgrammingLanguage)}
-              className="h-6 bg-transparent text-xs font-mono text-cyan-200 cursor-pointer rounded pr-1"
+              className="h-6 bg-transparent text-xs font-mono text-cyan-200 cursor-pointer rounded pr-1 max-sm:absolute max-sm:inset-0 max-sm:w-full max-sm:h-full max-sm:opacity-0"
             >
               {languages.map((lang) => (
                 <option key={lang.id} value={lang.id} className="bg-slate-900 text-slate-200">
@@ -169,17 +180,19 @@ export const Header: React.FC = () => {
                   aria-haspopup="menu"
                   aria-expanded={showProfileModal}
                   onClick={() => setShowProfileModal(!showProfileModal)}
-                  className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-lg bg-slate-900/80 border border-slate-700/60 hover:border-cyan-500/50 transition-all text-xs font-mono text-slate-300"
+                  className="flex items-center gap-1 sm:gap-2 px-1 sm:pl-1.5 sm:pr-3 py-1 rounded-lg bg-slate-900/80 border border-slate-700/60 hover:border-cyan-500/50 transition-all text-xs font-mono text-slate-300"
                 >
                   {/* Avatar */}
                   <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
                     {initials}
                   </div>
-                  <span className="hidden sm:inline max-w-[80px] truncate">{displayName}</span>
-                  {/* the visible name is hidden on phones; keep it in the accessible name there too */}
-                  <span className="sr-only sm:hidden">{displayName}</span>
+                  <span className="hidden sm:inline lg:max-xl:hidden max-w-[80px] truncate">{displayName}</span>
+                  {/* the visible name is hidden on phones and beside the compact navigation (1024–1279px); keep it in
+                      the accessible name there too */}
+                  <span className="sr-only sm:max-lg:hidden xl:hidden">{displayName}</span>
+                  {/* phones: no room beside the brand; the menu still says Admin */}
                   {isAdmin && (
-                    <span title="Admin">
+                    <span title="Admin" className="max-sm:hidden">
                       <Shield className="w-3 h-3 text-amber-400" />
                     </span>
                   )}

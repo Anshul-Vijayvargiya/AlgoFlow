@@ -32,7 +32,9 @@ test.describe('Progress', () => {
     const main = page.locator('main');
     await expect(main).not.toContainText('/ 26');
     await expect(main).not.toContainText(/cumulative algorithm executions/i);
-    for (const gone of ['Trees', 'Graphs', 'DP']) await expect(page.getByTestId('topic-coverage')).not.toContainText(gone);
+    // only topics with visualized algorithms are listed (Trees has its four traversals; Graphs and DP have none yet)
+    for (const gone of ['Graphs', 'DP']) await expect(page.getByTestId('topic-coverage')).not.toContainText(gone);
+    await expect(page.getByTestId('topic-coverage')).toContainText('Trees 0 of 4');
     await expect(page.getByTestId('stat-learned')).toContainText(`0 / ${IMPLEMENTED}`);
     await expect(page.getByTestId('stat-learned')).toContainText(`of the ${IMPLEMENTED} visualized algorithms (${LISTED} listed)`);
     await expect(page.getByTestId('stat-explored')).toContainText(`0 / ${IMPLEMENTED}`);
@@ -136,7 +138,7 @@ test.describe('Progress', () => {
     await expect(page.getByTestId('stat-explored')).toContainText(`0 / ${IMPLEMENTED}`);
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA with recorded activity: no violations (${theme})`, async ({ app, page }) => {
       await app.next();
       await expect.poll(() => todaysSteps(page)).toEqual([2]);

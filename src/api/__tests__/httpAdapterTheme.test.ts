@@ -14,8 +14,8 @@ function serverReturns(theme: unknown) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('HTTP adapter: theme preference', () => {
-  it('keeps dark, light and system as the server sent them', async () => {
-    for (const theme of ['dark', 'light', 'system'] as const) {
+  it('keeps every theme the server sent (the four named themes and system)', async () => {
+    for (const theme of ['dark', 'light', 'galaxy', 'sunset', 'system'] as const) {
       serverReturns(theme);
       const profile = await new HttpApiClient().settings.updateProfile({ preferences: { theme } });
       expect(profile.preferences.theme).toBe(theme);
@@ -23,7 +23,7 @@ describe('HTTP adapter: theme preference', () => {
   });
 
   it('missing or unknown values fall back to dark', async () => {
-    for (const theme of [undefined, null, 'neon', 'LIGHT', 3]) {
+    for (const theme of [undefined, null, 'neon', 'LIGHT', 'midnight', 3]) {
       serverReturns(theme);
       expect((await new HttpApiClient().settings.getProfile()).preferences.theme, String(theme)).toBe('dark');
     }

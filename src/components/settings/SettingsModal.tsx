@@ -8,23 +8,18 @@ import {
   Palette, 
   Shield, 
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Monitor
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
-import type { ThemePreference } from '../../theme/theme';
+import { THEMES } from '../../theme/themes';
 import { apiClient } from '../../api';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'dark', label: 'Dark' },
-  { value: 'light', label: 'Light' },
-  { value: 'system', label: 'System' },
-];
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { user, fetchCurrentUser } = useAuthStore();
@@ -199,24 +194,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <Palette className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
               Interface Theme
             </span>
-            <div role="group" aria-labelledby="settings-theme-label" className="grid grid-cols-3 gap-2">
-              {THEME_OPTIONS.map(({ value: t, label }) => (
+            <div role="group" aria-labelledby="settings-theme-label" className="grid grid-cols-2 gap-2">
+              {THEMES.map(t => (
                 <button
-                  key={t}
+                  key={t.id}
                   type="button"
-                  aria-pressed={theme === t}
-                  onClick={() => setTheme(t)}
-                  className={`py-2 rounded-xl text-center font-bold capitalize transition-all cursor-pointer ${
-                    theme === t
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  aria-pressed={theme === t.id}
+                  aria-describedby={`settings-theme-${t.id}-desc`}
+                  data-theme-option={t.id}
+                  onClick={() => setTheme(t.id)}
+                  className={`p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                    theme === t.id
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 ring-1 ring-cyan-500/40'
+                      : 'bg-slate-900 text-slate-300 hover:text-slate-100 border-slate-800 hover:border-slate-600'
                   }`}
                 >
-                  {label}
+                  {/* a miniature of the theme in its own colours, whichever theme is active */}
+                  <span
+                    aria-hidden="true"
+                    data-testid={`theme-swatch-${t.id}`}
+                    className="flex h-10 rounded-lg border border-slate-500/40 overflow-hidden p-1.5 gap-1.5 items-end"
+                    style={{ background: t.swatch.page }}
+                  >
+                    <span className="h-full flex-1 rounded" style={{ background: t.swatch.panel }} />
+                    <span className="h-4 w-4 rounded-full" style={{ background: t.swatch.accent }} />
+                    <span className="h-4 w-4 rounded-full" style={{ background: t.swatch.accent2 }} />
+                  </span>
+                  <span className="mt-1.5 block font-bold">{t.name}</span>
+                  <span id={`settings-theme-${t.id}-desc`} aria-hidden="true" className="block text-[11px] text-slate-400 leading-tight">
+                    {t.description}
+                  </span>
                 </button>
               ))}
+              <button
+                type="button"
+                aria-pressed={theme === 'system'}
+                aria-describedby="settings-theme-system-desc"
+                data-theme-option="system"
+                onClick={() => setTheme('system')}
+                className={`col-span-2 py-2 px-3 rounded-xl flex items-center gap-2 font-bold transition-all cursor-pointer border ${
+                  theme === 'system'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 ring-1 ring-cyan-500/40'
+                    : 'bg-slate-900 text-slate-300 hover:text-slate-100 border-slate-800 hover:border-slate-600'
+                }`}
+              >
+                <Monitor className="w-4 h-4 shrink-0" aria-hidden="true" />
+                System
+                <span id="settings-theme-system-desc" aria-hidden="true" className="font-normal text-[11px] text-slate-400">
+                  Midnight Neon or Arctic Light, following your device
+                </span>
+              </button>
             </div>
-            <p className="text-[11px] text-slate-400">Applies immediately. System follows your device&apos;s light or dark setting.</p>
+            <p className="text-[11px] text-slate-400">Applies immediately, on every page.</p>
             {accountSync === 'error' && (
               <p role="status" data-testid="theme-sync-error" className="text-[11px] text-amber-300">
                 Saved on this device, but it could not be saved to your account. Press Save to try again.

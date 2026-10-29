@@ -6,6 +6,7 @@ import {
   type ResolvedTheme,
   type ThemeController,
   type ThemeEnvironment,
+  type ThemeName,
   type ThemePreference,
 } from '../theme/theme';
 
@@ -15,7 +16,9 @@ export type ThemeAccountSync = 'idle' | 'saving' | 'saved' | 'error';
 interface ThemeStoreState {
   /** what the user chose (stored) */
   preference: ThemePreference;
-  /** what the page shows ('system' resolved through the OS) */
+  /** the theme the page shows ('system' resolved through the OS) */
+  theme: ThemeName;
+  /** its base, dark or light */
   resolvedTheme: ResolvedTheme;
   accountSync: ThemeAccountSync;
   setPreference: (preference: ThemePreference) => void;
@@ -23,12 +26,13 @@ interface ThemeStoreState {
 
 /**
  * React-facing view of the single theme controller. The controller owns the DOM, storage and the OS listener; this
- * store only mirrors its state so components can render a toggle. startTheme() is called once, in main.tsx.
+ * store only mirrors its state so components can render a picker. startTheme() is called once, in main.tsx.
  */
 let controller: ThemeController | null = null;
 
 export const useThemeStore = create<ThemeStoreState>(() => ({
   preference: DEFAULT_THEME_PREFERENCE,
+  theme: 'dark',
   resolvedTheme: 'dark',
   accountSync: 'idle',
   setPreference: preference => controller?.setPreference(preference),

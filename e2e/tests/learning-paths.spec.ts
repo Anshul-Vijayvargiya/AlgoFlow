@@ -23,9 +23,9 @@ test.describe('Learning Paths', () => {
     await openRoadmap(page);
     await expect(page.locator('[data-status="explored"]')).toHaveCount(0);
     await expect(page.locator('main')).not.toContainText(/completed/i);
-    await expect(page.locator('[data-status="not-started"]')).toHaveCount(9);
-    await expect(page.getByTestId('track-summary')).toHaveText(['0 of 3 explored', '0 of 5 explored', '0 of 1 explored']);
-    for (const m of ['m10', 'm11']) {
+    await expect(page.locator('[data-status="not-started"]')).toHaveCount(10);
+    await expect(page.getByTestId('track-summary')).toHaveText(['0 of 3 explored', '0 of 5 explored', '0 of 2 explored']);
+    for (const m of ['m10']) {
       await expect(status(page, m)).toHaveAttribute('data-status', 'coming-soon');
       await expect(status(page, m)).toContainText('Coming soon');
       await expect(status(page, m).getByRole('link')).toHaveCount(0);
@@ -91,10 +91,10 @@ test.describe('Learning Paths', () => {
     await expect(page.locator('a[data-algorithm="bubble-sort"]')).toBeVisible();
     await alert.getByRole('button', { name: 'Retry' }).click();
     await expect(alert).toHaveCount(0);
-    await expect(page.locator('[data-status="not-started"]')).toHaveCount(9);
+    await expect(page.locator('[data-status="not-started"]')).toHaveCount(10);
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA with explored, not-started and coming-soon milestones: no violations (${theme})`, async ({ app, page }) => {
       await app.next();
       await app.expectStep(2);

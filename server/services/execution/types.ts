@@ -27,7 +27,7 @@ export interface LanguageInfo {
 }
 
 export interface ExecutionProvider {
-  readonly name: 'judge0' | 'fake';
+  readonly name: 'judge0' | 'fake' | 'local';
   languages(): LanguageInfo[];
   /** runs the program; throws ExecutionProviderError when there is no genuine result */
   execute(request: ExecutionRequest): Promise<ExecutionResult>;

@@ -120,6 +120,52 @@ describe('tutor — validation (before any allowance is used)', () => {
     }
     expect(m.quota.consumeQuota).not.toHaveBeenCalled();
   });
+
+  it('Merge Sorted Array: its second array (nums2) is accepted and rebuilt into the context', async () => {
+    const res = await ask({ ...valid, algorithmId: 'merge-sorted-array', input: { array: [1, 2, 3], target: null, index: null, second: [2, 5, 6] }, stepIndex: 4 });
+    expect(res.status).toBe(200);
+    const sent = (m.state.provider!.ask as ReturnType<typeof vi.fn>).mock.calls[0][0] as TutorRequest;
+    expect(sent.system).toContain('Algorithm: Merge Sorted Array');
+    expect(sent.system).toContain('Input: [1,2,3], nums2 [2,5,6]');
+    expect(sent.system).toContain('Current step: 5 of 24: nums1[5] = nums2[2] = 6');
+    expect(sent.system).toContain('Data at this step: [1,2,3,0,0,6]');
+  });
+
+  it('a second array that is not a list of whole numbers is a 400; without one, Merge Sorted Array cannot run', async () => {
+    // several requests in one test: the per-minute limits are reset before each (they may be low in a local .env)
+    for (const second of [[1.5], ['2'], 3]) {
+      _resetRateLimitsForTesting();
+      const res = await ask({ ...valid, algorithmId: 'merge-sorted-array', input: { array: [1], target: null, index: null, second } });
+      expect(res.status, JSON.stringify(second)).toBe(400);
+    }
+    _resetRateLimitsForTesting();
+    const missing = await ask({ ...valid, algorithmId: 'merge-sorted-array', input: { array: [1], target: null, index: null } });
+    expect(missing.status).toBe(400);
+    expect(missing.body.code).toBe('invalid_context');
+    expect(m.quota.consumeQuota).not.toHaveBeenCalled();
+  });
+
+  it('text algorithms: their strings are accepted and rebuilt into the context', async () => {
+    const res = await ask({ ...valid, algorithmId: 'add-binary', input: { array: [], target: null, index: null, texts: ['11', '1'] }, stepIndex: 2 });
+    expect(res.status).toBe(200);
+    const sent = (m.state.provider!.ask as ReturnType<typeof vi.fn>).mock.calls[0][0] as TutorRequest;
+    expect(sent.system).toContain('Algorithm: Add Binary');
+    expect(sent.system).toContain('Input: a = "11", b = "1"');
+    expect(sent.system).toContain('Strings at this step: a = "11"');
+  });
+
+  it('strings that are not a short list of short strings are a 400; invalid strings cannot run, costing nothing', async () => {
+    for (const texts of [[1], 'abc', ['x'.repeat(201)], ['a', 'b', 'c', 'd', 'e']]) {
+      _resetRateLimitsForTesting();
+      const res = await ask({ ...valid, algorithmId: 'add-binary', input: { array: [], target: null, index: null, texts } });
+      expect(res.status, JSON.stringify(texts).slice(0, 40)).toBe(400);
+    }
+    _resetRateLimitsForTesting();
+    const invalid = await ask({ ...valid, algorithmId: 'roman-to-integer', input: { array: [], target: null, index: null, texts: ['IIII'] } });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.code).toBe('invalid_context');
+    expect(m.quota.consumeQuota).not.toHaveBeenCalled();
+  });
 });
 
 describe('tutor — answers', () => {

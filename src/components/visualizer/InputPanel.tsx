@@ -27,6 +27,7 @@ const InputPanelForm: React.FC = () => {
   const selectedAlgorithm = useVisualizerStore(s => s.selectedAlgorithm);
   const array = useVisualizerStore(s => s.array);
   const target = useVisualizerStore(s => s.target);
+  const second = useVisualizerStore(s => s.second);
   const inputNotice = useVisualizerStore(s => s.inputNotice);
   const applyInput = useVisualizerStore(s => s.applyInput);
   const sortInputCopy = useVisualizerStore(s => s.sortInputCopy);
@@ -45,11 +46,15 @@ const InputPanelForm: React.FC = () => {
 
   const [arrayText, setArrayText] = useState(array.join(', '));
   const [targetText, setTargetText] = useState(target === null ? '' : String(target));
+  // the second array (Merge Sorted Array's nums2), for an algorithm that takes one
+  const [secondText, setSecondText] = useState((second ?? []).join(', '));
 
   if (!def) return null;
-  const draft = validateDraft(def, arrayText, targetText);
+  const draft = validateDraft(def, arrayText, targetText, secondText);
   const arrayBad = !draft.ok && (draft.field === 'array' || draft.field === 'order');
   const targetBad = !draft.ok && draft.field === 'target';
+  const secondBad = !draft.ok && draft.field === 'second';
+  const arrayLabel = spec?.arrayLabel ?? 'Array';
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +62,7 @@ const InputPanelForm: React.FC = () => {
     const active = document.activeElement;
     pendingFocusId =
       active instanceof HTMLElement && e.currentTarget.contains(active) && active.id ? active.id : 'apply-input';
-    if (!applyInput(draft.array, draft.target).ok) pendingFocusId = null;
+    if (!applyInput(draft.array, draft.target, null, draft.second ?? null).ok) pendingFocusId = null;
   };
 
   return (
@@ -72,7 +77,7 @@ const InputPanelForm: React.FC = () => {
         <div className="flex-1 min-w-[220px]">
           <label htmlFor="array-input" className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400 mb-1">
             <ListOrdered className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
-            Array
+            {arrayLabel}
           </label>
           <input
             id="array-input"
@@ -88,6 +93,28 @@ const InputPanelForm: React.FC = () => {
             className={`${fieldClass} ${arrayBad ? 'border-rose-500/70' : 'border-slate-700'}`}
           />
         </div>
+
+        {spec?.secondArray && (
+          <div className="flex-1 min-w-[220px]">
+            <label htmlFor="second-input" className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400 mb-1">
+              <ListOrdered className="w-3.5 h-3.5 text-purple-400" aria-hidden="true" />
+              {spec.secondArray.label}
+            </label>
+            <input
+              id="second-input"
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              spellCheck={false}
+              value={secondText}
+              onChange={e => setSecondText(e.target.value)}
+              placeholder="2, 5, 6"
+              aria-invalid={secondBad}
+              aria-describedby="input-hint input-error"
+              className={`${fieldClass} ${secondBad ? 'border-rose-500/70' : 'border-slate-700'}`}
+            />
+          </div>
+        )}
 
         {spec?.target && (
           <div className="w-36">
@@ -125,10 +152,16 @@ const InputPanelForm: React.FC = () => {
       <p id="input-hint" className="flex items-start gap-1.5 text-[11px] text-slate-400">
         <Info className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
         <span>
-          {spec?.minLength ? `${spec.minLength} to ${MAX_ARRAY_SIZE}` : `Up to ${MAX_ARRAY_SIZE}`} whole numbers ({spec?.minValue ?? MIN_VALUE} to {MAX_VALUE}), separated by commas
-          {spec?.sortedRequired ? '; must be sorted ascending' : ''}.
+          {spec?.secondArray
+            ? `${arrayLabel} and ${spec.secondArray.label}: up to ${MAX_ARRAY_SIZE} whole numbers together`
+            : spec?.minLength
+              ? `${spec.minLength} to ${MAX_ARRAY_SIZE} whole numbers`
+              : `Up to ${MAX_ARRAY_SIZE} whole numbers`}{' '}
+          ({spec?.minValue ?? MIN_VALUE} to {MAX_VALUE}), separated by commas
+          {spec?.sortedRequired ? (spec?.secondArray ? '; each must be sorted ascending' : '; must be sorted ascending') : ''}.
           {spec?.target ? ` ${spec.target.hint}.` : ''}
-          {spec?.minLength ? '' : ' Leave the array blank for an empty array.'}
+          {spec?.secondArray ? ` ${spec.secondArray.hint}.` : ''}
+          {spec?.minLength || spec?.secondArray ? '' : ' Leave the array blank for an empty array.'}
           {spec?.sortedRequired
             ? ' Your order is never changed unless you choose "Sort a copy".'
             : ' Your order is preserved exactly.'}
@@ -153,7 +186,7 @@ const InputPanelForm: React.FC = () => {
                 id="sort-copy-btn"
                 onClick={() => {
                   pendingFocusId = 'array-input';
-                  if (!sortInputCopy(draft.array, draft.target).ok) pendingFocusId = null;
+                  if (!sortInputCopy(draft.array, draft.target, draft.second ?? null).ok) pendingFocusId = null;
                 }}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-slate-600 text-slate-200 font-mono hover:border-cyan-400"
               >
@@ -174,9 +207,13 @@ const InputPanelForm: React.FC = () => {
         >
           <Info className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span className="flex-1 min-w-[200px]">
-            {inputNotice.kind === 'sorted-copy'
-              ? `Sorted ascending because ${def.name} requires it. Your original order: ${list(inputNotice.original)}.`
-              : `Your entered array (${list(inputNotice.original)}) was replaced by a random one.`}
+            {inputNotice.originalSecond !== undefined && spec?.secondArray
+              ? inputNotice.kind === 'sorted-copy'
+                ? `Sorted ascending because ${def.name} requires it. Your original order: ${arrayLabel} ${list(inputNotice.original)}; ${spec.secondArray.label} ${list(inputNotice.originalSecond ?? [])}.`
+                : `Your entered arrays (${arrayLabel} ${list(inputNotice.original)}; ${spec.secondArray.label} ${list(inputNotice.originalSecond ?? [])}) were replaced by random ones.`
+              : inputNotice.kind === 'sorted-copy'
+                ? `Sorted ascending because ${def.name} requires it. Your original order: ${list(inputNotice.original)}.`
+                : `Your entered array (${list(inputNotice.original)}) was replaced by a random one.`}
           </span>
           <button
             type="button"
@@ -188,7 +225,7 @@ const InputPanelForm: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 border border-slate-600 text-slate-200 font-mono hover:border-cyan-400"
           >
             <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />
-            {inputNotice.kind === 'sorted-copy' ? 'Restore original order' : 'Restore my array'}
+            {inputNotice.kind === 'sorted-copy' ? 'Restore original order' : spec?.secondArray ? 'Restore my arrays' : 'Restore my array'}
           </button>
         </div>
       )}

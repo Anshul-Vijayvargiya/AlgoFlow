@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Terminal, Play, RotateCcw, Copy, Check, Sliders, Globe, AlertTriangle } from 'lucide-react';
-import { apiClient, type ExecutionLanguageId, type ExecutionLanguages, type RunResult } from '../api';
+import { Terminal, Play, RotateCcw, Copy, Check, Sliders, Globe, AlertTriangle, Footprints } from 'lucide-react';
+import { apiClient, type ExecutionLanguageId, type ExecutionLanguages, type RunResult, type TraceRunResult } from '../api';
 import { useVisualizerStore } from '../store/useVisualizerStore';
+import type { ExecutionTrace } from '../execution/trace';
+import { TRACE_SAMPLES, normalizeProgramText } from '../execution/traceSamples';
 import { DEFAULT_STDIN, SOURCE_FILE_NAMES, STARTER_PROGRAMS } from './playground/starterPrograms';
 import { runHeadline, runMetrics } from './playground/runOutput';
+import { TraceView } from './playground/TraceView';
 
 const FALLBACK_NAMES: Record<ExecutionLanguageId, string> = { c: 'C', cpp: 'C++', java: 'Java', python: 'Python' };
 const TONE_CLASS = { success: 'text-emerald-400', error: 'text-rose-400', warning: 'text-amber-400' } as const;
@@ -13,6 +16,21 @@ type RunState =
   | { kind: 'running' }
   | { kind: 'done'; result: RunResult }
   | { kind: 'failed'; message: string };
+
+/** a step-by-step trace request: a verified trace (of exactly this program and input), why there is none, or a failure */
+type TraceState =
+  | { kind: 'idle' }
+  | { kind: 'tracing' }
+  | { kind: 'traced'; id: number; trace: ExecutionTrace; source: string; stdin: string }
+  | { kind: 'none'; result: TraceRunResult }
+  | { kind: 'failed'; message: string };
+
+const NO_TRACE_TITLE: Record<TraceRunResult['status'], string> = {
+  traced: 'Traced',
+  timeout: 'No trace: time limit',
+  no_trace: 'No trace',
+  invalid_trace: 'Trace not shown',
+};
 
 export const PlaygroundPage: React.FC = () => {
   const { selectedLanguage, setLanguage } = useVisualizerStore();
@@ -25,6 +43,8 @@ export const PlaygroundPage: React.FC = () => {
   const [stdin, setStdin] = useState(DEFAULT_STDIN);
   const [copied, setCopied] = useState(false);
   const [run, setRun] = useState<RunState>({ kind: 'idle' });
+  const [traceState, setTraceState] = useState<TraceState>({ kind: 'idle' });
+  const [traceCount, setTraceCount] = useState(0);
   const [info, setInfo] = useState<{ state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; data: ExecutionLanguages }>({ state: 'loading' });
 
   const fetchLanguages = useCallback(() => {
@@ -41,7 +61,11 @@ export const PlaygroundPage: React.FC = () => {
 
   const ready = info.state === 'ready' ? info.data : null;
   const offered = ready?.languages.find(l => l.id === language);
-  const canRun = Boolean(ready?.available && offered) && run.kind !== 'running' && code.trim().length > 0;
+  const busy = run.kind === 'running' || traceState.kind === 'tracing';
+  const canRun = Boolean(ready?.available && offered) && !busy && code.trim().length > 0;
+  const tracing = ready?.tracing ?? null;
+  const traceable = Boolean(tracing?.languages.includes(language));
+  const canTrace = Boolean(ready?.available && offered) && traceable && !busy && code.trim().length > 0;
   const usedToday = run.kind === 'done' ? run.result.usedToday : ready?.usedToday;
 
   const handleRun = async () => {
@@ -55,6 +79,39 @@ export const PlaygroundPage: React.FC = () => {
       setRun({ kind: 'failed', message: (err as Error)?.message || 'The program could not be run.' });
     }
   };
+
+  const handleVisualize = async () => {
+    if (!canTrace) return;
+    const traced = { source: code, stdin };
+    setTraceState({ kind: 'tracing' });
+    try {
+      const result = await apiClient.execution.trace({ language, ...traced });
+      if (result.status !== 'traced' || !result.trace) return setTraceState({ kind: 'none', result });
+      // verified again here: a trace that does not pass the same checks as on the server is never shown (the
+      // validator, with zod, is loaded only now, not with the page)
+      const { validateTrace } = await import('../execution/trace');
+      const checked = validateTrace(result.trace, traced);
+      if (!checked.ok) {
+        return setTraceState({ kind: 'none', result: { ...result, status: 'invalid_trace', trace: null, message: 'The trace could not be verified, so it is not shown.' } });
+      }
+      const id = traceCount + 1;
+      setTraceCount(id);
+      setTraceState({ kind: 'traced', id, trace: checked.trace, ...traced });
+    } catch (err) {
+      setTraceState({ kind: 'failed', message: (err as Error)?.message || 'The program could not be traced.' });
+    }
+  };
+
+  const loadExample = (id: string) => {
+    const sample = TRACE_SAMPLES.find(s => s.id === id);
+    if (!sample) return;
+    setDrafts(d => ({ ...d, python: sample.source }));
+    setStdin(sample.stdin);
+  };
+
+  const traceIsStale =
+    traceState.kind === 'traced' &&
+    (normalizeProgramText(traceState.source) !== normalizeProgramText(drafts.python) || normalizeProgramText(traceState.stdin) !== normalizeProgramText(stdin));
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
@@ -79,7 +136,7 @@ export const PlaygroundPage: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-cyan-300">
             <Globe className="w-3.5 h-3.5 mr-2 text-cyan-400" aria-hidden="true" />
             <select
@@ -93,6 +150,18 @@ export const PlaygroundPage: React.FC = () => {
               ))}
             </select>
           </div>
+
+          <button
+            type="button"
+            onClick={handleVisualize}
+            disabled={!canTrace}
+            aria-busy={traceState.kind === 'tracing'}
+            aria-describedby={tracing && !traceable ? 'trace-language-note' : undefined}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 font-mono text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Footprints className="w-4 h-4" aria-hidden="true" />
+            <span>{traceState.kind === 'tracing' ? 'Tracing...' : 'Visualize'}</span>
+          </button>
 
           <button
             onClick={handleRun}
@@ -124,6 +193,16 @@ export const PlaygroundPage: React.FC = () => {
           {FALLBACK_NAMES[language]} cannot be run on this server.
         </div>
       )}
+      {tracing && !traceable && (
+        <p id="trace-language-note" className="text-xs font-mono text-slate-400">
+          Step-by-step visualization is available for Python. Choose Python to visualize a program line by line.
+        </p>
+      )}
+      {tracing?.mode === 'recorded' && traceable && (
+        <p role="note" data-testid="playground-recorded-traces" className="text-xs font-mono text-slate-400">
+          Test mode: only the example programs, with their example input, can be visualized (their traces were recorded).
+        </p>
+      )}
       {ready?.provider === 'fake' && (
         <div role="note" data-testid="playground-fake-provider" className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-mono text-slate-300">
           Test mode: this server uses a fake execution provider. Programs are not compiled or run.
@@ -138,6 +217,19 @@ export const PlaygroundPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <Terminal className="w-4 h-4 text-cyan-400" aria-hidden="true" />
               <span className="text-xs font-mono font-bold text-slate-200" data-testid="source-file-name">{SOURCE_FILE_NAMES[language]}</span>
+              {language === 'python' && (
+                <select
+                  aria-label="Load an example program"
+                  value=""
+                  onChange={(e) => loadExample(e.target.value)}
+                  className="ml-2 max-w-40 bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-0.5 text-[11px] font-mono text-slate-300"
+                >
+                  <option value="">Example…</option>
+                  {TRACE_SAMPLES.map(s => (
+                    <option key={s.id} value={s.id}>{s.title}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <button
@@ -181,7 +273,7 @@ export const PlaygroundPage: React.FC = () => {
           </div>
 
           {/* Console Output */}
-          <div className="flex-1 bg-[#05070D] light:bg-surface-raised border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl min-h-[300px]">
+          <div className="flex-1 bg-console border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl min-h-[300px]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-3">
               <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
@@ -246,6 +338,26 @@ export const PlaygroundPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Step-by-step trace (Python) */}
+      {traceState.kind === 'tracing' && (
+        <p role="status" className="text-xs font-mono text-cyan-300">Running your program under the tracer…</p>
+      )}
+      {traceState.kind === 'failed' && (
+        <p role="alert" data-testid="trace-failed" className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
+          Not traced: {traceState.message}
+        </p>
+      )}
+      {traceState.kind === 'none' && (
+        <div role="alert" data-testid="trace-none" data-status={traceState.result.status} className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 space-y-2">
+          <p className="font-mono font-bold">{NO_TRACE_TITLE[traceState.result.status]}</p>
+          <p>{traceState.result.message}</p>
+          {traceState.result.stderr && <pre className="whitespace-pre-wrap text-xs font-mono text-amber-200/90">{traceState.result.stderr}</pre>}
+        </div>
+      )}
+      {traceState.kind === 'traced' && (
+        <TraceView key={traceState.id} trace={traceState.trace} source={traceState.source} stdin={traceState.stdin} stale={traceIsStale} />
+      )}
     </div>
   );
 };

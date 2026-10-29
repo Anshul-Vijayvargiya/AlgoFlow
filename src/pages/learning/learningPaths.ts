@@ -56,7 +56,7 @@ export const LEARNING_TRACKS: LearningTrack[] = [
     milestones: [
       { id: 'm9', title: 'Reverse Linked List Iterative Pointer Flip', algorithmId: 'reverse-linked-list', estimatedMinutes: 30 },
       { id: 'm10', title: 'Stack LIFO & Monotonic Next Greater Element', algorithmId: 'stack', estimatedMinutes: 30 },
-      { id: 'm11', title: 'Binary Tree Level Order Traversal (BFS)', algorithmId: 'bfs', estimatedMinutes: 40 },
+      { id: 'm11', title: 'Binary Tree Level Order Traversal (BFS)', algorithmId: 'tree-level-order', estimatedMinutes: 40 },
     ]
   }
 ];

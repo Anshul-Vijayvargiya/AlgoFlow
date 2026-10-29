@@ -52,13 +52,19 @@ async function setTheme(page: Page, theme: 'light' | 'dark') {
 }
 
 test.describe('Fundamentals in the sidebar', () => {
-  test('the category is listed last, after every existing one, with both algorithms in it', async ({ app }) => {
+  test('the category is listed last, after every existing one, with all five algorithms in it', async ({ app }) => {
     const sidebar = app.sidebar;
     const names = await sidebar.getByRole('button').evaluateAll(els => els.map(e => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
-    expect(names.slice(-2)).toEqual([expect.stringMatching(/^Prime Number Checker/), expect.stringMatching(/^Swap of Two Numbers/)]);
+    expect(names.slice(-5)).toEqual([
+      expect.stringMatching(/^Prime Number Checker/),
+      expect.stringMatching(/^Swap of Two Numbers/),
+      expect.stringMatching(/^Valid Perfect Square/),
+      expect.stringMatching(/^Sqrt\(x\)/),
+      expect.stringMatching(/^Arranging Coins/),
+    ]);
     const text = (await sidebar.textContent()) ?? '';
     expect(text.lastIndexOf('FUNDAMENTALS')).toBeGreaterThan(text.lastIndexOf('LINKED LIST'));
-    await expect(sidebar).toContainText('2/2');
+    await expect(sidebar).toContainText('5/5');
   });
 });
 

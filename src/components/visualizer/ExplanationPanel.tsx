@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { MessageSquare, ArrowRightLeft, Target, Layers, Variable, CheckCircle, XCircle } from 'lucide-react';
-import type { ListSnapshot } from '../../types/algorithm';
+import type { ExecutionStep, ListSnapshot } from '../../types/algorithm';
 import { indexFromHead, nodeById } from '../../engine/linkedList/listSnapshot';
 import { listText } from './listVisuals';
 
@@ -12,6 +12,43 @@ const pointsTo = (s: ListSnapshot, id: string | null) => {
   const k = indexFromHead(s, id);
   return `${nodeById(s, id)?.value} (${k >= 0 ? `#${k}` : 'outside the list'})`;
 };
+
+/**
+ * The two summary rows under "Action": what the step points at, and the data it works on. Arrays show indices and the
+ * array; linked lists positions and the list read from HEAD; text algorithms (no array) their pointers and strings;
+ * tree traversals (no array) the current node and the output so far.
+ */
+function summaryRows(step: ExecutionStep): { kind: 'array' | 'list' | 'text' | 'tree'; positionsLabel: string; positions: string; stateLabel: string; state: string } {
+  const indices = step.indices ?? [];
+  const state = step.state ?? [];
+  if (step.text) {
+    const rows = step.text.rows;
+    // a pointer is named by its row when there are several rows (needle.j, without s[1].i)
+    const pointers = rows.flatMap(r => (r.pointers ?? []).map(p => `${rows.length > 1 ? `${r.name}.` : ''}${p.name} = ${p.index}`));
+    return {
+      kind: 'text',
+      positionsLabel: 'Pointers:',
+      positions: pointers.length > 0 ? pointers.join(', ') : 'None',
+      stateLabel: 'Strings:',
+      state: rows.map(r => `${r.name} = ${JSON.stringify(r.text)}`).join('; '),
+    };
+  }
+  if (step.tree) {
+    const t = step.tree;
+    const value = (id: string) => t.nodes.find(n => n.id === id)?.value;
+    return {
+      kind: 'tree',
+      positionsLabel: 'Current node:',
+      positions: t.current ? String(value(t.current)) : 'None',
+      stateLabel: 'Output:',
+      state: `[${t.visited.map(value).join(', ')}]`,
+    };
+  }
+  if (step.list) {
+    return { kind: 'list', positionsLabel: 'Positions:', positions: indices.length > 0 ? `[${indices.join(', ')}]` : 'None', stateLabel: 'List:', state: listText(state) };
+  }
+  return { kind: 'array', positionsLabel: 'Indices:', positions: indices.length > 0 ? `[${indices.join(', ')}]` : 'None', stateLabel: 'Array State:', state: `[${state.join(', ')}]` };
+}
 
 export const ExplanationPanel: React.FC = () => {
   const { steps, currentStepIndex } = useVisualizerStore();
@@ -25,8 +62,6 @@ export const ExplanationPanel: React.FC = () => {
     explanation,
     comparedValues,
     actionLabel = 'Execute',
-    indices = [],
-    state = [],
     type,
     variables,
     pointers,
@@ -35,7 +70,10 @@ export const ExplanationPanel: React.FC = () => {
 
   // linked-list steps describe the list and its pointers; array steps the array and its indices
   const list = currentStep.list;
-  const stateString = list ? listText(state) : `[${state.join(', ')}]`;
+  const summary = summaryRows(currentStep);
+  // text and tree summaries can be long: only they get the extra spacing, truncation and a tooltip (arrays and lists
+  // render exactly as before)
+  const textual = summary.kind === 'text' || summary.kind === 'tree';
 
   // Dynamic styling per step type
   let badgeColor = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40';
@@ -165,22 +203,27 @@ export const ExplanationPanel: React.FC = () => {
             </span>
           </div>
 
-          {/* Indices */}
-          <div className="flex items-center justify-between py-1 border-b border-slate-800/50">
-            <span className="text-slate-400 flex items-center gap-1.5">
+          {/* Indices (positions, pointers, the current node) */}
+          <div className={`flex items-center justify-between py-1 border-b border-slate-800/50${textual ? ' gap-2' : ''}`}>
+            <span className={`text-slate-400 flex items-center gap-1.5${textual ? ' shrink-0' : ''}`}>
               <Layers className="w-3.5 h-3.5 text-purple-400" />
-              {list ? 'Positions:' : 'Indices:'}
+              {summary.positionsLabel}
             </span>
-            <span data-testid="step-positions" className="text-purple-300 font-bold">
-              {indices.length > 0 ? `[${indices.join(', ')}]` : 'None'}
+            <span data-testid="step-positions" data-kind={summary.kind} title={textual ? summary.positions : undefined} className={`text-purple-300 font-bold${textual ? ' truncate' : ''}`}>
+              {summary.positions}
             </span>
           </div>
 
-          {/* Array State */}
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-slate-400">{list ? 'List:' : 'Array State:'}</span>
-            <span data-testid="step-state" title={stateString} className={`text-emerald-400 font-bold ${list ? 'text-right break-words max-w-[180px]' : 'truncate max-w-[140px]'}`}>
-              {stateString}
+          {/* Array State (the list, the strings, the output) */}
+          <div className={`flex items-center justify-between pt-1${textual ? ' gap-2' : ''}`}>
+            <span className={`text-slate-400${textual ? ' shrink-0' : ''}`}>{summary.stateLabel}</span>
+            <span
+              data-testid="step-state"
+              data-kind={summary.kind}
+              title={summary.state}
+              className={`text-emerald-400 font-bold ${summary.kind === 'list' ? 'text-right break-words max-w-[180px]' : 'truncate max-w-[140px]'}`}
+            >
+              {summary.state}
             </span>
           </div>
         </div>

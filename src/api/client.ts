@@ -1,4 +1,5 @@
 import type { PracticeProblem } from '../types/algorithm';
+import type { ExecutionTrace } from '../execution/trace';
 
 export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -11,7 +12,7 @@ export function normalizeRole(role: unknown): UserRole {
 }
 
 export interface UserPreferences {
-  theme: 'dark' | 'light' | 'system';
+  theme: 'dark' | 'light' | 'galaxy' | 'sunset' | 'system';
   preferredLanguage: 'cpp' | 'c' | 'java' | 'python';
   dailyGoalMinutes: number;
 }
@@ -299,11 +300,34 @@ export type ExecutionLanguageId = 'c' | 'cpp' | 'java' | 'python';
 export interface ExecutionLanguages {
   /** false when the server has no execution provider configured */
   available: boolean;
-  provider: 'judge0' | 'fake' | null;
+  provider: 'judge0' | 'fake' | 'local' | null;
   /** with the provider's real compiler / runtime versions */
   languages: { id: ExecutionLanguageId; label: string }[];
   limits: { sourceMaxChars: number; stdinMaxChars: number; dailyPerUser: number };
   usedToday: number;
+  /**
+   * Step-by-step tracing, or null without a provider. 'runtime': the program really runs under the tracer;
+   * 'recorded': test mode, where only the example programs have (recorded) traces.
+   */
+  tracing?: { languages: ExecutionLanguageId[]; mode: 'runtime' | 'recorded'; maxSteps: number } | null;
+}
+
+/**
+ * The result of a trace request: a verified trace, or why there is none (the time limit, no or cut-off tracer
+ * output, a trace that failed verification). There is never a trace that was not produced by a run (or recorded).
+ */
+export interface TraceRunResult {
+  status: 'traced' | 'timeout' | 'no_trace' | 'invalid_trace';
+  trace: ExecutionTrace | null;
+  message: string | null;
+  /** the provider's stderr when there is no trace (bounded) */
+  stderr: string;
+  timeMs: number | null;
+  memoryKb: number | null;
+  language?: { id: ExecutionLanguageId; label: string };
+  provider: 'judge0' | 'fake' | 'local';
+  usedToday: number;
+  dailyLimit: number;
 }
 
 export interface RunResult {
@@ -318,7 +342,7 @@ export interface RunResult {
   timeMs: number | null;
   memoryKb: number | null;
   language?: { id: ExecutionLanguageId; label: string };
-  provider: 'judge0' | 'fake';
+  provider: 'judge0' | 'fake' | 'local';
   usedToday: number;
   dailyLimit: number;
 }
@@ -327,6 +351,8 @@ export interface ExecutionApi {
   getLanguages(): Promise<ExecutionLanguages>;
   /** runs the program on the server's execution provider; rejects (never resolves) when there is no genuine result */
   run(request: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<RunResult>;
+  /** runs the program under the step-by-step tracer (Python); rejects when the request itself fails */
+  trace(request: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<TraceRunResult>;
 }
 
 export interface TutorStatus {
@@ -341,7 +367,8 @@ export interface TutorStatus {
 export interface TutorQuestion {
   algorithmId: string;
   /** the visualizer's input; the server re-runs the algorithm on it to build the context */
-  input: { array: number[]; target: number | null; index: number | null };
+  /** `second`: an algorithm's second array (Merge Sorted Array's nums2), sent only for an algorithm that takes one */
+  input: { array: number[]; target: number | null; index: number | null; second?: number[] | null; texts?: string[] | null };
   stepIndex: number;
   language: ExecutionLanguageId;
   question: string;

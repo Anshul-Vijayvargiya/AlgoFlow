@@ -1,20 +1,27 @@
 import React from 'react';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Monitor } from 'lucide-react';
 import { useThemeStore } from '../../store/useThemeStore';
 import { isThemePreference, type ThemePreference } from '../../theme/theme';
+import { THEMES, preferenceLabel, themeInfo, type ThemeInfo } from '../../theme/themes';
 
 const OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'dark', label: 'Dark' },
-  { value: 'light', label: 'Light' },
+  ...THEMES.map(t => ({ value: t.id, label: t.name })),
   { value: 'system', label: 'System' },
 ];
 
-const ICON: Record<ThemePreference, React.ElementType> = { dark: Moon, light: Sun, system: Monitor };
+/** a small round sample of a theme: its page colour with its two accents */
+export const ThemeSwatchDot: React.FC<{ theme: ThemeInfo; className?: string }> = ({ theme, className = '' }) => (
+  <span
+    aria-hidden="true"
+    className={`inline-block rounded-full border border-slate-500/50 shrink-0 ${className}`}
+    style={{ background: `linear-gradient(135deg, ${theme.swatch.page} 0 45%, ${theme.swatch.accent} 45% 72%, ${theme.swatch.accent2} 72%)` }}
+  />
+);
 
 /**
- * Compact theme picker (Dark / Light / System) for the header and the sign-in page. A native select: keyboard and
- * screen-reader operable, shows the current choice, and uses the platform picker on phones. It reads and writes the
- * shared theme store only, so it always agrees with Settings.
+ * Compact theme picker (the four named themes, and System) for the header and the sign-in page. A native select:
+ * keyboard and screen-reader operable, shows the current choice, and uses the platform picker on phones. It reads
+ * and writes the shared theme store only, so it always agrees with Settings, which shows each theme's swatch.
  *
  * `compact` (the header): where the header is crowded — phones below sm, and between lg and 2xl where the full
  * navigation is shown — only the icon of the current choice is drawn and the (still focusable, still named) select is
@@ -24,8 +31,9 @@ const ICON: Record<ThemePreference, React.ElementType> = { dark: Moon, light: Su
 export const ThemeSelect: React.FC<{ id?: string; compact?: boolean }> = ({ id = 'theme-select', compact = false }) => {
   const preference = useThemeStore(s => s.preference);
   const setPreference = useThemeStore(s => s.setPreference);
-  const Icon = ICON[preference];
-  const label = OPTIONS.find(o => o.value === preference)!.label;
+  const theme = useThemeStore(s => s.theme);
+  const label = preferenceLabel(preference);
+  const iconClass = `w-3.5 h-3.5 mr-1.5 shrink-0 ${compact ? 'max-sm:mx-0 max-sm:my-[5px] lg:max-2xl:mx-0 lg:max-2xl:my-[5px]' : ''}`;
 
   return (
     <div
@@ -36,7 +44,11 @@ export const ThemeSelect: React.FC<{ id?: string; compact?: boolean }> = ({ id =
           : ''
       }`}
     >
-      <Icon className={`w-3.5 h-3.5 text-cyan-400 mr-1.5 shrink-0 ${compact ? 'max-sm:mx-0 max-sm:my-[5px] lg:max-2xl:mx-0 lg:max-2xl:my-[5px]' : ''}`} aria-hidden="true" />
+      {preference === 'system' ? (
+        <Monitor className={`${iconClass} text-cyan-400`} aria-hidden="true" />
+      ) : (
+        <ThemeSwatchDot theme={themeInfo(theme)} className={iconClass} />
+      )}
       <select
         id={id}
         aria-label="Theme"

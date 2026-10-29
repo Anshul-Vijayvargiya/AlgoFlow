@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { ALGORITHMS, LIST_ALGORITHMS, NUMBER_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
+import { ALGORITHMS, LIST_ALGORITHMS, NUMBER_ALGORITHMS, TEXT_ALGORITHMS, TREE_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
 
 export interface BarState {
   index: number;
@@ -115,6 +115,8 @@ export interface NumberViewState {
   operation: string | null;
   divisors: { divisor: number; current: boolean; divides: boolean; text: string }[];
   result: { kind: string; text: string } | null;
+  /** a binary search over whole numbers: the range still searched (in words and as data) and the probes so far */
+  search: { lo: number; hi: number; mid: number | null; range: string; probes: { mid: number; relation: string; current: boolean; text: string }[] } | null;
 }
 
 export type Speed = 'fast' | 'medium';
@@ -130,6 +132,8 @@ export class VisualizerApp {
   readonly heading: Locator;
   readonly arrayInput: Locator;
   readonly targetInput: Locator;
+  /** an algorithm's second array (Merge Sorted Array's nums2) */
+  readonly secondInput: Locator;
   readonly listInput: Locator;
   readonly valueInput: Locator;
   readonly indexInput: Locator;
@@ -162,6 +166,7 @@ export class VisualizerApp {
     this.heading = page.getByRole('heading', { level: 1 });
     this.arrayInput = page.getByRole('textbox', { name: 'Array', exact: true });
     this.targetInput = page.getByRole('textbox', { name: /^Target/ });
+    this.secondInput = page.locator('#second-input');
     this.listInput = page.getByRole('textbox', { name: 'List values' });
     this.valueInput = page.locator('#value-input');
     this.indexInput = page.getByRole('textbox', { name: 'Position' });
@@ -193,8 +198,10 @@ export class VisualizerApp {
   }
 
   async selectAlgorithm(id: AlgorithmId) {
-    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id] ?? NUMBER_ALGORITHMS[id];
-    const name = new RegExp(`^${label}(?![a-z])`);
+    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id] ?? NUMBER_ALGORITHMS[id] ?? TEXT_ALGORITHMS[id] ?? TREE_ALGORITHMS[id];
+    // labels can hold regex characters ("Sqrt(x)"), so they are matched literally; "Valid Palindrome" must not also
+    // match "Valid Palindrome II"
+    const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])(?! [IVX]+\\b)`);
     const drawerToggle = this.page.getByRole('button', { name: 'Open algorithm list' });
     if (await drawerToggle.isVisible()) {
       // narrow screens: the algorithm list is in a drawer
@@ -365,6 +372,22 @@ export class VisualizerApp {
             text: e.textContent?.trim() ?? '',
           })),
           result: banner ? { kind: banner.dataset.resultKind ?? '', text: banner.textContent?.trim() ?? '' } : null,
+          search: (() => {
+            const root = document.querySelector<HTMLElement>('[data-testid="number-search"]');
+            if (!root) return null;
+            return {
+              lo: Number(root.dataset.lo),
+              hi: Number(root.dataset.hi),
+              mid: root.dataset.mid ? Number(root.dataset.mid) : null,
+              range: text('[data-testid="number-search-range"]') ?? '',
+              probes: [...root.querySelectorAll<HTMLElement>('li[data-relation]')].map(e => ({
+                mid: Number(e.dataset.mid),
+                relation: e.dataset.relation!,
+                current: e.dataset.current === 'true',
+                text: e.textContent?.trim() ?? '',
+              })),
+            };
+          })(),
         };
       };
       const readList = () => {

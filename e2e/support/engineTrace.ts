@@ -25,6 +25,8 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'two-sum': { id: 'two-sum', label: 'Two Sum', heading: 'Two Sum' },
   'majority-element': { id: 'majority-element', label: 'Majority Element', heading: 'Majority Element' },
   'container-most-water': { id: 'container-most-water', label: 'Container With Most Water', heading: 'Container With Most Water' },
+  'trapping-rain-water': { id: 'trapping-rain-water', label: 'Trapping Rain Water', heading: 'Trapping Rain Water' },
+  'merge-sorted-array': { id: 'merge-sorted-array', label: 'Merge Sorted Array', heading: 'Merge Sorted Array' },
   'remove-duplicates-sorted': { id: 'remove-duplicates-sorted', label: 'Remove Duplicates from Sorted Array', heading: 'Remove Duplicates from Sorted Array' },
 };
 
@@ -46,6 +48,29 @@ export const LIST_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; h
 export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
   'prime-check': { id: 'prime-check', label: 'Prime Number Checker', heading: 'Prime Number Checker' },
   'swap-two-numbers': { id: 'swap-two-numbers', label: 'Swap of Two Numbers', heading: 'Swap of Two Numbers' },
+  'valid-perfect-square': { id: 'valid-perfect-square', label: 'Valid Perfect Square', heading: 'Valid Perfect Square' },
+  'sqrt-x': { id: 'sqrt-x', label: 'Sqrt(x)', heading: 'Sqrt(x)' },
+  'arranging-coins': { id: 'arranging-coins', label: 'Arranging Coins', heading: 'Arranging Coins' },
+};
+
+/** The tree traversals (visual 'tree'): their input is one level-order string. */
+export const TREE_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
+  'tree-inorder': { id: 'tree-inorder', label: 'Inorder Traversal', heading: 'Inorder Traversal' },
+  'tree-preorder': { id: 'tree-preorder', label: 'Preorder Traversal', heading: 'Preorder Traversal' },
+  'tree-postorder': { id: 'tree-postorder', label: 'Postorder Traversal', heading: 'Postorder Traversal' },
+  'tree-level-order': { id: 'tree-level-order', label: 'Level Order Traversal', heading: 'Level Order Traversal' },
+};
+
+/** The text algorithms (visual 'text'): their input is strings, one per field. */
+export const TEXT_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
+  'roman-to-integer': { id: 'roman-to-integer', label: 'Roman to Integer', heading: 'Roman to Integer' },
+  'longest-common-prefix': { id: 'longest-common-prefix', label: 'Longest Common Prefix', heading: 'Longest Common Prefix' },
+  'valid-parentheses': { id: 'valid-parentheses', label: 'Valid Parentheses', heading: 'Valid Parentheses' },
+  'find-first-occurrence': { id: 'find-first-occurrence', label: 'Find the Index of the First Occurrence', heading: 'Find the Index of the First Occurrence' },
+  'length-of-last-word': { id: 'length-of-last-word', label: 'Length of Last Word', heading: 'Length of Last Word' },
+  'add-binary': { id: 'add-binary', label: 'Add Binary', heading: 'Add Binary' },
+  'valid-palindrome': { id: 'valid-palindrome', label: 'Valid Palindrome', heading: 'Valid Palindrome' },
+  'valid-palindrome-ii': { id: 'valid-palindrome-ii', label: 'Valid Palindrome II', heading: 'Valid Palindrome II' },
 };
 
 /** The parameters a linked-list operation takes, as the app passes them ({ value } and/or { index }). */
@@ -70,9 +95,12 @@ export const definition = (id: AlgorithmId) => {
   return d;
 };
 
-export function engineSteps(id: AlgorithmId, array: number[], target?: number | null): ExecutionStep[] {
+/** the engine's trace for an input, with the target or (Merge Sorted Array) second array the app would pass */
+export function engineSteps(id: AlgorithmId, array: number[], target?: number | null, second?: number[]): ExecutionStep[] {
   const d = definition(id);
-  return d.generateSteps([...array], d.inputSpec?.target ? { target } : undefined);
+  const spec = d.inputSpec;
+  const params = spec?.target ? { target } : spec?.secondArray ? { second: [...(second ?? spec.secondArray.defaultValue)] } : undefined;
+  return d.generateSteps([...array], params);
 }
 
 export function expectedLine(id: AlgorithmId, lang: ProgrammingLanguage, step: ExecutionStep) {

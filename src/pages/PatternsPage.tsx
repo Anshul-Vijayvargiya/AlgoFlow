@@ -193,7 +193,7 @@ export const PatternsPage: React.FC = () => {
         <h1 className="text-3xl font-extrabold font-mono text-ink">
           Algorithmic Design Patterns
         </h1>
-        <p className="text-xs text-slate-400 max-w-2xl">
+        <p className="text-base leading-[1.6] text-slate-400 max-w-2xl">
           Recognize core patterns instantly to solve coding interview problems faster.
         </p>
       </div>
@@ -211,24 +211,25 @@ export const PatternsPage: React.FC = () => {
             >
               <button
                 onClick={() => setExpandedId(isExpanded ? null : pat.id)}
-                className="w-full p-5 flex items-center justify-between text-left focus:outline-none"
+                className="w-full p-5 flex flex-wrap items-center justify-between gap-3 text-left focus:outline-none"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                    <Zap className="w-5 h-5" />
+                {/* the text takes the row; on narrow screens the badge and chevron wrap onto their own line below it */}
+                <div className="flex items-center gap-3 min-w-0 flex-1 basis-64">
+                  <div className="w-11 h-11 shrink-0 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <Zap className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold font-mono text-ink flex items-center gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-semibold font-mono text-ink flex items-center gap-2">
                       {pat.title}
                     </h3>
-                    <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">
+                    <p className="text-base leading-[1.6] text-slate-400 line-clamp-2 mt-1">
                       {pat.summary}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-mono text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded">
+                <div className="flex items-center gap-3 ml-auto">
+                  <span className="whitespace-nowrap text-[13px] font-mono text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded">
                     {pat.complexity}
                   </span>
                   {isExpanded ? <ChevronUp className="w-5 h-5 text-cyan-400" /> : <ChevronDown className="w-5 h-5 text-slate-500" />}
@@ -239,11 +240,11 @@ export const PatternsPage: React.FC = () => {
                 <div className="p-5 pt-0 border-t border-slate-800/60 grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-900/30">
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-sm font-mono font-semibold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
                         WHEN TO USE IT
                       </div>
-                      <ul className="space-y-1.5 text-xs text-slate-300">
+                      <ul className="space-y-2 text-base leading-[1.6] text-slate-300">
                         {pat.whenToUse.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-2">
                             <span className="text-cyan-400 font-bold">•</span>
@@ -254,11 +255,11 @@ export const PatternsPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-xs font-mono font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-sm font-mono font-semibold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                         <Eye className="w-4 h-4 text-amber-400" />
                         HOW TO RECOGNIZE IT
                       </div>
-                      <ul className="space-y-1.5 text-xs text-slate-300">
+                      <ul className="space-y-2 text-base leading-[1.6] text-slate-300">
                         {pat.howToRecognize.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-2">
                             <span className="text-amber-400 font-bold">•</span>
@@ -269,12 +270,12 @@ export const PatternsPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="text-sm font-mono font-semibold text-slate-400 uppercase tracking-wider">
                         EXAMPLE PROBLEMS
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {pat.exampleProblems.map((prob) => (
-                          <span key={prob} className="text-xs font-mono text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded">
+                          <span key={prob} className="text-sm font-mono text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded">
                             {prob}
                           </span>
                         ))}
@@ -283,11 +284,11 @@ export const PatternsPage: React.FC = () => {
                   </div>
 
                   <div className="pt-4 space-y-2">
-                    <div className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <div className="text-sm font-mono font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Code className="w-4 h-4 text-purple-400" />
                       CANONICAL PATTERN SNIPPET (C++)
                     </div>
-                    <div className="bg-page p-4 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 overflow-x-auto">
+                    <div className="bg-page p-4 rounded-xl border border-slate-800 font-mono text-sm leading-[1.6] text-cyan-300 overflow-x-auto">
                       <pre>{pat.codeSnippet}</pre>
                     </div>
                   </div>

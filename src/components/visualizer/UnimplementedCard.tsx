@@ -22,7 +22,7 @@ export const UnimplementedCard: React.FC<UnimplementedCardProps> = ({ algorithmI
   const setAlgorithm = useVisualizerStore((s) => s.setAlgorithm);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0B0F19]/80 light:bg-surface/80 border border-slate-800 rounded-3xl relative overflow-hidden shadow-2xl my-4">
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-surface/80 border border-slate-800 rounded-3xl relative overflow-hidden shadow-2xl my-4">
       {/* Glow background accent */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 

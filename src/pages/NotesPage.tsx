@@ -131,11 +131,11 @@ export const NotesPage: React.FC = () => {
     <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold font-mono text-ink flex items-center gap-2">
-            <FileText className="w-6 h-6 text-cyan-400" />
+          <h1 className="text-[30px] leading-tight font-bold font-mono text-ink flex items-center gap-2.5">
+            <FileText className="w-7 h-7 text-cyan-400 shrink-0" />
             DSA NOTES & REVISION
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-base text-slate-400 mt-2">
             Keep track of algorithm insights, edge cases, and personal solution strategies.
           </p>
         </div>
@@ -143,7 +143,7 @@ export const NotesPage: React.FC = () => {
         <button
           id="notes-create-btn"
           onClick={handleCreateNew}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition-all self-start md:self-auto cursor-pointer"
+          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-sm font-bold shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition-all self-start md:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Create Note
@@ -151,15 +151,16 @@ export const NotesPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300 flex items-center gap-2 font-mono">
+        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-300 flex items-center gap-2 font-mono">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
           <span>{error}</span>
         </div>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-cyan-500/15">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+        {/* the search keeps a usable width; with many tags, the tag row moves to its own line (and scrolls sideways) */}
+        <div className="relative flex-1 basis-72 max-w-md">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             id="notes-search-input"
             type="text"
@@ -167,18 +168,18 @@ export const NotesPage: React.FC = () => {
             aria-label="Search notes"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-base font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
-          <Tag className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 min-w-0 max-w-full">
+          <Tag className="w-4 h-4 text-cyan-400 shrink-0" />
           {allTags.map((tag) => (
             <button
               key={tag}
               aria-pressed={selectedTag === tag}
               onClick={() => setSelectedTag(tag)}
-              className={`px-3 py-1 rounded-lg text-xs font-mono shrink-0 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-sm font-mono shrink-0 transition-all cursor-pointer ${
                 selectedTag === tag
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
@@ -193,18 +194,18 @@ export const NotesPage: React.FC = () => {
       {isLoading && notes.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <span className="text-xs font-mono text-slate-400">Loading your persistent notes...</span>
+          <span className="text-sm font-mono text-slate-400">Loading your persistent notes...</span>
         </div>
       ) : notes.length === 0 && page > 1 ? (
         <div data-testid="notes-page-empty" className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
-          <p className="text-sm font-mono text-slate-300">There are no notes on page {page}.</p>
-          <button type="button" onClick={() => setPage(1)} className="text-xs font-mono text-cyan-300 underline underline-offset-2">Go to the first page</button>
+          <p className="text-base font-mono text-slate-300">There are no notes on page {page}.</p>
+          <button type="button" onClick={() => setPage(1)} className="text-sm font-mono text-cyan-300 underline underline-offset-2">Go to the first page</button>
         </div>
       ) : notes.length === 0 ? (
         <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
           <FileText className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-mono font-bold text-slate-300">No notes found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <h3 className="text-xl font-mono font-semibold text-slate-300">No notes found</h3>
+          <p className="text-base leading-[1.6] text-slate-500 max-w-sm mx-auto">
             {filtering
               ? 'No notes match your current search query or tag filter.'
               : 'You have not created any algorithm notes yet. Click "Create Note" to capture your first insight.'}
@@ -216,55 +217,56 @@ export const NotesPage: React.FC = () => {
           {notes.map((note) => (
             <div
               key={note.id}
-              className="bg-surface border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-xl group"
+              className="bg-surface border border-cyan-500/15 rounded-2xl p-6 flex flex-col justify-between space-y-5 hover:border-cyan-500/40 transition-all duration-300 shadow-xl group min-w-0"
             >
               <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-bold text-ink group-hover:text-cyan-300 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  {/* long titles and unbroken words wrap instead of overflowing the card */}
+                  <h3 className="min-w-0 break-words text-xl leading-snug font-semibold text-ink group-hover:text-cyan-300 transition-colors">
                     {note.title}
                   </h3>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => handleEdit(note)}
-                      className="p-1 rounded bg-slate-900 text-slate-400 hover:text-cyan-400 cursor-pointer"
+                      className="p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-cyan-400 cursor-pointer"
                       title="Edit Note"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
+                      <Edit3 className="w-[18px] h-[18px]" />
                     </button>
                     <button
                       onClick={() => handleDelete(note.id)}
-                      className="p-1 rounded bg-slate-900 text-slate-400 hover:text-rose-400 cursor-pointer"
+                      className="p-2 rounded-lg bg-slate-900 text-slate-400 hover:text-rose-400 cursor-pointer"
                       title="Delete Note"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-[18px] h-[18px]" />
                     </button>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300 whitespace-pre-wrap font-sans leading-relaxed">
+                <p className="text-base text-slate-300 whitespace-pre-wrap break-words font-sans leading-[1.6]">
                   {note.content}
                 </p>
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-slate-800/60">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="space-y-3 pt-3 border-t border-slate-800/60">
+                <div className="flex flex-wrap gap-2">
                   {note.tags.map((t) => (
                     <span
                       key={t}
-                      className="text-[10px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded"
+                      className="text-[13px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded"
                     >
                       #{t}
                     </span>
                   ))}
                 </div>
-                <div className="text-[10px] font-mono text-slate-500 text-right">
+                <div className="text-[13px] font-mono text-slate-500 text-right">
                   Updated: {new Date(note.updatedAt).toISOString().split('T')[0]}
                 </div>
               </div>
             </div>
           ))}
         </div>
-        <nav aria-label="Notes pages" data-testid="notes-pagination" className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-400">
+        <nav aria-label="Notes pages" data-testid="notes-pagination" className="flex flex-wrap items-center justify-between gap-3 text-sm font-mono text-slate-400">
           <span data-testid="notes-range">
             Showing {firstShown}–{lastShown} of {total} {filtering ? 'matching notes' : total === 1 ? 'note' : 'notes'}
           </span>

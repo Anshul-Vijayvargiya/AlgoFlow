@@ -25,7 +25,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
       <div className="min-h-screen bg-page flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5 shadow-xl shadow-cyan-500/30 animate-pulse">
-            <div className="w-full h-full bg-[#0D1117] light:bg-surface rounded-[14px] flex items-center justify-center">
+            <div className="w-full h-full bg-surface rounded-[14px] flex items-center justify-center">
               <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
             </div>
           </div>

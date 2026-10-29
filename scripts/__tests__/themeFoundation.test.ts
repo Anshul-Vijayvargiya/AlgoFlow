@@ -13,7 +13,8 @@ describe('index.html and index.css keep dark as the default', () => {
   const css = readFileSync(join(ROOT, 'src', 'index.css'), 'utf8');
 
   it('the page starts dark, and the theme script runs in <head> before the app', () => {
-    expect(html).toMatch(/<html lang="en" data-theme="dark" style="color-scheme: dark">/);
+    // Midnight Neon ('dark') on the dark base until theme-init.js applies the saved theme
+    expect(html).toMatch(/<html lang="en" data-theme="dark" data-palette="dark" style="color-scheme: dark">/);
     expect(html).not.toMatch(/class="dark"/);
     const init = html.indexOf('<script src="/theme-init.js"></script>');
     expect(init).toBeGreaterThan(-1);
@@ -45,7 +46,7 @@ describe('index.html and index.css keep dark as the default', () => {
     expect(dark).toMatch(/--af-text-strong: #ffffff/);
     expect(dark).toMatch(/--af-surface: #0b0f19/);
     expect(dark).toMatch(/--af-grid: #1e293b15/);
-    // the Tailwind palette is never overridden for dark, only for light
+    // the Tailwind palette is never overridden for dark, only for light (and the named themes, under [data-palette])
     expect(dark).not.toMatch(/--color-/);
     expect(light).toMatch(/--color-slate-900: oklch\(96\.8% 0\.007 247\.896\); \/\* slate-100 \*\//);
     expect(light).toMatch(/--color-cyan-400: oklch/);

@@ -84,7 +84,7 @@ test.describe('Dashboard', () => {
     }
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA: no violations (${theme})`, async ({ app, page }) => {
       void app;
       await page.getByRole('banner').getByRole('combobox', { name: 'Theme' }).selectOption(theme);

@@ -10,6 +10,7 @@ import type {
   ExecutionLanguages,
   ExecutionLanguageId,
   RunResult,
+  TraceRunResult,
   TutorStatus,
   TutorQuestion,
   TutorReply,
@@ -511,6 +512,7 @@ export class MockApiClient implements ApiClient {
         languages: (Object.keys(FAKE_LANGUAGE_LABELS) as ExecutionLanguageId[]).map(id => ({ id, label: FAKE_LANGUAGE_LABELS[id] })),
         limits: { sourceMaxChars: 50_000, stdinMaxChars: 10_000, dailyPerUser: 100 },
         usedToday: 0,
+        tracing: { languages: ['python'], mode: 'recorded', maxSteps: 1500 },
       };
     },
     async run({ language, source, stdin }: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<RunResult> {
@@ -523,6 +525,16 @@ export class MockApiClient implements ApiClient {
         }
         throw err;
       }
+    },
+    // the recorded example traces only (as the server's fake provider): this API never runs code
+    async trace({ language, source, stdin }: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<TraceRunResult> {
+      if (language !== 'python') throw new Error('Step-by-step tracing is available for Python only.');
+      if (source.includes('FAKE:UNAVAILABLE')) throw new Error('The code execution service is unavailable right now. Your program was not run; please try again later.');
+      // loaded on demand, so the recorded traces are not in the main bundle
+      const { recordedTraceFor, NOT_RECORDED_MESSAGE } = await import('../execution/recordedTraces');
+      const recorded = recordedTraceFor(source, stdin);
+      if (!recorded) throw new Error(NOT_RECORDED_MESSAGE);
+      return { status: 'traced', trace: recorded.trace, message: null, stderr: '', timeMs: null, memoryKb: null, language: { id: language, label: FAKE_LANGUAGE_LABELS[language] }, provider: 'fake', usedToday: 0, dailyLimit: 100 };
     },
   };
 

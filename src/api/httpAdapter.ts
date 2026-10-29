@@ -9,6 +9,7 @@ import type {
   ExecutionLanguages,
   ExecutionLanguageId,
   RunResult,
+  TraceRunResult,
   TutorStatus,
   TutorQuestion,
   TutorReply,
@@ -57,7 +58,7 @@ function sanitizeUserProfile(raw: any): UserProfile {
     accountStatus: raw.accountStatus === 'suspended' ? 'suspended' : 'active',
     preferences: {
       // unknown or missing values fall back to dark, the default
-      theme: ['dark', 'light', 'system'].includes(raw.preferences?.theme) ? raw.preferences.theme : 'dark',
+      theme: ['dark', 'light', 'galaxy', 'sunset', 'system'].includes(raw.preferences?.theme) ? raw.preferences.theme : 'dark',
       preferredLanguage: ['cpp', 'c', 'java', 'python'].includes(raw.preferences?.preferredLanguage)
         ? raw.preferences.preferredLanguage
         : 'cpp',
@@ -440,6 +441,11 @@ export class HttpApiClient implements ApiClient {
       // the provider may queue and compile (Java) before running. One run takes at most ~40 s on the server (a 20 s
       // result deadline plus request timeouts), so wait longer than that
       return request<RunResult>('/run', { method: 'POST', body: JSON.stringify(body) }, 45_000);
+    },
+
+    async trace(body: { language: ExecutionLanguageId; source: string; stdin: string }): Promise<TraceRunResult> {
+      // the server verifies the trace before returning it; the Playground verifies it again before showing it
+      return request<TraceRunResult>('/run/trace', { method: 'POST', body: JSON.stringify(body) }, 45_000);
     },
   };
 

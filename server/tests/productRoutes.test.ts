@@ -473,7 +473,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
       preferences: { theme, preferredLanguage: 'cpp', dailyGoalMinutes: 30 },
     });
 
-    it.each(['light', 'dark', 'system'])('accepts and saves the "%s" theme', async (theme) => {
+    it.each(['light', 'dark', 'galaxy', 'sunset', 'system'])('accepts and saves the "%s" theme', async (theme) => {
       mockUser.findByIdAndUpdate.mockResolvedValue(profileWithTheme(theme));
 
       const res = await request(app)

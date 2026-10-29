@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { getAlgorithmDefinition, visualKindOf } from '../../engine/AlgorithmRegistry';
-import { maxInputLength } from '../../engine/inputParsing';
+import { maxInputLength, takesTexts } from '../../engine/inputParsing';
 import { getSizeOptions } from './sizeOptions';
 
 export const SizeSelect: React.FC<{
@@ -59,6 +59,8 @@ export const ExecutionControls: React.FC = () => {
   const isList = visualKindOf(def) === 'linked-list';
   // number algorithms take fixed fields (n; a, b): Randomize picks new values, and there is no size to choose
   const isNumbers = visualKindOf(def) === 'numbers';
+  // text and tree algorithms take strings: Randomize picks one of the algorithm's examples, and there is no size either
+  const isText = takesTexts(def);
   const sizeBounds = isList && def ? { min: def.inputSpec?.index?.bound === 'delete' ? 1 : 0, max: maxInputLength(def) } : undefined;
 
   useEffect(() => {
@@ -156,13 +158,13 @@ export const ExecutionControls: React.FC = () => {
           aria-label="Randomize"
           disabled={isPlaying}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-40 transition-colors"
-          title={isList ? 'Randomize list' : isNumbers ? 'Randomize values' : 'Randomize Array'}
+          title={isList ? 'Randomize list' : isNumbers ? 'Randomize values' : isText ? 'Load a random example' : 'Randomize Array'}
         >
           <Shuffle className="w-3.5 h-3.5 text-cyan-400" />
           <span className="hidden sm:inline">Randomize</span>
         </button>
 
-        {!isNumbers && (
+        {!isNumbers && !isText && (
           <div className="flex items-center gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800">
             <Sliders className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-[11px] font-mono text-slate-400">Size:</span>

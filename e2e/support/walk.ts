@@ -38,7 +38,6 @@ export async function walkAndCompareWithEngine(
 ): Promise<WalkResult> {
   const steps = engineSteps(id, array, target);
   const def = definition(id);
-  const n = array.length;
   const problems: string[] = [];
 
   await app.reset();
@@ -80,6 +79,8 @@ export async function walkAndCompareWithEngine(
     }
     if (s.unmapped) problems.push(`${at}: UI reports an unmapped step`);
 
+    // as many bars as the engine's array at this step (usually the input; Merge Sorted Array adds nums2's slots)
+    const n = e.state.length;
     if (s.bars.length !== n || s.bars.some((b, k) => b.value !== e.state[k])) {
       problems.push(`${at}: bar values [${s.bars.map(b => b.value)}] != state [${e.state}]`);
     }

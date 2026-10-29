@@ -47,6 +47,14 @@ describe('milestone status', () => {
     expect(milestoneStatus('heap-sort', [track('heap-sort', 'not_started')])).toBe('not-started');
   });
 
+  it('m11 (Binary Tree Level Order Traversal) names the implemented level-order traversal, not the planned BFS', () => {
+    const m11 = milestones.find(m => m.id === 'm11')!;
+    expect(m11.algorithmId).toBe('tree-level-order');
+    expect(getAlgorithmDefinition(m11.algorithmId)?.name).toBe('Level Order Traversal');
+    expect(milestoneStatus(m11.algorithmId, [])).toBe('not-started');
+    expect(milestoneStatus(m11.algorithmId, [track('tree-level-order', 'in_progress')])).toBe('explored');
+  });
+
   it('unimplemented algorithms are coming soon, even with a (stray) progress record', () => {
     for (const id of ['stack', 'bfs']) {
       expect(getAlgorithmDefinition(id as never)).toBeUndefined();
@@ -62,7 +70,8 @@ describe('milestone status', () => {
 
   it('track summary counts explored milestones out of those that can be visualized', () => {
     const t3 = LEARNING_TRACKS.find(t => t.id === 't3')!;
-    expect(trackSummary(t3, [])).toEqual({ explored: 0, available: 1 });
-    expect(trackSummary(t3, [track('reverse-linked-list', 'in_progress')])).toEqual({ explored: 1, available: 1 });
+    // m9 (Reverse Linked List) and m11 (Level Order Traversal) can be visualized; m10 (Stack) cannot yet
+    expect(trackSummary(t3, [])).toEqual({ explored: 0, available: 2 });
+    expect(trackSummary(t3, [track('reverse-linked-list', 'in_progress')])).toEqual({ explored: 1, available: 2 });
   });
 });

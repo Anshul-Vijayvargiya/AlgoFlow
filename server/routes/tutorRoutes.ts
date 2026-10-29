@@ -19,6 +19,8 @@ export const HISTORY_MAX_TURNS = 6;
 export const HISTORY_TURN_MAX_CHARS = 1000;
 // the visualizer's own limits are enforced by validateAlgorithmInput; these only bound the request size
 const INPUT_MAX_VALUES = 64;
+/** a text algorithm's string in a tutor request: well above any visualizer field (the longest takes 32 characters) */
+const TEXT_MAX_CHARS = 200;
 const VALUE_LIMIT = 1_000_000;
 
 const intValue = z.number().int().min(-VALUE_LIMIT).max(VALUE_LIMIT);
@@ -56,6 +58,11 @@ const messageSchema = z
         array: z.array(intValue).max(INPUT_MAX_VALUES),
         target: intValue.nullable(),
         index: z.number().int().min(0).max(INPUT_MAX_VALUES).nullable(),
+        // an algorithm's second array (Merge Sorted Array's nums2); absent for every other algorithm
+        second: z.array(intValue).max(INPUT_MAX_VALUES).nullable().optional(),
+        // a text algorithm's strings (Roman to Integer's s; strStr's haystack and needle); absent for every other algorithm.
+        // The engine checks each against its field's own limits; this only bounds the request.
+        texts: z.array(z.string().max(TEXT_MAX_CHARS)).max(4).nullable().optional(),
       })
       .strict(),
     stepIndex: z.number().int().min(0).max(100_000),

@@ -116,7 +116,7 @@ test.describe('AI Tutor', () => {
     await expect(dialog.getByRole('button', { name: 'Send question' })).toBeDisabled();
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA with an answer shown: no violations (${theme})`, async ({ app, page }) => {
       void app;
       await page.getByRole('banner').getByRole('combobox', { name: 'Theme' }).selectOption(theme);

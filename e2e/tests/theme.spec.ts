@@ -27,12 +27,13 @@ async function openSettings(page: Page) {
 }
 
 test.describe('theme control', () => {
-  test('is in the header, shows the current choice, and offers Dark, Light and System', async ({ app, page }) => {
+  test('is in the header, shows the current choice, and offers the four named themes and System', async ({ app, page }) => {
     void app;
     const select = headerTheme(page);
     await expect(select).toBeVisible();
     await expect(select).toHaveValue('dark');
-    expect(await select.locator('option').allTextContents()).toEqual(['Dark', 'Light', 'System']);
+    expect(await select.locator('option').allTextContents()).toEqual(['Midnight Neon', 'Purple Galaxy', 'Arctic Light', 'Sunset Warm', 'System']);
+    expect(await select.locator('option').evaluateAll(os => os.map(o => (o as HTMLOptionElement).value))).toEqual(['dark', 'galaxy', 'light', 'sunset', 'system']);
     expect(await themeOf(page)).toEqual({ theme: 'dark', scheme: 'dark' });
   });
 
@@ -68,9 +69,10 @@ test.describe('theme control', () => {
     void app;
     const select = headerTheme(page);
     await select.focus();
-    await page.keyboard.press('ArrowDown'); // native select: Dark → Light
-    await expect(select).toHaveValue('light');
-    await expect.poll(async () => (await themeOf(page)).theme).toBe('light');
+    await page.keyboard.press('ArrowDown'); // native select: Midnight Neon → Purple Galaxy
+    await expect(select).toHaveValue('galaxy');
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.palette)).toBe('galaxy');
+    expect((await themeOf(page)).theme).toBe('dark'); // Purple Galaxy is built on the dark base
   });
 
   test('the choice survives a reload and is applied before the app renders', async ({ app, page }) => {
@@ -97,12 +99,12 @@ test.describe('Settings and the header stay in sync', () => {
     void app;
     await headerTheme(page).selectOption('system');
     const group = await openSettings(page);
-    await expect(group.getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(group.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'false');
+    await expect(group.getByRole('button', { name: 'System', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(group.getByRole('button', { name: 'Midnight Neon' })).toHaveAttribute('aria-pressed', 'false');
 
-    await group.getByRole('button', { name: 'Light' }).click();
+    await group.getByRole('button', { name: 'Arctic Light' }).click();
     expect(await themeOf(page)).toEqual({ theme: 'light', scheme: 'light' }); // before Save
-    await expect(group.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(group.getByRole('button', { name: 'Arctic Light' })).toHaveAttribute('aria-pressed', 'true');
     await expect(headerTheme(page)).toHaveValue('light');
     await expect.poll(() => accountTheme(page)).toBe('light');
 
@@ -111,13 +113,13 @@ test.describe('Settings and the header stay in sync', () => {
     await expect(headerTheme(page)).toHaveValue('light');
     await headerTheme(page).selectOption('dark');
     const again = await openSettings(page);
-    await expect(again.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(again.getByRole('button', { name: 'Midnight Neon' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('Save keeps the chosen theme and the other settings still save', async ({ app, page }) => {
     void app;
     const group = await openSettings(page);
-    await group.getByRole('button', { name: 'Light' }).click();
+    await group.getByRole('button', { name: 'Arctic Light' }).click();
     await page.getByRole('button', { name: /Save/ }).click();
     await expect(page.getByText('Settings updated successfully!')).toBeVisible();
     expect((await themeOf(page)).theme).toBe('light');
@@ -139,7 +141,7 @@ test.describe('Settings and the header stay in sync', () => {
     expect(await themeOf(page)).toEqual({ theme: 'light', scheme: 'light' });
     expect(await storedPreference(page)).toBe('light');
     const group = await openSettings(page);
-    await expect(group.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(group.getByRole('button', { name: 'Arctic Light' })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('theme-sync-error')).toHaveText(
       'Saved on this device, but it could not be saved to your account. Press Save to try again.'
     );

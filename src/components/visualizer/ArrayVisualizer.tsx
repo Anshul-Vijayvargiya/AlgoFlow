@@ -7,6 +7,7 @@ import { CheckCircle2, SearchX, Flag, Inbox } from 'lucide-react';
 import { ValueCard } from './ValueCards';
 import { HashMapPanel } from './HashMapPanel';
 import { ContainerOverlay } from './ContainerOverlay';
+import { WaterOverlay } from './WaterOverlay';
 
 interface ArrayVisualizerProps {
   currentStep: ExecutionStep;
@@ -71,7 +72,7 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-2" data-testid="array-visualizer" data-outcome={outcome ?? ''}>
-      <div ref={plotRef} className={`w-full h-72 sm:h-80 md:h-96 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex items-end justify-center ${compact ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'} relative overflow-hidden shadow-inner`}>
+      <div ref={plotRef} className={`w-full h-72 sm:h-80 md:h-96 bg-surface/90 border border-cyan-500/15 rounded-2xl px-2 sm:px-6 pb-4 pt-10 flex items-end justify-center ${compact ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'} relative overflow-hidden shadow-inner`}>
         {/* Background Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--af-grid)_1px,transparent_1px),linear-gradient(to_bottom,var(--af-grid)_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none" />
 
@@ -95,6 +96,9 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
         {currentStep.container && (
           <ContainerOverlay view={currentStep.container} plotRef={plotRef} heightFor={heightFor} transitionMs={transitionMs} />
         )}
+
+        {/* Trapping Rain Water: the water above each bar decided so far */}
+        {currentStep.water && <WaterOverlay view={currentStep.water} heights={state} plotRef={plotRef} heightFor={heightFor} transitionMs={transitionMs} />}
 
         {bars.map((b, i) => (
           <Bar
@@ -127,11 +131,11 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
         <div data-testid="buffers" className="flex flex-wrap gap-x-6 gap-y-2 px-1">
           {buffers.map(b => (
             <div key={b.name} data-buffer={b.name} className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-slate-400">{b.name} buffer</span>
+              <span className="text-[11px] font-mono text-slate-400">{b.label ?? `${b.name} buffer`}</span>
               <div className="flex gap-1">{b.values.map((_, i) => fmtBuffer(b, i))}</div>
               {b.cursor !== undefined && (
                 <span className="text-[10px] font-mono text-slate-400">
-                  {b.cursor < b.values.length ? `${b.name === 'left' ? 'i' : 'j'} = ${b.cursor}` : 'exhausted'}
+                  {b.cursor < b.values.length ? `${b.cursorLabel ?? (b.name === 'left' ? 'i' : 'j')} = ${b.cursor}` : 'exhausted'}
                 </span>
               )}
             </div>

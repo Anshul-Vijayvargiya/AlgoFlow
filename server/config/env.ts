@@ -31,6 +31,30 @@ const DEV_CLIENT_URL = 'http://localhost:5173';
 const DEV_HOST = '127.0.0.1';
 const DEPLOYED_HOST = '0.0.0.0';
 const DEV_MONGODB_URI = 'mongodb://127.0.0.1:27017/algoflow';
+
+/** the address the server listens on: HOST, or the default for the environment (see server/index.ts) */
+export const resolveHost = (nodeEnv: string | undefined, host: string | undefined): string => host ?? (nodeEnv === 'development' ? DEV_HOST : DEPLOYED_HOST);
+
+/**
+ * Whether listening on `host` keeps the server on this machine: an IPv4 loopback address (127.x.x.x) or ::1. Host
+ * names (even "localhost") are not accepted: they can resolve to other addresses, and the check must fail closed.
+ */
+export function isLoopbackHost(host: string): boolean {
+  const h = host.trim().replace(/^\[(.*)\]$/, '$1');
+  if (h === '::1') return true;
+  const parts = h.split('.');
+  return parts.length === 4 && parts[0] === '127' && parts.every(p => /^\d{1,3}$/.test(p) && Number(p) <= 255);
+}
+
+/** why EXECUTION_PROVIDER=local may not run with this configuration, or null when it may */
+export function localProviderProblem(nodeEnv: string | undefined, host: string | undefined): string | null {
+  if (isStrictEnvironment(nodeEnv)) return `In ${nodeEnv}, EXECUTION_PROVIDER cannot be 'local' (it is for development only and does not isolate untrusted code).`;
+  const listen = resolveHost(nodeEnv, host);
+  if (!isLoopbackHost(listen)) {
+    return `EXECUTION_PROVIDER=local runs code on this machine, so the server must listen on loopback only, but HOST is ${listen}${host === undefined ? ` (the ${nodeEnv} default)` : ''}. Set HOST=127.0.0.1 (or ::1).`;
+  }
+  return null;
+}
 const MIN_SECRET_LENGTH = 32;
 
 // An empty value (`JWT_SECRET=`) counts as unset.
@@ -56,8 +80,11 @@ export const envSchema = z
     RATE_LIMIT_MAX_API: positiveInt(100),
     // Development only: also seed the fixed-password ADMIN and SUPER_ADMIN accounts.
     SEED_DEV_ADMINS: z.enum(['true', 'false']).default('false'),
-    // Code execution (Playground). 'disabled' until configured; 'fake' is for automated tests only (never strict).
-    EXECUTION_PROVIDER: z.enum(['disabled', 'judge0', 'fake']).default('disabled'),
+    // Code execution (Playground). 'disabled' until configured; 'fake' is for automated tests only (never strict);
+    // 'local' runs Python on this machine, for development only (never strict: it is not a sandbox for untrusted code).
+    EXECUTION_PROVIDER: z.enum(['disabled', 'judge0', 'fake', 'local']).default('disabled'),
+    // EXECUTION_PROVIDER=local: the Python 3.8+ interpreter to use (a command on PATH or a full path; default "python")
+    LOCAL_PYTHON_PATH: optionalString,
     // Judge0 (hosted or self-hosted): base URL, key and how the key is sent. Never exposed to the browser.
     JUDGE0_API_URL: optionalString,
     JUDGE0_API_KEY: optionalString,
@@ -118,6 +145,12 @@ export const envSchema = z
       }
     }
 
+    // the local provider is not a sandbox: it may only run where nothing but this machine can reach the server
+    if (data.EXECUTION_PROVIDER === 'local') {
+      const problem = localProviderProblem(data.NODE_ENV, data.HOST);
+      if (problem) issue(isStrictEnvironment(data.NODE_ENV) ? 'EXECUTION_PROVIDER' : 'HOST', problem);
+    }
+
     if (data.AI_PROVIDER === 'gemini') {
       if (!data.GEMINI_API_KEY) issue('GEMINI_API_KEY', 'GEMINI_API_KEY must be set when AI_PROVIDER=gemini.');
       if (!data.GEMINI_MODEL) issue('GEMINI_MODEL', 'GEMINI_MODEL must be set when AI_PROVIDER=gemini (there is no default model).');
@@ -164,7 +197,7 @@ export const envSchema = z
   .transform(data => ({
     ...data,
     isStrict: isStrictEnvironment(data.NODE_ENV),
-    HOST: data.HOST ?? (data.NODE_ENV === 'development' ? DEV_HOST : DEPLOYED_HOST),
+    HOST: resolveHost(data.NODE_ENV, data.HOST),
     CLIENT_URL: data.CLIENT_URL ?? DEV_CLIENT_URL,
     MONGODB_URI: data.MONGODB_URI ?? DEV_MONGODB_URI,
     // Only reachable in test mode (refinement above): random, so no predictable signing key exists anywhere.

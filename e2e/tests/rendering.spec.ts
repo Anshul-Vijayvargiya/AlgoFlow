@@ -64,14 +64,21 @@ test.describe('every algorithm renders its default trace faithfully (real UI, no
       const d = definition(id);
       const target = d.inputSpec?.target?.defaultValue ?? null;
       await app.selectAlgorithm(id);
-      expect(await app.barValues(), 'the default example is shown').toEqual(d.defaultInput);
+      // (Merge Sorted Array's bars are nums1 with a placeholder slot for each value of nums2)
+      const placeholders = Array<number>(d.inputSpec?.secondArray?.defaultValue.length ?? 0).fill(0);
+      expect(await app.barValues(), 'the default example is shown').toEqual([...d.defaultInput, ...placeholders]);
 
       const { steps, observed, final } = await walkAndCompareWithEngine(app, id, d.defaultInput, target);
       expect(renderingProblems(id, observed, steps)).toEqual([]);
 
-      if (SORT_IDS.includes(id)) {
+      // the sorts, and Merge Sorted Array (it ends with every slot in its final, sorted place)
+      if (SORT_IDS.includes(id) || id === 'merge-sorted-array') {
         expect(final.outcome?.kind).toBe('sorted');
         expect(final.bars.every(b => b.role === 'sorted')).toBe(true);
+      } else if (id === 'trapping-rain-water') {
+        // its answer is a computed total, not an element: the run completes, with the total in words and no bar marked found
+        expect(final.outcome).toEqual({ kind: 'complete', text: 'Trapped water: 6 units' });
+        expect(final.bars.every(b => b.role === 'default')).toBe(true);
       } else if (id === 'remove-duplicates-sorted') {
         // returns a count, not a found element: the run completes with the unique prefix kept, the rest left over
         const unique = new Set(d.defaultInput).size;

@@ -156,7 +156,7 @@ export const AuthPage: React.FC = () => {
           className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(6,182,212,1) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,1) 1px, transparent 1px)',
+              'linear-gradient(var(--color-cyan-500) 1px, transparent 1px), linear-gradient(90deg, var(--color-cyan-500) 1px, transparent 1px)',
             backgroundSize: '40px 40px',
           }}
         />
