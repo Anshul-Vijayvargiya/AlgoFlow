@@ -1,7 +1,8 @@
 import React from 'react';
-import { CheckCircle2, XCircle, ArrowLeftRight } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowLeftRight, Equal } from 'lucide-react';
 import type { ExecutionStep } from '../../types/algorithm';
 import { ValueCard } from './ValueCards';
+import { NumberSearchPanel } from './NumberSearchPanel';
 
 interface NumberVisualizerProps {
   currentStep: ExecutionStep;
@@ -13,6 +14,9 @@ const RESULT_TONE = {
   prime: { tone: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', Icon: CheckCircle2 },
   'not-prime': { tone: 'bg-rose-500/15 border-rose-500/40 text-rose-300', Icon: XCircle },
   swapped: { tone: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', Icon: ArrowLeftRight },
+  yes: { tone: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', Icon: CheckCircle2 },
+  no: { tone: 'bg-rose-500/15 border-rose-500/40 text-rose-300', Icon: XCircle },
+  answer: { tone: 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300', Icon: Equal },
 } as const;
 
 /**
@@ -29,7 +33,7 @@ export const NumberVisualizer: React.FC<NumberVisualizerProps> = ({ currentStep,
 
   return (
     <div className="w-full flex flex-col gap-2" data-testid="number-visualizer" data-result={view.result?.kind ?? ''}>
-      <div className="w-full min-h-56 bg-[#0B0F19]/90 light:bg-surface/90 border border-cyan-500/15 rounded-2xl px-3 sm:px-6 pt-10 pb-5 relative overflow-hidden shadow-inner flex flex-col items-center justify-center gap-5">
+      <div className="w-full min-h-56 bg-surface/90 border border-cyan-500/15 rounded-2xl px-3 sm:px-6 pt-10 pb-5 relative overflow-hidden shadow-inner flex flex-col items-center justify-center gap-5">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--af-grid)_1px,transparent_1px),linear-gradient(to_bottom,var(--af-grid)_1px,transparent_1px)] bg-[size:2rem_2rem] pointer-events-none" />
 
         {currentStep.actionLabel && (
@@ -46,6 +50,8 @@ export const NumberVisualizer: React.FC<NumberVisualizerProps> = ({ currentStep,
             <ValueCard key={cell.name} cell={cell} transitionMs={transitionMs} />
           ))}
         </dl>
+
+        {view.search && <NumberSearchPanel search={view.search} transitionMs={transitionMs} />}
 
         {checks && (
           <div className="relative z-10 w-full" data-testid="divisor-checks">

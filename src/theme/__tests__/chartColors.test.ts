@@ -34,7 +34,24 @@ describe('chart colours', () => {
     expect(contrast(light.grid, '#FFFFFF')).toBeGreaterThan(1.2);
   });
 
-  it('both themes define the same colours', () => {
-    expect(Object.keys(CHART_COLORS.light).sort()).toEqual(Object.keys(CHART_COLORS.dark).sort());
+  it('sunset (light base): the same readability rules as light, against its white chart cards', () => {
+    const sunset = CHART_COLORS.sunset;
+    expect(contrast(sunset.axis, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(sunset.polarAngle, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(String(sunset.tooltip.color), String(sunset.tooltip.backgroundColor))).toBeGreaterThanOrEqual(4.5);
+    for (const series of [sunset.primary, sunset.secondary, sunset.radar]) expect(contrast(series, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+  });
+
+  it('galaxy (dark base): at least the contrast of the original dark colours, against the dark chart card', () => {
+    const card = '#0B0F19';
+    const { dark, galaxy } = CHART_COLORS;
+    for (const key of ['axis', 'polarAngle', 'primary', 'radar'] as const) {
+      expect(contrast(galaxy[key], card), key).toBeGreaterThanOrEqual(contrast(dark[key], card) - 0.15);
+    }
+    expect(contrast(String(galaxy.tooltip.color), String(galaxy.tooltip.backgroundColor))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('every theme defines the same colours', () => {
+    for (const theme of ['light', 'galaxy', 'sunset'] as const) expect(Object.keys(CHART_COLORS[theme]).sort()).toEqual(Object.keys(CHART_COLORS.dark).sort());
   });
 });

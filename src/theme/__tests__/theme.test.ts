@@ -4,11 +4,13 @@ import initScript from '../../../public/theme-init.js?raw';
 import {
   THEME_STORAGE_KEY,
   SYSTEM_LIGHT_QUERY,
-  applyResolvedTheme,
+  applyTheme,
+  isThemePreference,
   createThemeController,
   parseThemePreference,
   readStoredPreference,
   resolveTheme,
+  resolveThemeName,
   writeStoredPreference,
   type ThemeEnvironment,
   type ThemeMediaQuery,
@@ -85,8 +87,11 @@ function env(opts: { stored?: string; prefersLight?: boolean; legacy?: boolean; 
 
 describe('theme preference', () => {
   it('missing or invalid values fall back to dark', () => {
-    for (const v of [null, undefined, '', 'Dark', 'LIGHT', 'auto', 'blue', 42, {}, ' light']) expect(parseThemePreference(v), String(v)).toBe('dark');
-    for (const v of ['dark', 'light', 'system'] as const) expect(parseThemePreference(v)).toBe(v);
+    for (const v of [null, undefined, '', 'Dark', 'LIGHT', 'auto', 'blue', 42, {}, ' light', 'Galaxy', 'midnight', 'toString', '__proto__']) {
+      expect(parseThemePreference(v), String(v)).toBe('dark');
+      expect(isThemePreference(v), String(v)).toBe(false);
+    }
+    for (const v of ['dark', 'light', 'galaxy', 'sunset', 'system'] as const) expect(parseThemePreference(v)).toBe(v);
   });
 
   it('system resolves through the OS; explicit choices ignore it', () => {
@@ -109,12 +114,29 @@ describe('theme preference', () => {
     expect(ok.data.get(THEME_STORAGE_KEY)).toBe('system');
   });
 
-  it('applying a theme sets data-theme and color-scheme on the root', () => {
+  it('the named themes: each is itself (system aside), on its base — galaxy on dark, sunset on light — whatever the OS', () => {
+    for (const os of [true, false]) {
+      expect(resolveThemeName('galaxy', os)).toBe('galaxy');
+      expect(resolveThemeName('sunset', os)).toBe('sunset');
+      expect(resolveTheme('galaxy', os)).toBe('dark');
+      expect(resolveTheme('sunset', os)).toBe('light');
+    }
+    // system only ever means the original two
+    expect(resolveThemeName('system', true)).toBe('light');
+    expect(resolveThemeName('system', false)).toBe('dark');
+  });
+
+  it('applying a theme sets data-theme (the base), data-palette (the theme) and color-scheme on the root', () => {
     const root = fakeRoot();
-    applyResolvedTheme(root, 'light');
-    expect([root.attrs['data-theme'], root.style.colorScheme]).toEqual(['light', 'light']);
-    applyResolvedTheme(root, 'dark');
-    expect([root.attrs['data-theme'], root.style.colorScheme]).toEqual(['dark', 'dark']);
+    const applied = () => [root.attrs['data-theme'], root.attrs['data-palette'], root.style.colorScheme];
+    applyTheme(root, 'light');
+    expect(applied()).toEqual(['light', 'light', 'light']);
+    applyTheme(root, 'dark');
+    expect(applied()).toEqual(['dark', 'dark', 'dark']);
+    applyTheme(root, 'galaxy');
+    expect(applied()).toEqual(['dark', 'galaxy', 'dark']);
+    applyTheme(root, 'sunset');
+    expect(applied()).toEqual(['light', 'sunset', 'light']);
   });
 });
 
@@ -124,28 +146,28 @@ describe('theme controller', () => {
   it('no saved preference: dark, applied to the DOM', () => {
     const t = env();
     const c = createThemeController(t.env);
-    expect(c.getState()).toEqual({ preference: 'dark', resolvedTheme: 'dark' });
+    expect(c.getState()).toEqual({ preference: 'dark', theme: 'dark', resolvedTheme: 'dark' });
     expect(t.shown()).toEqual(['dark', 'dark']);
   });
 
   it('an invalid saved preference: dark', () => {
     const t = env({ stored: 'purple', prefersLight: true });
-    expect(createThemeController(t.env).getState()).toEqual({ preference: 'dark', resolvedTheme: 'dark' });
+    expect(createThemeController(t.env).getState()).toEqual({ preference: 'dark', theme: 'dark', resolvedTheme: 'dark' });
     expect(t.shown()).toEqual(['dark', 'dark']);
   });
 
   it('explicit light and dark are applied regardless of the OS', () => {
     const light = env({ stored: 'light', prefersLight: false });
-    expect(createThemeController(light.env).getState()).toEqual({ preference: 'light', resolvedTheme: 'light' });
+    expect(createThemeController(light.env).getState()).toEqual({ preference: 'light', theme: 'light', resolvedTheme: 'light' });
     expect(light.shown()).toEqual(['light', 'light']);
     const dark = env({ stored: 'dark', prefersLight: true });
-    expect(createThemeController(dark.env).getState()).toEqual({ preference: 'dark', resolvedTheme: 'dark' });
+    expect(createThemeController(dark.env).getState()).toEqual({ preference: 'dark', theme: 'dark', resolvedTheme: 'dark' });
     expect(dark.shown()).toEqual(['dark', 'dark']);
   });
 
   it('system resolves to the OS scheme, using the prefers-color-scheme: light query', () => {
     const light = env({ stored: 'system', prefersLight: true });
-    expect(createThemeController(light.env).getState()).toEqual({ preference: 'system', resolvedTheme: 'light' });
+    expect(createThemeController(light.env).getState()).toEqual({ preference: 'system', theme: 'light', resolvedTheme: 'light' });
     expect(light.shown()).toEqual(['light', 'light']);
     expect(light.system.queries).toEqual([SYSTEM_LIGHT_QUERY]);
     const dark = env({ stored: 'system', prefersLight: false });
@@ -187,12 +209,30 @@ describe('theme controller', () => {
     expect(explicit.system.listeners.size).toBe(0);
   });
 
+  it('switching between all four themes applies each at once, stores it, and tells subscribers', () => {
+    const t = env({ prefersLight: true });
+    const c = createThemeController(t.env);
+    const seen: string[] = [];
+    c.subscribe(s => seen.push(`${s.preference}:${s.theme}:${s.resolvedTheme}`));
+    for (const name of ['galaxy', 'sunset', 'light', 'dark'] as const) {
+      c.setPreference(name);
+      expect(t.store.data.get(THEME_STORAGE_KEY)).toBe(name);
+      expect(t.root.attrs['data-palette']).toBe(name);
+    }
+    expect(seen).toEqual(['galaxy:galaxy:dark', 'sunset:sunset:light', 'light:light:light', 'dark:dark:dark']);
+    expect(t.system.listeners.size).toBe(0); // a named theme never follows the OS
+    // a saved named theme is restored as itself
+    const again = env({ stored: 'sunset', prefersLight: false });
+    expect(createThemeController(again.env).getState()).toEqual({ preference: 'sunset', theme: 'sunset', resolvedTheme: 'light' });
+    expect([again.root.attrs['data-theme'], again.root.attrs['data-palette']]).toEqual(['light', 'sunset']);
+  });
+
   it('returning to system picks up an OS change made while it was not listening', () => {
     const t = env({ stored: 'dark', prefersLight: false });
     const c = createThemeController(t.env);
     t.system.change(true); // nobody listening
     c.setPreference('system');
-    expect(c.getState()).toEqual({ preference: 'system', resolvedTheme: 'light' });
+    expect(c.getState()).toEqual({ preference: 'system', theme: 'light', resolvedTheme: 'light' });
     expect(t.system.listeners.size).toBe(1);
   });
 
@@ -208,7 +248,7 @@ describe('theme controller', () => {
     expect(t.store.data.get(THEME_STORAGE_KEY)).toBe('dark');
     unsubscribe();
     c.setPreference('light');
-    expect(seen).toEqual([{ preference: 'system', resolvedTheme: 'light' }, { preference: 'dark', resolvedTheme: 'dark' }]);
+    expect(seen).toEqual([{ preference: 'system', theme: 'light', resolvedTheme: 'light' }, { preference: 'dark', theme: 'dark', resolvedTheme: 'dark' }]);
   });
 
   it('listeners are cleaned up: switching away from system, and destroy()', () => {
@@ -241,23 +281,23 @@ describe('theme controller', () => {
     t.env.matchMedia = () => {
       throw new Error('not supported');
     };
-    expect(createThemeController(t.env).getState()).toEqual({ preference: 'system', resolvedTheme: 'dark' });
+    expect(createThemeController(t.env).getState()).toEqual({ preference: 'system', theme: 'dark', resolvedTheme: 'dark' });
   });
 });
 
 // ─── the store mirrors the controller ────────────────────────────────────────────────────────────────────────────
 
 describe('useThemeStore', () => {
-  beforeEach(() => useThemeStore.setState({ preference: 'dark', resolvedTheme: 'dark' }));
+  beforeEach(() => useThemeStore.setState({ preference: 'dark', theme: 'dark', resolvedTheme: 'dark' }));
 
   it('startTheme loads the saved preference into the store; setPreference goes through the controller', () => {
     const t = env({ stored: 'system', prefersLight: true });
     startTheme(t.env);
-    expect(useThemeStore.getState()).toMatchObject({ preference: 'system', resolvedTheme: 'light' });
+    expect(useThemeStore.getState()).toMatchObject({ preference: 'system', theme: 'light', resolvedTheme: 'light' });
     t.system.change(false);
     expect(useThemeStore.getState().resolvedTheme).toBe('dark');
     useThemeStore.getState().setPreference('light');
-    expect(useThemeStore.getState()).toMatchObject({ preference: 'light', resolvedTheme: 'light' });
+    expect(useThemeStore.getState()).toMatchObject({ preference: 'light', theme: 'light', resolvedTheme: 'light' });
     expect(t.shown()).toEqual(['light', 'light']);
     expect(t.store.data.get(THEME_STORAGE_KEY)).toBe('light');
   });
@@ -295,11 +335,11 @@ describe('public/theme-init.js (runs before React)', () => {
           : (opts.matchMedia ?? undefined),
     };
     new Function('window', 'document', script)(window, { documentElement: root });
-    return [root.attrs['data-theme'], root.style.colorScheme];
+    return [root.attrs['data-theme'], root.attrs['data-palette'], root.style.colorScheme];
   }
 
   it('uses the same storage key and the same rules as the controller, in every case', () => {
-    const storedValues = [undefined, 'dark', 'light', 'system', 'bogus', ''];
+    const storedValues = [undefined, 'dark', 'light', 'galaxy', 'sunset', 'system', 'bogus', '', 'toString', '__proto__'];
     for (const stored of storedValues) {
       for (const os of ['light', 'dark', 'none', 'throws'] as const) {
         const label = `stored=${stored} os=${os}`;
@@ -313,17 +353,17 @@ describe('public/theme-init.js (runs before React)', () => {
                   throw new Error('nope');
                 }
               : matchMedia,
-        }).getState().resolvedTheme;
+        }).getState();
         const s = fakeStorage(stored === undefined ? {} : { [THEME_STORAGE_KEY]: stored });
-        expect(runInitScript({ storage: s.storage, matchMedia }), label).toEqual([expected, expected]);
+        expect(runInitScript({ storage: s.storage, matchMedia }), label).toEqual([expected.resolvedTheme, expected.theme, expected.resolvedTheme]);
         expect(s.reads, label).toEqual([THEME_STORAGE_KEY]);
       }
     }
   });
 
   it('never throws when storage is unavailable or reading it fails: dark', () => {
-    expect(runInitScript({ storage: 'throws', matchMedia: null })).toEqual(['dark', 'dark']);
-    expect(runInitScript({ storage: fakeStorage({}, { get: true }).storage, matchMedia: null })).toEqual(['dark', 'dark']);
+    expect(runInitScript({ storage: 'throws', matchMedia: null })).toEqual(['dark', 'dark', 'dark']);
+    expect(runInitScript({ storage: fakeStorage({}, { get: true }).storage, matchMedia: null })).toEqual(['dark', 'dark', 'dark']);
   });
 
   it('is plain, dependency-free code that never writes HTML', () => {

@@ -24,7 +24,7 @@ const QUICK_PROMPTS = [
  * so; it never shows an answer the server did not return. The conversation stays in this component (never stored).
  */
 export const AITutorDrawer: React.FC<AITutorDrawerProps> = ({ isOpen, onClose }) => {
-  const { selectedAlgorithm, selectedLanguage, array, target, index, steps, currentStepIndex, executionStatus } = useVisualizerStore();
+  const { selectedAlgorithm, selectedLanguage, array, target, index, second, texts, steps, currentStepIndex, executionStatus } = useVisualizerStore();
   const meta = getAlgorithmById(selectedAlgorithm);
   const language = selectedLanguage as ExecutionLanguageId;
   const canAskAboutState = executionStatus === 'ok' && isImplementedAlgorithm(selectedAlgorithm) && steps.length > 0;
@@ -94,7 +94,7 @@ export const AITutorDrawer: React.FC<AITutorDrawerProps> = ({ isOpen, onClose })
     try {
       const reply = await apiClient.tutor.ask({
         algorithmId: selectedAlgorithm,
-        input: { array, target, index },
+        input: { array, target, index, ...(second !== null ? { second } : {}), ...(texts !== null ? { texts } : {}) },
         stepIndex: currentStepIndex,
         language,
         question: q,

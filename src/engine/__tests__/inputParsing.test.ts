@@ -130,14 +130,16 @@ describe('algorithm input specs (declared on the real definitions)', () => {
     const withTarget = getAllAlgorithms().filter(d => d.inputSpec?.target).map(d => d.id).sort();
     expect(withTarget).toEqual(['binary-search', 'linear-search', 'two-pointer', 'two-sum']);
   });
-  it('exactly Binary Search and Two Pointer require sorted input; Linear Search, Two Sum and the sorts do not', () => {
+  it('exactly Binary Search, Two Pointer and Merge Sorted Array require sorted input; Linear Search, Two Sum and the sorts do not', () => {
     const sortedReq = getAllAlgorithms().filter(d => d.inputSpec?.sortedRequired).map(d => d.id).sort();
-    expect(sortedReq).toEqual(['binary-search', 'two-pointer']);
+    expect(sortedReq).toEqual(['binary-search', 'merge-sorted-array', 'two-pointer']);
   });
   it('every default input satisfies its own algorithm\'s requirements with its default target', () => {
     for (const d of getAllAlgorithms()) {
       const spec = d.inputSpec;
-      const v = validateAlgorithmInput(d, d.defaultInput, (spec?.target ?? spec?.value)?.defaultValue ?? null, spec?.index?.defaultValue ?? null);
+      const second = spec?.secondArray ? [...spec.secondArray.defaultValue] : null;
+      const texts = spec?.texts ? spec.texts.map(f => f.defaultValue) : null;
+      const v = validateAlgorithmInput(d, d.defaultInput, (spec?.target ?? spec?.value)?.defaultValue ?? null, spec?.index?.defaultValue ?? null, second, texts);
       expect(v.ok, d.id).toBe(true);
     }
   });
@@ -255,9 +257,10 @@ describe('linked-list input validation (rejected before execution)', () => {
     expect(validateAlgorithmInput(def('bubble-sort'), list(11), null, -5).ok).toBe(true);
   });
 
-  it('exactly the LINKED_LIST operations are drawn as linked lists and the FUNDAMENTALS as numbers; every other algorithm is still an array', () => {
+  it('exactly the LINKED_LIST operations are drawn as linked lists, the FUNDAMENTALS as numbers and the STRINGS as text; every other algorithm is still an array', () => {
+    const kind = { LINKED_LIST: 'linked-list', FUNDAMENTALS: 'numbers', STRINGS: 'text', TREES: 'tree' } as Record<string, string>;
     for (const d of getAllAlgorithms()) {
-      expect(visualKindOf(d), d.id).toBe(d.category === 'LINKED_LIST' ? 'linked-list' : d.category === 'FUNDAMENTALS' ? 'numbers' : 'array');
+      expect(visualKindOf(d), d.id).toBe(kind[d.category] ?? 'array');
     }
     expect(visualKindOf(undefined)).toBe('array');
     expect(visualKindOf(traverse)).toBe('linked-list');

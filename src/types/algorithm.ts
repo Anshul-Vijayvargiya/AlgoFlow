@@ -5,6 +5,7 @@ export type AlgorithmCategory =
   | 'SORTING'
   | 'SEARCHING'
   | 'ARRAYS'
+  | 'STRINGS'
   | 'LINKED_LIST'
   | 'STACK_QUEUE'
   | 'TREES'
@@ -57,7 +58,24 @@ export type AlgorithmId =
   | 'swap-two-numbers'
   | 'two-sum'
   | 'majority-element'
-  | 'container-most-water';
+  | 'container-most-water'
+  | 'merge-sorted-array'
+  | 'trapping-rain-water'
+  | 'valid-perfect-square'
+  | 'sqrt-x'
+  | 'arranging-coins'
+  | 'roman-to-integer'
+  | 'longest-common-prefix'
+  | 'valid-parentheses'
+  | 'find-first-occurrence'
+  | 'length-of-last-word'
+  | 'add-binary'
+  | 'valid-palindrome'
+  | 'valid-palindrome-ii'
+  | 'tree-inorder'
+  | 'tree-preorder'
+  | 'tree-postorder'
+  | 'tree-level-order';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -161,7 +179,15 @@ export interface ExecutionStep {
    * `cursor` is the buffer index the step is currently looking at (may equal values.length when exhausted).
    * The visualizer shows these next to the bars instead of highlighting an unrelated bar.
    */
-  buffers?: { name: string; values: number[]; cursor?: number }[];
+  buffers?: {
+    name: string;
+    values: number[];
+    cursor?: number;
+    /** what the row is called on screen; default "<name> buffer" (Merge Sort's left / right) */
+    label?: string;
+    /** the cursor's name on screen; default i for the left buffer, j otherwise */
+    cursorLabel?: string;
+  }[];
 
   /**
    * Linked-list algorithms only (visual: 'linked-list'): the whole list at this step, as an immutable snapshot with
@@ -196,6 +222,24 @@ export interface ExecutionStep {
    */
   container?: ContainerView;
 
+  /**
+   * Trapping Rain Water: the water each bar holds, as decided so far (amounts[i] units above bar i, 0 where none or
+   * not decided yet), and the bar this step decides. Drawn over the bars, in the bars' own height scale.
+   */
+  water?: WaterView;
+
+  /**
+   * Text algorithms only (visual: 'text'): the strings, pointers, stack and values of this step. `state` is empty: a
+   * text algorithm has no array.
+   */
+  text?: TextView;
+
+  /**
+   * Tree algorithms only (visual: 'tree'): the tree, the node this step works on, the nodes visited so far (in order),
+   * the stack or queue, and the pointer variables. `state` is empty: a tree algorithm has no array.
+   */
+  tree?: TreeView;
+
   /** Extra metadata */
   extraInfo?: {
     pivotIndex?: number;
@@ -206,8 +250,11 @@ export interface ExecutionStep {
 /** One named value shown by the number visualizer (n, i, n % i; a, b, temp). */
 export interface NumberCell {
   readonly name: string;
-  /** null: not set yet (e.g. temp before it is assigned) */
-  readonly value: number | null;
+  /**
+   * null: not set yet (e.g. temp before it is assigned). A string holds an exact whole number too large for a JS
+   * number (a 64-bit product such as mid × mid near 2^31); it stays JSON-serialisable, unlike a bigint.
+   */
+  readonly value: number | string | null;
   /** 'changed': this step's statement wrote it; 'current': it is being read or tested */
   readonly role?: 'changed' | 'current';
 }
@@ -216,8 +263,92 @@ export interface NumberView {
   readonly cells: readonly NumberCell[];
   /** Prime checking: every divisor tried so far, in order, with n % divisor */
   readonly divisorChecks?: readonly { readonly divisor: number; readonly remainder: number }[];
+  /** Binary search over whole numbers (Sqrt(x), Valid Perfect Square, Arranging Coins): the range still searched */
+  readonly search?: NumberSearchView;
+  /**
+   * the final answer, on the last step only: 'yes' / 'no' for a true / false question (is it a perfect square?),
+   * 'answer' for a computed value (the square root, the number of rows)
+   */
+  readonly result?: { readonly kind: 'prime' | 'not-prime' | 'swapped' | 'yes' | 'no' | 'answer'; readonly text: string };
+}
+
+/** One probe of a binary search over whole numbers: the mid tried, the value computed from it and how it compared. */
+export interface NumberSearchProbe {
+  readonly mid: number;
+  /** what mid gives (mid × mid, or mid × (mid + 1) / 2): exact, as a string when beyond a JS number's exact range */
+  readonly value: number | string;
+  /** how that value compares with the target */
+  readonly relation: '<' | '=' | '>';
+}
+
+export interface NumberSearchView {
+  /** the range searched at the start (lo = 0, hi = the input) */
+  readonly from: number;
+  readonly to: number;
+  /** the range still searched; lo > hi once the search is over */
+  readonly lo: number;
+  readonly hi: number;
+  /** the middle being tried at this step, if any */
+  readonly mid?: number;
+  /** what the computed value is compared with (x, num or n), and what it is called ("mid × mid") */
+  readonly target: number;
+  readonly valueLabel: string;
+  /** every probe so far, in order */
+  readonly probes: readonly NumberSearchProbe[];
+}
+
+/**
+ * How one character of a text row is shown at a step: 'current' is being read, 'compare' is what it is compared
+ * with, 'match' / 'mismatch' the outcome of a comparison (or a column / pair already confirmed), 'skipped' passed over
+ * (a space, a non-alphanumeric character), 'done' already processed.
+ */
+export type CharMark = 'current' | 'compare' | 'match' | 'mismatch' | 'skipped' | 'done';
+
+/** One string shown as a row of character cells. */
+export interface TextRow {
+  /** what the row is called on screen: s, haystack, needle, strs[1], result */
+  readonly name: string;
+  readonly text: string;
+  /** empty columns before the first character, so rows line up (the needle under its alignment, binary digits by place) */
+  readonly offset?: number;
+  /** named positions in the row; -1 or text.length are drawn off the row (before or after it) */
+  readonly pointers?: readonly { readonly name: string; readonly index: number }[];
+  readonly marks?: readonly { readonly index: number; readonly mark: CharMark }[];
+}
+
+export interface TextView {
+  readonly rows: readonly TextRow[];
+  /** named values beside the strings (total, carry, length, the prefix so far) */
+  readonly cells?: readonly NumberCell[];
+  /** Valid Parentheses: the stack, bottom first, and what this step did with it */
+  readonly stack?: { readonly items: readonly string[]; readonly action?: 'push' | 'pop' | 'mismatch' | 'empty' };
   /** the final answer, on the last step only */
-  readonly result?: { readonly kind: 'prime' | 'not-prime' | 'swapped'; readonly text: string };
+  readonly result?: { readonly kind: 'yes' | 'no' | 'answer'; readonly text: string };
+}
+
+/** One node of a binary tree; ids are stable for the whole trace (n0 is the root, by input position). */
+export interface TreeNodeView {
+  readonly id: string;
+  readonly value: number;
+  readonly left: string | null;
+  readonly right: string | null;
+}
+
+export interface TreeView {
+  readonly nodes: readonly TreeNodeView[];
+  readonly root: string | null;
+  /** the node this step works on (pops, visits, peeks at…) */
+  readonly current?: string;
+  /** visited nodes, in visit order: the traversal output so far */
+  readonly visited: readonly string[];
+  /** DFS: the stack of node ids, bottom first, and what this step did with it */
+  readonly stack?: { readonly items: readonly string[]; readonly action?: 'push' | 'pop' | 'peek' };
+  /** Level order: the queue of node ids, front first, and what this step did with it */
+  readonly queue?: { readonly items: readonly string[]; readonly action?: 'enqueue' | 'dequeue' };
+  /** pointer variables (curr, node, peek, last): a node id, or null for a null pointer */
+  readonly pointers?: readonly { readonly name: string; readonly node: string | null }[];
+  /** the final answer, on the last step only */
+  readonly result?: { readonly kind: 'answer'; readonly text: string };
 }
 
 /** A container between two lines: its ends (indices), its water level (the shorter line's height) and its area. */
@@ -226,6 +357,12 @@ export interface ContainerSpan {
   readonly right: number;
   readonly level: number;
   readonly area: number;
+}
+
+export interface WaterView {
+  readonly amounts: readonly number[];
+  /** the bar whose water this step decides (adds, or finds there is none) */
+  readonly current?: number;
 }
 
 export interface ContainerView {
@@ -294,6 +431,19 @@ export interface AlgorithmInputSpec {
   minLength?: number;
   /** Array algorithms: the smallest value allowed (heights cannot be negative: 0) */
   minValue?: number;
+  /** What the main array field is called when "Array" would be ambiguous (Merge Sorted Array: "nums1") */
+  arrayLabel?: string;
+  /**
+   * The algorithm takes a second array (Merge Sorted Array's nums2); it is passed to generateSteps as params.second.
+   * It may be empty; it follows sortedRequired like the main array, and the two together hold at most the
+   * visualizer's maximum number of values.
+   */
+  secondArray?: {
+    label: string;
+    hint: string;
+    /** the example shown with the default input */
+    defaultValue: readonly number[];
+  };
   /** Linked-list operations: the value to insert or search for; passed to generateSteps as params.value */
   value?: {
     label: string;
@@ -317,6 +467,31 @@ export interface AlgorithmInputSpec {
    * input array ([n], or [a, b]); each must be an integer from min to max (inclusive).
    */
   numbers?: readonly NumberField[];
+  /**
+   * Text algorithms (visual: 'text'): the strings the user enters, in order; passed to generateSteps as params.texts
+   * (one string per field, exactly as typed). The main input array is always empty.
+   */
+  texts?: readonly TextField[];
+  /** Text algorithms: complete inputs (one string per field) that Randomize picks from */
+  textExamples?: readonly (readonly string[])[];
+}
+
+/** One string input of a text algorithm. */
+export interface TextField {
+  label: string;
+  hint: string;
+  defaultValue: string;
+  minLength: number;
+  maxLength: number;
+  /** the characters allowed, as a regular expression for one character, and how that is said ("I, V, X, L, C, D or M") */
+  chars: { readonly pattern: string; readonly description: string };
+  /**
+   * The value is a list separated by commas (Longest Common Prefix's strs): each item is trimmed, may be empty, and is
+   * checked against chars and itemMaxLength; minLength / maxLength then count items, not characters.
+   */
+  list?: { readonly itemMaxLength: number };
+  /** a rule beyond the characters: a canonical Roman numeral, a binary number without leading zeros, at least one word */
+  rule?: 'roman-numeral' | 'binary-number' | 'has-word' | 'level-order-tree';
 }
 
 export interface NumberField {
@@ -328,7 +503,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree';
 
 export interface AlgorithmDefinition {
   id: AlgorithmId;

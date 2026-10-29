@@ -44,7 +44,7 @@ const ok = (stdout: string, extra: Partial<ExecutionResult> = {}): ExecutionResu
 function provider(...results: Array<ExecutionResult | Error>): ExecutionProvider {
   return {
     name: 'judge0',
-    languages: () => [],
+    languages: () => (['c', 'cpp', 'java', 'python'] as const).map(id => ({ id, label: id })),
     execute: vi.fn(async () => {
       const next = results.shift();
       if (!next) throw new Error('unexpected run');
@@ -166,6 +166,17 @@ describe('submit — verdicts are recorded as judged', () => {
 });
 
 describe('submit — quotas, limits and duplicates', () => {
+  it('a language the provider does not offer (the local provider: Python only) is refused before anything is charged or recorded', async () => {
+    const pythonOnly = provider(ok('3'));
+    m.state.provider = { ...pythonOnly, name: 'local', languages: () => [{ id: 'python', label: 'Python 3.13.9 (local)' }] };
+    const res = await submit({ language: 'cpp', code: 'int main(){}' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('language_unavailable');
+    expect(m.quota.consumeQuota).not.toHaveBeenCalled();
+    expect(m.Submission.create).not.toHaveBeenCalled();
+    expect(pythonOnly.execute).not.toHaveBeenCalled();
+  });
+
   it('reserves one run per test (user, then global); a compile error gives the unused runs back', async () => {
     m.state.provider = provider(ok('', { status: 'compile_error', compileOutput: 'e' }));
     await submit(valid);
@@ -205,7 +216,7 @@ describe('submit — quotas, limits and duplicates', () => {
     let calls = 0;
     m.state.provider = {
       name: 'judge0',
-      languages: () => [],
+      languages: () => (['c', 'cpp', 'java', 'python'] as const).map(id => ({ id, label: id })),
       execute: vi.fn(() => (calls++ === 0 ? new Promise<ExecutionResult>(r => (release = () => r(ok('3')))) : Promise.resolve(ok(calls === 2 ? '8' : 'HIDDEN_OUT')))),
     };
     const first = submit(valid).then(r => r);

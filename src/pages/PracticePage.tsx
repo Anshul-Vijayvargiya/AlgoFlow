@@ -84,24 +84,24 @@ export const PracticePage: React.FC = () => {
     <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold font-mono text-ink flex items-center gap-2">
-            <Code2 className="w-6 h-6 text-cyan-400" />
+          <h1 className="text-[30px] leading-tight font-bold font-mono text-ink flex items-center gap-2.5">
+            <Code2 className="w-7 h-7 text-cyan-400 shrink-0" />
             CODING PRACTICE
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-base text-slate-400 mt-2">
             Solve curated DSA problems with persistent attempt tracking and execution traces.
           </p>
         </div>
 
-        <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             id="practice-search-input"
             type="text"
             placeholder="Search problems or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-surface border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
+            className="w-full bg-surface border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-base font-mono text-slate-200 focus:outline-none focus:border-cyan-500/50"
           />
         </div>
       </div>
@@ -110,11 +110,11 @@ export const PracticePage: React.FC = () => {
       <section aria-labelledby="topic-sets-heading" data-testid="topic-sets" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 id="topic-sets-heading" className="text-sm font-bold font-mono text-ink flex items-center gap-2">
-              <Layers className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+            <h2 id="topic-sets-heading" className="text-xl font-semibold font-mono text-ink flex items-center gap-2">
+              <Layers className="w-5 h-5 text-cyan-400" aria-hidden="true" />
               Topic learning sets
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-base text-slate-400 mt-1">
               Work through one topic at a time. Solved counts include only accepted solutions.
             </p>
           </div>
@@ -138,11 +138,11 @@ export const PracticePage: React.FC = () => {
           </div>
         )}
         {topicSetsStatus === 'error' && topicSets.length === 0 ? null : topicSetsStatus !== 'ready' && topicSetsStatus !== 'error' ? (
-          <p role="status" data-testid="topic-sets-loading" className="text-xs font-mono text-slate-400">
+          <p role="status" data-testid="topic-sets-loading" className="text-sm font-mono text-slate-400">
             Loading topic sets…
           </p>
         ) : topicSets.length === 0 ? (
-          <p data-testid="topic-sets-empty" className="text-xs text-slate-400">
+          <p data-testid="topic-sets-empty" className="text-sm text-slate-400">
             No topic sets yet: no practice problems have been published.
           </p>
         ) : (
@@ -160,14 +160,14 @@ export const PracticePage: React.FC = () => {
                   data-topic-set={set.topic}
                   aria-pressed={active}
                   onClick={() => setSelectedTopic(set.topic)}
-                  className={`text-left rounded-2xl border p-3 space-y-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+                  className={`text-left rounded-2xl border p-4 space-y-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
                     active ? 'bg-cyan-500/15 border-cyan-500/50' : 'bg-surface border-slate-800 hover:border-cyan-500/40'
                   }`}
                 >
-                  <span className={`block text-sm font-bold ${active ? 'text-cyan-300' : 'text-ink'}`}>{set.label}</span>
-                  <span className="block text-xs font-mono text-slate-400">{plural(set.total, 'problem')}</span>
-                  {levels && <span className="block text-[11px] font-mono text-slate-400">{levels}</span>}
-                  <span className="block text-[11px] font-mono text-slate-300">
+                  <span className={`block break-words text-lg leading-snug font-semibold ${active ? 'text-cyan-300' : 'text-ink'}`}>{set.label}</span>
+                  <span className="block text-sm font-mono text-slate-400">{plural(set.total, 'problem')}</span>
+                  {levels && <span className="block text-sm font-mono text-slate-400">{levels}</span>}
+                  <span className="block text-sm font-mono text-slate-300">
                     {set.solved} of {set.total} solved
                   </span>
                   <span aria-hidden="true" className="block h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
@@ -179,21 +179,22 @@ export const PracticePage: React.FC = () => {
           </div>
         )}
         {topicSetsIncomplete && (
-          <p className="text-[11px] text-amber-300">There are more problems than the topic sets could read; their counts may be incomplete.</p>
+          <p className="text-sm text-amber-300">There are more problems than the topic sets could read; their counts may be incomplete.</p>
         )}
       </section>
 
       <div className="flex flex-wrap items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-cyan-500/15">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-slate-400">Difficulty:</span>
-          <div className="flex gap-1.5">
+        {/* wraps on narrow screens, so the larger buttons never push the page sideways */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-mono text-slate-400">Difficulty:</span>
+          <div className="flex flex-wrap gap-1.5">
             {difficulties.map((diff) => (
               <button
                 key={diff}
                 type="button"
                 aria-pressed={selectedDifficulty === diff}
                 onClick={() => setSelectedDifficulty(diff)}
-                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+                className={`px-3.5 py-1.5 rounded-lg text-[15px] font-mono transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
                   selectedDifficulty === diff
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold'
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200'
@@ -206,12 +207,12 @@ export const PracticePage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <label htmlFor="practice-topic-select" className="text-xs font-mono text-slate-400">Topic:</label>
+          <label htmlFor="practice-topic-select" className="text-[15px] font-mono text-slate-400">Topic:</label>
           <select
             id="practice-topic-select"
             value={selectedTopic}
             onChange={(e) => setSelectedTopic(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
+            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-[15px] font-mono text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
           >
             {topics.map((t) => (
               <option key={t} value={t}>{t === 'All' ? 'All topics' : t}</option>
@@ -248,13 +249,13 @@ export const PracticePage: React.FC = () => {
       ) : isLoading && problems.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-3">
           <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <span className="text-xs font-mono text-slate-400">Loading curated problem collection...</span>
+          <span className="text-sm font-mono text-slate-400">Loading curated problem collection...</span>
         </div>
       ) : problems.length === 0 ? (
         <div className="bg-surface border border-cyan-500/15 rounded-3xl p-12 text-center space-y-3">
           <Code2 className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-base font-mono font-bold text-slate-300">No problems found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <h3 className="text-xl font-mono font-semibold text-slate-300">No problems found</h3>
+          <p className="text-base leading-[1.6] text-slate-500 max-w-sm mx-auto">
             No published problems match your search, difficulty and topic filters.
           </p>
         </div>
@@ -269,33 +270,34 @@ export const PracticePage: React.FC = () => {
               <div
                 key={prob.id}
                 data-problem={prob.id}
-                className="bg-surface border border-cyan-500/15 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all duration-300 shadow-lg group"
+                className="bg-surface border border-cyan-500/15 rounded-2xl p-6 flex flex-col justify-between space-y-5 hover:border-cyan-500/40 transition-all duration-300 shadow-lg group min-w-0"
               >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${diffColor}`}>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[13px] font-mono font-bold px-2.5 py-0.5 rounded border ${diffColor}`}>
                       {prob.difficulty}
                     </span>
                     {prob.solved ? (
-                      <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-400">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span className="flex items-center gap-1 text-sm font-mono text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4" />
                         Solved
                       </span>
                     ) : (
-                      <span className="text-[11px] font-mono text-slate-500">Unsolved</span>
+                      <span className="text-sm font-mono text-slate-500">Unsolved</span>
                     )}
                   </div>
 
-                  <h3 className="text-base font-bold text-ink group-hover:text-cyan-300 transition-colors">
+                  {/* long titles wrap; the description is a 3-line preview of the full statement */}
+                  <h3 className="break-words text-xl leading-snug font-semibold text-ink group-hover:text-cyan-300 transition-colors">
                     {prob.title}
                   </h3>
-                  <p className="text-xs text-slate-400 line-clamp-2">
+                  <p className="break-words text-base leading-[1.6] text-slate-400 line-clamp-3">
                     {prob.description}
                   </p>
 
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {prob.tags.map((tag) => (
-                      <span key={tag} className="text-[10px] font-mono text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
+                      <span key={tag} className="text-[13px] font-mono text-slate-400 bg-slate-900 border border-slate-800 px-2.5 py-0.5 rounded">
                         {tag}
                       </span>
                     ))}
@@ -304,9 +306,9 @@ export const PracticePage: React.FC = () => {
 
                 <button
                   onClick={() => handleOpenProblem(prob)}
-                  className="w-full py-2 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 hover:from-cyan-500/30 hover:to-blue-600/30 border border-cyan-500/40 text-cyan-300 rounded-xl text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-2.5 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 hover:from-cyan-500/30 hover:to-blue-600/30 border border-cyan-500/40 text-cyan-300 rounded-xl text-[15px] font-mono font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
-                  <Play className="w-3.5 h-3.5" />
+                  <Play className="w-4 h-4" />
                   Practice Now
                 </button>
               </div>
@@ -317,7 +319,7 @@ export const PracticePage: React.FC = () => {
 
       {!error && total > 0 && (
         <nav aria-label="Practice problem pages" data-testid="practice-pagination" className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-surface px-4 py-3">
-          <p className="text-xs font-mono text-slate-400" aria-live="polite">
+          <p className="text-sm font-mono text-slate-400" aria-live="polite">
             Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, total)} of {total} problems
           </p>
           <div className="flex items-center gap-2">
@@ -326,11 +328,11 @@ export const PracticePage: React.FC = () => {
               data-testid="practice-previous-page"
               onClick={() => setPage(currentPage - 1)}
               disabled={isLoading || currentPage <= 1}
-              className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-mono text-slate-200 hover:border-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-mono text-slate-200 hover:border-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Previous
             </button>
-            <span className="min-w-20 text-center text-xs font-mono text-slate-300" data-testid="practice-page-indicator">
+            <span className="min-w-20 text-center text-sm font-mono text-slate-300" data-testid="practice-page-indicator">
               Page {currentPage} of {totalPages}
             </span>
             <button
@@ -338,7 +340,7 @@ export const PracticePage: React.FC = () => {
               data-testid="practice-next-page"
               onClick={() => setPage(currentPage + 1)}
               disabled={isLoading || currentPage >= totalPages}
-              className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-mono text-slate-200 hover:border-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-mono text-slate-200 hover:border-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
             </button>

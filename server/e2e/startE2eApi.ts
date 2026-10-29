@@ -160,8 +160,10 @@ async function main() {
     RATE_LIMIT_MAX_AUTH: '10000',
     RATE_LIMIT_MAX_API: '100000',
     SEED_DEV_ADMINS: 'false',
-    // the fake provider: no code is run and nothing is billed (see src/execution/fakeExecution.ts)
-    EXECUTION_PROVIDER: 'fake',
+    // the fake provider: no code is run and nothing is billed (see src/execution/fakeExecution.ts). Opt-in:
+    // E2E_EXECUTION_PROVIDER=local runs Python on this machine instead (e2e/real/local-python.spec.ts only; the other
+    // specs expect the fake provider)
+    EXECUTION_PROVIDER: process.env.E2E_EXECUTION_PROVIDER === 'local' ? 'local' : 'fake',
     // small, so a test can use up its own account's daily quota (but enough to judge the 6-test problems twice);
     // the minute limit stays out of the way
     EXECUTION_DAILY_LIMIT_PER_USER: '12',

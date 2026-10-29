@@ -14,6 +14,7 @@ import {
   sortedCopy,
   lastOfType,
   expectCompareHighlightsAgree,
+  traceLength,
 } from './testUtils';
 
 const FUZZ = randomArrays(150, 9, 11);
@@ -188,10 +189,10 @@ describe('execution-step consistency (all registered algorithms)', () => {
       for (const input of inputsFor(d).filter(a => a.length > 0)) {
         const steps = d.generateSteps([...input]);
         for (const s of steps) {
-          expect(s.state.length, `${d.id} step ${s.id}`).toBe(input.length);
+          expect(s.state.length, `${d.id} step ${s.id}`).toBe(traceLength(d, input));
           for (const i of s.sortedIndices ?? []) {
             expect(i).toBeGreaterThanOrEqual(0);
-            expect(i).toBeLessThan(input.length);
+            expect(i).toBeLessThan(traceLength(d, input));
           }
         }
       }
@@ -204,7 +205,7 @@ describe('execution-step consistency (all registered algorithms)', () => {
         for (const s of d.generateSteps([...input])) {
           for (const i of s.indices ?? []) {
             expect(i, `${d.id} step ${s.id} ${s.codeRef}`).toBeGreaterThanOrEqual(0);
-            expect(i, `${d.id} step ${s.id} ${s.codeRef}`).toBeLessThan(input.length);
+            expect(i, `${d.id} step ${s.id} ${s.codeRef}`).toBeLessThan(traceLength(d, input));
           }
         }
       }
@@ -285,7 +286,8 @@ describe('execution-step consistency (all registered algorithms)', () => {
         expect(() => d.generateSteps([]), d.id).toThrow(RangeError);
         continue;
       }
-      for (const params of [undefined, { target: 5 }]) {
+      // for an algorithm that takes a second array, "empty" is both arrays empty
+      for (const params of d.inputSpec?.secondArray ? [{ second: [] }] : [undefined, { target: 5 }]) {
         for (const s of d.generateSteps([], params)) {
           expect(`${s.message} ${s.explanation ?? ''}`, `${d.id} step ${s.id}`).not.toMatch(/undefined|NaN/);
           if (visualKindOf(d) === 'linked-list') {

@@ -51,9 +51,9 @@ describe('Learning Paths — states', () => {
     const html = render();
     const s = statuses(html);
     expect(Object.values(s).filter(v => v === 'explored')).toEqual([]);
-    expect(s).toMatchObject({ m1: 'not-started', m4: 'not-started', m9: 'not-started', m10: 'coming-soon', m11: 'coming-soon' });
+    expect(s).toMatchObject({ m1: 'not-started', m4: 'not-started', m9: 'not-started', m10: 'coming-soon', m11: 'not-started' });
     expect(html).not.toMatch(/completed/i);
-    expect([...html.matchAll(/data-testid="track-summary"[^>]*>([^<]+)</g)].map(m => m[1])).toEqual(['0 of 3 explored', '0 of 5 explored', '0 of 1 explored']);
+    expect([...html.matchAll(/data-testid="track-summary"[^>]*>([^<]+)</g)].map(m => m[1])).toEqual(['0 of 3 explored', '0 of 5 explored', '0 of 2 explored']);
   });
 
   it('in-progress activity: those milestones are explored; unknown ids change nothing', () => {
@@ -89,6 +89,7 @@ describe('Learning Paths — links', () => {
     const links = [...html.matchAll(/<a ([^>]*)>/g)].map(m => m[1]);
     expect(links.map(a => a.match(/data-algorithm="([a-z-]+)"/)![1])).toEqual([
       'linear-search', 'binary-search', 'two-pointer', 'bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'reverse-linked-list',
+      'tree-level-order',
     ]);
     for (const a of links) expect(a).toMatch(/href="\/visualizer"/);
     expect(html).toContain('aria-label="Visualize Bubble Sort"');
@@ -98,13 +99,23 @@ describe('Learning Paths — links', () => {
   it('coming-soon milestones stay visible but are not links', () => {
     Object.assign(progressStore, { tracksLoaded: true });
     const html = render();
-    for (const id of ['m10', 'm11']) {
+    for (const id of ['m10']) {
       const card = html.slice(html.indexOf(`data-milestone="${id}"`), html.indexOf('</li>', html.indexOf(`data-milestone="${id}"`)));
       expect(card, id).toContain('Coming soon');
       expect(card, id).not.toContain('<a ');
     }
     expect(html).toContain('Stack LIFO &amp; Monotonic Next Greater Element');
     expect(html).not.toMatch(/>Locked</);
+  });
+
+  it('the level-order milestone (m11) opens the implemented Level Order Traversal', () => {
+    Object.assign(progressStore, { tracksLoaded: true });
+    const html = render();
+    const start = html.indexOf('data-milestone="m11"');
+    const card = html.slice(start, html.indexOf('</li>', start));
+    expect(card).toMatch(/<a [^>]*href="\/visualizer"/);
+    expect(card).toContain('aria-label="Visualize Level Order Traversal"');
+    expect(card).not.toContain('Coming soon');
   });
 
   it('decorative icons are hidden and pulsing placeholders only run when motion is allowed', () => {

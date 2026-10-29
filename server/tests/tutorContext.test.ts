@@ -11,7 +11,7 @@ import type { AlgorithmId } from '../../src/types/algorithm';
 function visualizerState(id: AlgorithmId) {
   useVisualizerStore.getState().setAlgorithm(id);
   const s = useVisualizerStore.getState();
-  return { array: s.array, target: s.target, index: s.index, steps: s.steps };
+  return { array: s.array, target: s.target, index: s.index, second: s.second, texts: s.texts, steps: s.steps };
 }
 
 describe('tutor context: other languages', () => {
@@ -83,11 +83,14 @@ describe('tutor context', () => {
     for (const nav of ALGORITHM_NAV.filter(a => a.implemented)) {
       const s = visualizerState(nav.id as AlgorithmId);
       const k = Math.min(3, s.steps.length - 1);
-      const r = buildTutorContext({ algorithmId: nav.id, array: s.array, target: s.target, index: s.index, stepIndex: k, language: 'python' });
+      const r = buildTutorContext({ algorithmId: nav.id, array: s.array, target: s.target, index: s.index, second: s.second, texts: s.texts, stepIndex: k, language: 'python' });
       expect(r.ok, nav.id).toBe(true);
       if (!r.ok) continue;
       expect(r.context, nav.id).toContain(`Current step: ${k + 1} of ${s.steps.length}: ${s.steps[k].message}`);
-      expect(r.context, nav.id).toContain(`Data at this step: ${JSON.stringify(s.steps[k].state)}`);
+      // a text algorithm's step is its strings (and stack), not an array
+      if (s.steps[k].tree) expect(r.context, nav.id).toMatch(/Tree at this step: output \[/);
+      else if (s.steps[k].text) expect(r.context, nav.id).toContain(`Strings at this step: ${s.steps[k].text!.rows[0].name} = ${JSON.stringify(s.steps[k].text!.rows[0].text)}`);
+      else expect(r.context, nav.id).toContain(`Data at this step: ${JSON.stringify(s.steps[k].state)}`);
       expect(r.algorithmName).toBe(getAlgorithmDefinition(nav.id as AlgorithmId)!.name);
     }
   });
@@ -109,6 +112,36 @@ describe('tutor context', () => {
     const r = buildTutorContext({ algorithmId: 'll-insert-at', array: s.array, target: s.target, index: s.index, stepIndex: 0, language: 'cpp' });
     expect(r.ok).toBe(true);
     expect(r.ok && r.context).toContain(`position ${s.index}`);
+  });
+
+  it('text algorithms: the strings as entered, each row with its pointers, and the stack', () => {
+    const r = buildTutorContext({ algorithmId: 'find-first-occurrence', array: [], target: null, index: null, texts: ['hello', 'll'], stepIndex: 5, language: 'cpp' });
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.context).toContain('Input: haystack = "hello", needle = "ll"');
+    expect(r.ok && r.context).toMatch(/Strings at this step: haystack = "hello" \(i at \d+.*\); needle = "ll"/);
+    const vp = buildTutorContext({ algorithmId: 'valid-parentheses', array: [], target: null, index: null, texts: ['(['], stepIndex: 6, language: 'python' });
+    expect(vp.ok && vp.context).toContain('stack (bottom to top): [(');
+    // strings that the visualizer would refuse are refused here too, and so are strings for a non-text algorithm
+    for (const bad of [
+      { algorithmId: 'roman-to-integer', texts: ['IIII'] },
+      { algorithmId: 'add-binary', texts: ['1'] },
+      { algorithmId: 'add-binary', texts: null },
+    ]) {
+      expect(buildTutorContext({ ...bad, array: [], target: null, index: null, stepIndex: 0, language: 'cpp' }).ok, JSON.stringify(bad)).toBe(false);
+    }
+    // a non-text algorithm ignores strings, exactly as the visualizer does
+    const s = visualizerState('bubble-sort');
+    expect(buildTutorContext({ algorithmId: 'bubble-sort', array: s.array, target: null, index: null, texts: ['x'], stepIndex: 0, language: 'cpp' }).ok).toBe(true);
+  });
+
+  it('tree traversals: the tree as entered, and the output, current node and stack at the step', () => {
+    // the first visit: node 2 (the leftmost), with 1 still on the stack
+    const visit = getAlgorithmDefinition('tree-inorder')!.generateSteps([], { texts: ['[1, 2, 3]'] }).findIndex(st => st.codeRef === 'visit');
+    const r = buildTutorContext({ algorithmId: 'tree-inorder', array: [], target: null, index: null, texts: ['[1, 2, 3]'], stepIndex: visit, language: 'cpp' });
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.context).toContain('Input: root = "[1, 2, 3]"');
+    expect(r.ok && r.context).toMatch(/Tree at this step: output \[2\], current node 2, stack \(bottom to top\) \[1\]/);
+    expect(buildTutorContext({ algorithmId: 'tree-level-order', array: [], target: null, index: null, texts: ['[null, 1]'], stepIndex: 0, language: 'cpp' }).ok).toBe(false);
   });
 
   it('refuses what the visualizer cannot run: unknown or unimplemented algorithms, invalid input, a step past the end', () => {

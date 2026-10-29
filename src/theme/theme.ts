@@ -1,16 +1,26 @@
 /**
- * Theme core: the user's PREFERENCE ('dark' | 'light' | 'system') is stored; the RESOLVED theme ('dark' | 'light') is
- * what the page shows. 'system' resolves through the OS colour scheme and follows its changes.
+ * Theme core: the user's PREFERENCE is stored — one of the four named themes (src/theme/themes.ts: 'dark' is Midnight
+ * Neon, 'light' Arctic Light, 'galaxy' Purple Galaxy, 'sunset' Sunset Warm) or 'system'. The THEME NAME is the theme
+ * the page shows ('system' resolves through the OS colour scheme to 'dark' or 'light' and follows its changes), and
+ * the RESOLVED theme is its base, 'dark' or 'light'. The ids 'dark' and 'light' are the original two themes, so a
+ * preference saved before the named themes existed keeps its meaning.
  *
- * The resolved theme is applied as <html data-theme="…"> plus the color-scheme property; index.css scopes the light
- * values under [data-theme="light"], so dark stays the default. public/theme-init.js applies the same rules before
- * React renders (no first-paint flash); its behaviour is tested against this module, so keep the two in step.
+ * The theme is applied as <html data-theme="base" data-palette="name"> plus the color-scheme property; index.css
+ * scopes the light values under [data-theme="light"] (so dark stays the default) and each other theme's under
+ * [data-palette]. public/theme-init.js applies the same rules before React renders (no first-paint flash); its
+ * behaviour is tested against this module, so keep the two in step.
  *
  * Everything browser-specific (storage, matchMedia, the root element) is passed in, so this module has no globals.
  */
 
-export type ThemePreference = 'dark' | 'light' | 'system';
+export type ThemePreference = 'dark' | 'light' | 'galaxy' | 'sunset' | 'system';
+/** a named theme, as shown: the explicit choice, or what 'system' resolves to */
+export type ThemeName = Exclude<ThemePreference, 'system'>;
+/** the base a theme is built on */
 export type ResolvedTheme = 'dark' | 'light';
+
+export const THEME_PREFERENCES: readonly ThemePreference[] = ['dark', 'light', 'galaxy', 'sunset', 'system'];
+export const THEME_BASE: Record<ThemeName, ResolvedTheme> = { dark: 'dark', light: 'light', galaxy: 'dark', sunset: 'light' };
 
 /** localStorage key shared with public/theme-init.js */
 export const THEME_STORAGE_KEY = 'algoflow-theme';
@@ -47,11 +57,12 @@ export interface ThemeEnvironment {
 
 export interface ThemeState {
   preference: ThemePreference;
+  theme: ThemeName;
   resolvedTheme: ResolvedTheme;
 }
 
 export const isThemePreference = (value: unknown): value is ThemePreference =>
-  value === 'dark' || value === 'light' || value === 'system';
+  (THEME_PREFERENCES as readonly unknown[]).includes(value);
 
 /** Any missing or unknown value falls back to dark. */
 export const parseThemePreference = (value: unknown): ThemePreference =>
@@ -85,12 +96,16 @@ export function writeStoredPreference(storage: ThemeStorage | null, preference: 
   }
 }
 
-export const resolveTheme = (preference: ThemePreference, systemPrefersLight: boolean): ResolvedTheme =>
+export const resolveThemeName = (preference: ThemePreference, systemPrefersLight: boolean): ThemeName =>
   preference === 'system' ? (systemPrefersLight ? 'light' : 'dark') : preference;
 
-export function applyResolvedTheme(root: ThemeRoot, theme: ResolvedTheme): void {
-  root.setAttribute('data-theme', theme);
-  root.style.colorScheme = theme;
+export const resolveTheme = (preference: ThemePreference, systemPrefersLight: boolean): ResolvedTheme =>
+  THEME_BASE[resolveThemeName(preference, systemPrefersLight)];
+
+export function applyTheme(root: ThemeRoot, theme: ThemeName): void {
+  root.setAttribute('data-theme', THEME_BASE[theme]);
+  root.setAttribute('data-palette', theme);
+  root.style.colorScheme = THEME_BASE[theme];
 }
 
 export interface ThemeController {
@@ -106,8 +121,8 @@ export interface ThemeController {
 }
 
 /**
- * Reads the saved preference, applies the resolved theme to the root element, and keeps it applied: the OS listener
- * is attached only while the preference is 'system', so an explicit light / dark choice is never overridden.
+ * Reads the saved preference, applies the theme to the root element, and keeps it applied: the OS listener is
+ * attached only while the preference is 'system', so an explicit choice is never overridden.
  */
 export function createThemeController(env: ThemeEnvironment): ThemeController {
   let preference = readStoredPreference(env.storage);
@@ -118,14 +133,14 @@ export function createThemeController(env: ThemeEnvironment): ThemeController {
     query = null;
   }
   let systemPrefersLight = Boolean(query?.matches);
-  let resolvedTheme: ResolvedTheme = resolveTheme(preference, systemPrefersLight);
+  let theme: ThemeName = resolveThemeName(preference, systemPrefersLight);
   const subscribers = new Set<(state: ThemeState) => void>();
   let attached = false;
 
-  const state = (): ThemeState => ({ preference, resolvedTheme });
+  const state = (): ThemeState => ({ preference, theme, resolvedTheme: THEME_BASE[theme] });
   const apply = () => {
-    resolvedTheme = resolveTheme(preference, systemPrefersLight);
-    applyResolvedTheme(env.root, resolvedTheme);
+    theme = resolveThemeName(preference, systemPrefersLight);
+    applyTheme(env.root, theme);
     for (const s of subscribers) s(state());
   };
 

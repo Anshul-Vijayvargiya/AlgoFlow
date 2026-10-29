@@ -3,7 +3,7 @@ import { getAlgorithmDefinition } from '../../../engine/AlgorithmRegistry';
 import type { AlgorithmId, ExecutionStep } from '../../../types/algorithm';
 import { deriveOutcome, deriveStepVisuals } from '../barVisuals';
 import type { BarRole } from '../barVisuals';
-import { EDGE_INPUTS, arrayAlgorithms, hasDefaultRun, randomArrays } from '../../../engine/__tests__/testUtils';
+import { EDGE_INPUTS, arrayAlgorithms, hasDefaultRun, randomArrays, traceLength } from '../../../engine/__tests__/testUtils';
 
 // bars are drawn for array algorithms only; linked-list operations have their own visuals
 const ALL = arrayAlgorithms();
@@ -24,7 +24,7 @@ describe('deriveStepVisuals — only the bars the step names are emphasized (all
         const steps = d.generateSteps([...input]);
         steps.forEach((s, i) => {
           const v = visuals(d.id, s, steps, i);
-          expect(v.bars, `${d.id} step ${i}`).toHaveLength(input.length);
+          expect(v.bars, `${d.id} step ${i}`).toHaveLength(traceLength(d, input));
           const named = new Set([...(s.indices ?? []), ...(s.sortedIndices ?? [])]);
           for (const b of v.bars) {
             const where = `${d.id} ${JSON.stringify(input)} step ${i} (${s.type}/${s.codeRef}) bar ${b.index} role ${b.role}`;
@@ -136,7 +136,7 @@ describe('deriveStepVisuals — pointers follow the current step', () => {
           const off: string[] = [];
           for (const [name, value] of Object.entries(s.pointers ?? {})) {
             if (d.positionPointers && !d.positionPointers.includes(name)) continue;
-            if (Number.isInteger(value) && value >= 0 && value < input.length) (expected[value] ??= []).push(label(name));
+            if (Number.isInteger(value) && value >= 0 && value < traceLength(d, input)) (expected[value] ??= []).push(label(name));
             else off.push(name);
           }
           for (const b of v.bars) {
@@ -315,8 +315,8 @@ describe('Merge Sort buffers are represented structurally, not by unrelated bars
     }
   });
 
-  it('non-merge algorithms never carry buffers', () => {
-    for (const d of ALL.filter(a => a.id !== 'merge-sort')) {
+  it('only the merge algorithms carry buffers (Merge Sort: left / right; Merge Sorted Array: nums2)', () => {
+    for (const d of ALL.filter(a => a.id !== 'merge-sort' && a.id !== 'merge-sorted-array')) {
       expect(d.generateSteps([...d.defaultInput]).some(s => s.buffers), d.id).toBe(false);
     }
   });

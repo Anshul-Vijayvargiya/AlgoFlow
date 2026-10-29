@@ -55,6 +55,8 @@ const CASES: { id: AlgorithmId; input?: number[]; target?: number }[] = [
   { id: 'majority-element' },
   // steps with and without roles on every card
   { id: 'container-most-water' },
+  // three pointers, writes, and nums2's row
+  { id: 'merge-sorted-array' },
 ];
 
 for (const viewport of [{ name: 'desktop', width: 1500, height: 1000 }, { name: 'phone', width: 375, height: 800 }]) {

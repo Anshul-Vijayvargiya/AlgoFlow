@@ -120,7 +120,7 @@ test.describe('Practice', () => {
     await expect(page.getByTestId('drafts-not-saved')).toHaveCount(0);
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA with a failed-test result open: no violations (${theme})`, async ({ app, page }) => {
       void app;
       await page.getByRole('banner').getByRole('combobox', { name: 'Theme' }).selectOption(theme);
@@ -210,7 +210,7 @@ test.describe('Practice — topic learning sets', () => {
     await expect.poll(() => shownProblems(page)).toEqual(['p2']);
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA on the topic sets: no violations (${theme})`, async ({ app, page }) => {
       void app;
       await page.getByRole('banner').getByRole('combobox', { name: 'Theme' }).selectOption(theme);

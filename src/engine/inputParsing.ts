@@ -6,7 +6,8 @@
  * never "fixed" silently. The only transformation offered anywhere is the explicit, user-triggered
  * `sortedCopy`, which the UI discloses.
  */
-import type { AlgorithmDefinition, NumberField } from '../types/algorithm';
+import type { AlgorithmDefinition, NumberField, TextField } from '../types/algorithm';
+import { parseLevelOrderTree } from './tree/binaryTree';
 
 /** Keeps bars and pointer labels legible; far above anything the traces need to demonstrate. */
 export const MAX_ARRAY_SIZE = 16;
@@ -99,6 +100,89 @@ export function validateNumberDraft(def: Pick<AlgorithmDefinition, 'inputSpec'>,
   return { ok: true, values };
 }
 
+// ─── Text algorithms ──────────────────────────────────────────────────────────
+
+/**
+ * Whether an algorithm's input is strings (inputSpec.texts) rather than an array: the text algorithms, and the tree
+ * algorithms, whose tree is written as one level-order string.
+ */
+export const takesTexts = (def: Pick<AlgorithmDefinition, 'inputSpec'> | undefined): boolean => Boolean(def?.inputSpec?.texts);
+
+/** a list field's items (Longest Common Prefix's strs): split at commas, each trimmed; an item may be empty */
+export const splitTextList = (value: string): string[] => value.split(',').map(item => item.trim());
+
+/** how a character is named in a message: spaces and quotes are hard to see in plain text */
+const showChar = (c: string) => (c === ' ' ? 'a space' : c === '	' ? 'a tab' : `"${c}"`);
+
+/** A canonical Roman numeral for 1 … 3999 (what Roman to Integer takes): I, V, X, L, C, D, M with the subtractive pairs. */
+const ROMAN_NUMERAL = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+
+/** one string of a text algorithm, exactly as typed (nothing is trimmed except a list's items) */
+export function validateTextField(value: string, field: TextField): ParseResult<string> {
+  const allowed = new RegExp(`^${field.chars.pattern}$`);
+  if (field.list) {
+    const items = splitTextList(value);
+    if (items.length < field.minLength || items.length > field.maxLength) {
+      return { ok: false, message: `"${field.label}" takes ${field.minLength} to ${field.maxLength} words separated by commas; got ${items.length}.` };
+    }
+    for (const [i, item] of items.entries()) {
+      if (item.length > field.list.itemMaxLength) {
+        return { ok: false, message: `Word ${i + 1} of "${field.label}" ("${item}") is too long: at most ${field.list.itemMaxLength} characters.` };
+      }
+      const bad = [...item].find(c => !allowed.test(c));
+      if (bad !== undefined) return { ok: false, message: `Word ${i + 1} of "${field.label}" contains ${showChar(bad)}: only ${field.chars.description} are allowed.` };
+    }
+    return { ok: true, value };
+  }
+  if (value.length < field.minLength) {
+    return { ok: false, message: value.length === 0 ? `Enter a value for "${field.label}".` : `"${field.label}" needs at least ${field.minLength} characters.` };
+  }
+  if (value.length > field.maxLength) {
+    return { ok: false, message: `"${field.label}" is too long (${value.length} characters). The visualizer supports at most ${field.maxLength}.` };
+  }
+  const bad = [...value].find(c => !allowed.test(c));
+  if (bad !== undefined) return { ok: false, message: `"${field.label}" contains ${showChar(bad)}: only ${field.chars.description} are allowed.` };
+  if (field.rule === 'roman-numeral' && !ROMAN_NUMERAL.test(value)) {
+    return { ok: false, message: `"${value}" is not a valid Roman numeral (1 to 3999, written the standard way, e.g. IV not IIII).` };
+  }
+  if (field.rule === 'binary-number' && value.length > 1 && value[0] === '0') {
+    return { ok: false, message: `"${field.label}" has a leading zero: a binary number starts with 1 (or is just 0).` };
+  }
+  if (field.rule === 'has-word' && !/[^ ]/.test(value)) {
+    return { ok: false, message: `"${field.label}" needs at least one word.` };
+  }
+  if (field.rule === 'level-order-tree') {
+    const tree = parseLevelOrderTree(value);
+    if (!tree.ok) return { ok: false, message: tree.message };
+  }
+  return { ok: true, value };
+}
+
+/** the strings of a text algorithm: exactly one per declared field, each valid for its field */
+function validateTexts(def: Pick<AlgorithmDefinition, 'name' | 'inputSpec'>, texts: readonly string[] | null): InputValidation {
+  const fields = def.inputSpec?.texts ?? [];
+  if (!texts || texts.length !== fields.length) {
+    return { ok: false, canSortCopy: false, message: `${def.name} takes ${fields.map(f => f.label).join(' and ')}.` };
+  }
+  for (const [i, field] of fields.entries()) {
+    const r = validateTextField(texts[i], field);
+    if (!r.ok) return { ok: false, canSortCopy: false, message: r.message };
+  }
+  return { ok: true };
+}
+
+export type TextDraftValidation = { ok: true; texts: string[] } | { ok: false; field: number; message: string };
+
+/** what the user has typed into a text algorithm's fields, in order; the first invalid field is reported */
+export function validateTextDraft(def: Pick<AlgorithmDefinition, 'inputSpec'>, drafts: readonly string[]): TextDraftValidation {
+  const fields = def.inputSpec?.texts ?? [];
+  for (const [i, field] of fields.entries()) {
+    const r = validateTextField(drafts[i] ?? '', field);
+    if (!r.ok) return { ok: false, field: i, message: r.message };
+  }
+  return { ok: true, texts: fields.map((_, i) => drafts[i] ?? '') };
+}
+
 /** Index i such that a[i-1] > a[i], or -1 when the array is non-decreasing. */
 export function firstUnsortedIndex(array: number[]): number {
   for (let i = 1; i < array.length; i++) if (array[i - 1] > array[i]) return i;
@@ -108,8 +192,17 @@ export function firstUnsortedIndex(array: number[]): number {
 /** The ONLY transformation the app offers; always a copy, always user-triggered and disclosed in the UI. */
 export const sortedCopy = (array: number[]): number[] => [...array].sort((a, b) => a - b);
 
-/** `field: 'array'` marks a problem with the values themselves (too few, too small), not with their order */
-export type InputValidation = { ok: true } | { ok: false; message: string; canSortCopy: boolean; field?: 'array' };
+/**
+ * `field: 'array'` marks a problem with the values themselves (too few, too small), not with their order; `'second'` a
+ * problem with the second array (Merge Sorted Array's nums2)
+ */
+export type InputValidation = { ok: true } | { ok: false; message: string; canSortCopy: boolean; field?: 'array' | 'second' };
+
+/** "index 0 (3) is greater than index 1 (1)" for the first out-of-order pair of an array, or null when it is sorted */
+function outOfOrder(array: readonly number[]): string | null {
+  const i = firstUnsortedIndex([...array]);
+  return i === -1 ? null : `index ${i - 1} (${array[i - 1]}) is greater than index ${i} (${array[i]})`;
+}
 
 const nodes = (n: number) => `${n} node${n === 1 ? '' : 's'}`;
 
@@ -146,9 +239,36 @@ export function validateAlgorithmInput(
   def: Pick<AlgorithmDefinition, 'name' | 'inputSpec' | 'visual'>,
   array: number[],
   target: number | null,
-  index: number | null = null
+  index: number | null = null,
+  second: readonly number[] | null = null,
+  texts: readonly string[] | null = null
 ): InputValidation {
+  // a text or tree algorithm takes strings, never an array
+  if (takesTexts(def)) {
+    if (array.length > 0) return { ok: false, canSortCopy: false, message: `${def.name} takes strings, not an array.` };
+    return validateTexts(def, texts);
+  }
   const spec = def.inputSpec;
+  if (spec?.secondArray) {
+    const both = spec.arrayLabel ?? 'the array';
+    if (second === null) return { ok: false, canSortCopy: false, field: 'second', message: `Enter the values of "${spec.secondArray.label}" (it may be empty).` };
+    if (array.length + second.length > MAX_ARRAY_SIZE) {
+      return {
+        ok: false,
+        canSortCopy: false,
+        field: 'second',
+        message: `Too many values: ${both} and ${spec.secondArray.label} hold ${array.length + second.length} together. The visualizer supports at most ${MAX_ARRAY_SIZE}.`,
+      };
+    }
+    if (spec.sortedRequired) {
+      const first = outOfOrder(array);
+      if (first) return { ok: false, canSortCopy: true, message: `${def.name} needs ${both} sorted in ascending order, but ${first}.` };
+      const other = outOfOrder(second);
+      if (other) {
+        return { ok: false, canSortCopy: true, field: 'second', message: `${def.name} needs ${spec.secondArray.label} sorted in ascending order, but ${other}.` };
+      }
+    }
+  }
   if (def.visual === 'numbers') return validateNumbers(def, array);
   if (def.visual === 'linked-list') {
     if (array.length > maxInputLength(def)) return { ok: false, canSortCopy: false, message: tooManyNodesMessage(def, array.length) };
@@ -214,14 +334,26 @@ export function validateAlgorithmInput(
 }
 
 export type DraftValidation =
-  | { ok: true; array: number[]; target: number | null }
-  | { ok: false; field: 'array' | 'target' | 'order'; message: string; canSortCopy: boolean; array?: number[]; target?: number | null };
+  | { ok: true; array: number[]; target: number | null; second?: number[] }
+  | {
+      ok: false;
+      field: 'array' | 'target' | 'order' | 'second';
+      message: string;
+      canSortCopy: boolean;
+      array?: number[];
+      target?: number | null;
+      second?: number[] | null;
+    };
 
-/** Validates what the user has typed (array text + optional target text) for the given algorithm. */
+/**
+ * Validates what the user has typed (array text + optional target text, and the second array's text for an algorithm
+ * that takes one) for the given algorithm.
+ */
 export function validateDraft(
   def: Pick<AlgorithmDefinition, 'name' | 'inputSpec'>,
   arrayText: string,
-  targetText: string
+  targetText: string,
+  secondText = ''
 ): DraftValidation {
   const a = parseArrayInput(arrayText);
   if (!a.ok) return { ok: false, field: 'array', message: a.message, canSortCopy: false };
@@ -231,9 +363,16 @@ export function validateDraft(
     if (!t.ok) return { ok: false, field: 'target', message: t.message, canSortCopy: false, array: a.value };
     target = t.value;
   }
-  const v = validateAlgorithmInput(def, a.value, target);
-  if (!v.ok) return { ok: false, field: v.field ?? 'order', message: v.message, canSortCopy: v.canSortCopy, array: a.value, target };
-  return { ok: true, array: a.value, target };
+  let second: number[] | null = null;
+  if (def.inputSpec?.secondArray) {
+    const b = parseArrayInput(secondText);
+    if (!b.ok) return { ok: false, field: 'second', message: `${def.inputSpec.secondArray.label}: ${b.message}`, canSortCopy: false, array: a.value, target };
+    second = b.value;
+  }
+  const v = validateAlgorithmInput(def, a.value, target, null, second);
+  const withSecond = second ? { second } : {};
+  if (!v.ok) return { ok: false, field: v.field ?? 'order', message: v.message, canSortCopy: v.canSortCopy, array: a.value, target, ...withSecond };
+  return { ok: true, array: a.value, target, ...withSecond };
 }
 
 export type ListDraftValidation =

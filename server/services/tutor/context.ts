@@ -16,6 +16,10 @@ export interface TutorContextInput {
   /** search target, or a linked-list operation's value (the visualizer keeps both in one field) */
   target: number | null;
   index: number | null;
+  /** an algorithm's second array (Merge Sorted Array's nums2); absent or null for every other algorithm */
+  second?: number[] | null;
+  /** a text algorithm's strings, one per input field; absent or null for every other algorithm */
+  texts?: string[] | null;
   stepIndex: number;
   language: ProgrammingLanguage;
   /** the learner's question: AlgoFlow's code in any other language it names is added to the context */
@@ -46,20 +50,32 @@ export function languagesMentioned(question: string): ProgrammingLanguage[] {
 const truncate = (code: string) => (code.length > CODE_MAX_CHARS ? `${code.slice(0, CODE_MAX_CHARS)}\n…` : code);
 
 /** the parameters a trace takes, exactly as the visualizer passes them (useVisualizerStore's runExecution) */
-function traceParams(def: NonNullable<ReturnType<typeof getAlgorithmDefinition>>, target: number | null, index: number | null) {
+function traceParams(def: NonNullable<ReturnType<typeof getAlgorithmDefinition>>, target: number | null, index: number | null, second: number[] | null, texts: string[] | null) {
   const spec = def.inputSpec;
-  return spec?.target ? { target } : spec?.value || spec?.index ? { ...(spec.value ? { value: target } : {}), ...(spec.index ? { index } : {}) } : undefined;
+  return spec?.texts
+    ? { texts }
+    : spec?.target
+    ? { target }
+    : spec?.value || spec?.index
+      ? { ...(spec.value ? { value: target } : {}), ...(spec.index ? { index } : {}) }
+      : spec?.secondArray
+        ? { second }
+        : undefined;
 }
 
-export function buildTutorContext({ algorithmId, array, target, index, stepIndex, language, question = '' }: TutorContextInput): TutorContextResult {
+export function buildTutorContext({ algorithmId, array, target, index, second = null, texts = null, stepIndex, language, question = '' }: TutorContextInput): TutorContextResult {
   if (!isImplementedAlgorithm(algorithmId)) return { ok: false, message: 'The tutor can only help with an algorithm the visualizer can run.' };
   const id = algorithmId as AlgorithmId;
   const def = getAlgorithmDefinition(id);
   if (!def) return { ok: false, message: 'The tutor can only help with an algorithm the visualizer can run.' };
 
-  const valid = validateAlgorithmInput(def, array, target, index);
+  // a second array counts only for an algorithm that takes one
+  const secondArray = def.inputSpec?.secondArray ? second : null;
+  // strings count only for a text algorithm
+  const textInputs = def.inputSpec?.texts ? texts : null;
+  const valid = validateAlgorithmInput(def, array, target, index, secondArray, textInputs);
   if (!valid.ok) return { ok: false, message: `The visualizer input is not valid: ${valid.message}` };
-  const build = buildExecution(id, array, getAlgorithmDefinition, traceParams(def, target, index));
+  const build = buildExecution(id, array, getAlgorithmDefinition, traceParams(def, target, index, secondArray, textInputs));
   if (build.status !== 'ok' || build.steps.length === 0) return { ok: false, message: 'The visualizer could not run this input.' };
   if (stepIndex >= build.steps.length) return { ok: false, message: 'That step is not part of this run.' };
 
@@ -76,10 +92,16 @@ export function buildTutorContext({ algorithmId, array, target, index, stepIndex
     `Category: ${def.category}`,
     `Summary: ${def.description}`,
     `Complexity: best ${def.complexity.best}, average ${def.complexity.average}, worst ${def.complexity.worst}; space ${def.complexity.space}`,
-    `Input: ${JSON.stringify(array)}${target !== null ? `, value/target ${target}` : ''}${index !== null ? `, position ${index}` : ''}`,
+    textInputs
+      ? `Input: ${def.inputSpec!.texts!.map((f, i) => `${f.label} = ${JSON.stringify(textInputs[i])}`).join(', ')}`
+      : `Input: ${JSON.stringify(array)}${target !== null ? `, value/target ${target}` : ''}${index !== null ? `, position ${index}` : ''}${secondArray ? `, ${def.inputSpec!.secondArray!.label} ${JSON.stringify(secondArray)}` : ''}`,
     `Current step: ${stepIndex + 1} of ${build.steps.length}: ${step.message}`,
     step.explanation ? `Step explanation: ${step.explanation}` : null,
-    `Data at this step: ${JSON.stringify(step.state)}`,
+    step.tree
+      ? `Tree at this step: output [${step.tree.visited.map(id => step.tree!.nodes.find(n => n.id === id)!.value).join(', ')}]${step.tree.current ? `, current node ${step.tree.nodes.find(n => n.id === step.tree!.current)!.value}` : ''}${step.tree.stack ? `, stack (bottom to top) [${step.tree.stack.items.map(id => step.tree!.nodes.find(n => n.id === id)!.value).join(', ')}]` : ''}${step.tree.queue ? `, queue (front to back) [${step.tree.queue.items.map(id => step.tree!.nodes.find(n => n.id === id)!.value).join(', ')}]` : ''}`
+      : step.text
+      ? `Strings at this step: ${step.text.rows.map(r => `${r.name} = ${JSON.stringify(r.text)}${r.pointers?.length ? ` (${r.pointers.map(p => `${p.name} at ${p.index}`).join(', ')})` : ''}`).join('; ')}${step.text.stack ? `; stack (bottom to top): [${step.text.stack.items.join(' ')}]` : ''}`
+      : `Data at this step: ${JSON.stringify(step.state)}`,
     variables ? `Variables: ${variables}` : null,
     pointers ? `Pointers: ${pointers}` : null,
     line !== null && lineText ? `Code line being executed (${LANGUAGE_NAMES[language]}, line ${line}): ${lineText}` : null,

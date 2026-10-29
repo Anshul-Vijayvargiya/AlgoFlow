@@ -14,6 +14,9 @@ import { InputPanel } from '../components/visualizer/InputPanel';
 import { LinkedListInputPanel } from '../components/visualizer/LinkedListInputPanel';
 import { NumberVisualizer } from '../components/visualizer/NumberVisualizer';
 import { NumberInputPanel } from '../components/visualizer/NumberInputPanel';
+import { TextVisualizer } from '../components/visualizer/TextVisualizer';
+import { TextInputPanel } from '../components/visualizer/TextInputPanel';
+import { TreeVisualizer } from '../components/visualizer/TreeVisualizer';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
@@ -30,6 +33,8 @@ export const VisualizerPage: React.FC = () => {
 
   const [activeMobileTab, setActiveMobileTab] = useState<'visualization' | 'code'>('visualization');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  // desktop/tablet: the algorithm sidebar can be collapsed to a rail, giving its width to the visualizer
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const drawerToggleRef = useRef<HTMLButtonElement>(null);
   const drawerCloseRef = useRef<HTMLButtonElement>(null);
   const drawerWasOpen = useRef(false);
@@ -81,7 +86,7 @@ export const VisualizerPage: React.FC = () => {
       )}
 
       {/* Visualizer Top Header Toolbar */}
-      <div className="px-4 py-3 bg-[#0B0F19]/90 light:bg-surface/90 border-b border-cyan-500/15 flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <div className="px-4 py-3 bg-surface/90 border-b border-cyan-500/15 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
           {/* Mobile Drawer Toggle Button */}
           <button
@@ -155,7 +160,7 @@ export const VisualizerPage: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Left Sidebar */}
         <div className="hidden md:block shrink-0 h-full">
-          <Sidebar />
+          <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(c => !c)} />
         </div>
 
         {/* Center & Right Visualization Workspace */}
@@ -221,11 +226,13 @@ export const VisualizerPage: React.FC = () => {
                       />
                     )}
                     {currentStep && visual === 'numbers' && <NumberVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'text' && <TextVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'tree' && <TreeVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"
                         role="status"
-                        className="w-full min-h-48 flex flex-col items-center justify-center gap-2 text-center px-6 py-10 bg-[#0B0F19]/90 light:bg-surface/90 border border-amber-500/30 rounded-2xl"
+                        className="w-full min-h-48 flex flex-col items-center justify-center gap-2 text-center px-6 py-10 bg-surface/90 border border-amber-500/30 rounded-2xl"
                       >
                         <p className="text-sm font-mono font-bold text-amber-300">No visualization for this input yet</p>
                         <p className="text-xs text-slate-400 max-w-md">{inputIssue?.message}</p>
@@ -234,8 +241,8 @@ export const VisualizerPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Array / target input, the linked-list form, or a number algorithm's values */}
-                  {visual === 'array' ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : <NumberInputPanel />}
+                  {/* Array / target input, the linked-list form, a number algorithm's values, or the strings of a text or tree algorithm */}
+                  {visual === 'array' ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : visual === 'numbers' ? <NumberInputPanel /> : <TextInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

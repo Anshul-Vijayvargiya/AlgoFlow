@@ -249,6 +249,11 @@ router.post(
         res.status(503).json({ error: 'Judging is not available on this server: code execution is not configured. Your solution was not submitted.', code: 'execution_disabled' });
         return;
       }
+      // a provider may offer only some languages (the local one: Python only)
+      if (!provider.languages().some(l => l.id === language)) {
+        res.status(400).json({ error: `Judging ${language} is not available on this server. Your solution was not submitted.`, code: 'language_unavailable' });
+        return;
+      }
       if (!tryStartExecution(userId)) {
         res.status(429).json({ error: 'Your previous submission or program is still running. Wait for it to finish.', code: 'execution_in_progress' });
         return;

@@ -99,7 +99,7 @@ test.describe('Notes — all notes are reachable', () => {
     await expect(page.getByTestId('notes-range')).toHaveText('Showing 1–20 of 21 notes');
   });
 
-  for (const theme of ['dark', 'light'] as const) {
+  for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
     test(`axe-core WCAG 2.1 A/AA on the paged list: no violations in the new controls (${theme})`, async ({ app, page }) => {
       void app;
       await seedNotes(page);

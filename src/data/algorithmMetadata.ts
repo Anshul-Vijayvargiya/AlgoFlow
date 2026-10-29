@@ -38,6 +38,7 @@ export const ALGORITHM_CATEGORIES: { id: AlgorithmCategory; label: string }[] = 
   { id: 'SORTING', label: 'SORTING' },
   { id: 'SEARCHING', label: 'SEARCHING' },
   { id: 'ARRAYS', label: 'ARRAYS' },
+  { id: 'STRINGS', label: 'STRINGS' },
   { id: 'LINKED_LIST', label: 'LINKED LIST' },
   { id: 'STACK_QUEUE', label: 'STACK & QUEUE' },
   { id: 'TREES', label: 'TREES' },
@@ -159,6 +160,78 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Two pointers; the shorter line moves inward.',
     implemented: true,
   },
+  {
+    id: 'merge-sorted-array',
+    name: 'Merge Sorted Array',
+    category: 'ARRAYS',
+    subtitle: 'Three pointers merge nums2 into nums1 from the back.',
+    implemented: true,
+  },
+  {
+    id: 'trapping-rain-water',
+    name: 'Trapping Rain Water',
+    category: 'ARRAYS',
+    subtitle: 'Two pointers decide the lower side’s water, one bar per step.',
+    implemented: true,
+  },
+
+  // ─── STRINGS ────────────────────────────────────────────
+  {
+    id: 'roman-to-integer',
+    name: 'Roman to Integer',
+    category: 'STRINGS',
+    subtitle: 'Add each symbol, or subtract it when a larger one follows.',
+    implemented: true,
+  },
+  {
+    id: 'longest-common-prefix',
+    name: 'Longest Common Prefix',
+    category: 'STRINGS',
+    subtitle: 'Scan column by column until a word ends or differs.',
+    implemented: true,
+  },
+  {
+    id: 'valid-parentheses',
+    name: 'Valid Parentheses',
+    category: 'STRINGS',
+    subtitle: 'A stack of open brackets; each closer must match the top.',
+    implemented: true,
+  },
+  {
+    id: 'find-first-occurrence',
+    name: 'Find the Index of the First Occurrence',
+    category: 'STRINGS',
+    subtitle: 'Slide the needle along the haystack, comparing as it goes.',
+    implemented: true,
+  },
+  {
+    id: 'length-of-last-word',
+    name: 'Length of Last Word',
+    category: 'STRINGS',
+    subtitle: 'Scan back past trailing spaces, then count the word.',
+    implemented: true,
+  },
+  {
+    id: 'add-binary',
+    name: 'Add Binary',
+    category: 'STRINGS',
+    subtitle: 'Column addition from the right with a carry.',
+    implemented: true,
+  },
+  {
+    id: 'valid-palindrome',
+    name: 'Valid Palindrome',
+    category: 'STRINGS',
+    subtitle: 'Two pointers inwards, skipping non-alphanumerics.',
+    implemented: true,
+  },
+  {
+    id: 'valid-palindrome-ii',
+    name: 'Valid Palindrome II',
+    category: 'STRINGS',
+    subtitle: 'Two pointers; at the first mismatch, try deleting either side.',
+    implemented: true,
+  },
 
   // ─── LINKED LIST ────────────────────────────────────────
   {
@@ -270,12 +343,34 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
   },
 
   // ─── TREES ──────────────────────────────────────────────
+  // the four traversals replace the planned "Tree Traversals" entry
   {
-    id: 'tree-traversals',
-    name: 'Tree Traversals',
+    id: 'tree-inorder',
+    name: 'Inorder Traversal',
     category: 'TREES',
-    subtitle: 'Inorder, Preorder, Postorder DFS traversal.',
-    implemented: false,
+    subtitle: 'Left, root, right — with an explicit stack.',
+    implemented: true,
+  },
+  {
+    id: 'tree-preorder',
+    name: 'Preorder Traversal',
+    category: 'TREES',
+    subtitle: 'Root, left, right — pop, visit, push right then left.',
+    implemented: true,
+  },
+  {
+    id: 'tree-postorder',
+    name: 'Postorder Traversal',
+    category: 'TREES',
+    subtitle: 'Left, right, root — one stack and the last node visited.',
+    implemented: true,
+  },
+  {
+    id: 'tree-level-order',
+    name: 'Level Order Traversal',
+    category: 'TREES',
+    subtitle: 'Breadth-first, level by level, with a queue.',
+    implemented: true,
   },
   {
     id: 'binary-tree',
@@ -368,6 +463,27 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     name: 'Swap of Two Numbers',
     category: 'FUNDAMENTALS',
     subtitle: 'Exchanges a and b through a temporary variable.',
+    implemented: true,
+  },
+  {
+    id: 'valid-perfect-square',
+    name: 'Valid Perfect Square',
+    category: 'FUNDAMENTALS',
+    subtitle: 'Binary search for a whole k with k × k = num.',
+    implemented: true,
+  },
+  {
+    id: 'sqrt-x',
+    name: 'Sqrt(x)',
+    category: 'FUNDAMENTALS',
+    subtitle: 'Binary search for the largest k with k × k ≤ x.',
+    implemented: true,
+  },
+  {
+    id: 'arranging-coins',
+    name: 'Arranging Coins',
+    category: 'FUNDAMENTALS',
+    subtitle: 'Binary search for the most complete staircase rows.',
     implemented: true,
   },
 ];

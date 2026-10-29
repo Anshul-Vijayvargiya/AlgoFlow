@@ -1,6 +1,7 @@
-import { env } from '../../config/env';
+import { env, localProviderProblem } from '../../config/env';
 import { FakeExecutionProvider } from './fakeProvider';
 import { Judge0Provider, parseLanguageOverrides } from './judge0Provider';
+import { LocalPythonProvider } from './localPythonProvider';
 import type { ExecutionProvider } from './types';
 
 let provider: ExecutionProvider | null | undefined;
@@ -17,6 +18,12 @@ export function getExecutionProvider(): ExecutionProvider | null {
     });
   } else if (env.EXECUTION_PROVIDER === 'fake') {
     provider = new FakeExecutionProvider();
+  } else if (env.EXECUTION_PROVIDER === 'local') {
+    // development only, on a loopback-only server: Python on this machine, see localPythonProvider.ts. The environment
+    // check refuses anything else at startup; checked again here so the provider can never exist on an exposed server.
+    const problem = localProviderProblem(env.NODE_ENV, env.HOST);
+    if (problem) throw new Error(problem);
+    provider = new LocalPythonProvider(env.LOCAL_PYTHON_PATH ?? 'python');
   } else {
     provider = null;
   }

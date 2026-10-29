@@ -35,6 +35,23 @@ import { swapTwoNumbersDefinition } from './algorithms/swapTwoNumbers';
 import { twoSumDefinition } from './algorithms/twoSum';
 import { majorityElementDefinition } from './algorithms/majorityElement';
 import { containerMostWaterDefinition } from './algorithms/containerMostWater';
+import { mergeSortedArrayDefinition } from './algorithms/mergeSortedArray';
+import { trappingRainWaterDefinition } from './algorithms/trappingRainWater';
+import { validPerfectSquareDefinition } from './algorithms/validPerfectSquare';
+import { sqrtXDefinition } from './algorithms/sqrtX';
+import { arrangingCoinsDefinition } from './algorithms/arrangingCoins';
+import { romanToIntegerDefinition } from './algorithms/strings/romanToInteger';
+import { longestCommonPrefixDefinition } from './algorithms/strings/longestCommonPrefix';
+import { validParenthesesDefinition } from './algorithms/strings/validParentheses';
+import { findFirstOccurrenceDefinition } from './algorithms/strings/findFirstOccurrence';
+import { lengthOfLastWordDefinition } from './algorithms/strings/lengthOfLastWord';
+import { addBinaryDefinition } from './algorithms/strings/addBinary';
+import { validPalindromeDefinition } from './algorithms/strings/validPalindrome';
+import { validPalindromeIIDefinition } from './algorithms/strings/validPalindromeII';
+import { treeInorderDefinition } from './algorithms/tree/inorder';
+import { treePreorderDefinition } from './algorithms/tree/preorder';
+import { treePostorderDefinition } from './algorithms/tree/postorder';
+import { treeLevelOrderDefinition } from './algorithms/tree/levelOrder';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 const REGISTRY = new Map<AlgorithmId, AlgorithmDefinition>();
@@ -67,6 +84,23 @@ register(swapTwoNumbersDefinition);
 register(twoSumDefinition);
 register(majorityElementDefinition);
 register(containerMostWaterDefinition);
+register(mergeSortedArrayDefinition);
+register(trappingRainWaterDefinition);
+register(validPerfectSquareDefinition);
+register(sqrtXDefinition);
+register(arrangingCoinsDefinition);
+register(romanToIntegerDefinition);
+register(longestCommonPrefixDefinition);
+register(validParenthesesDefinition);
+register(findFirstOccurrenceDefinition);
+register(lengthOfLastWordDefinition);
+register(addBinaryDefinition);
+register(validPalindromeDefinition);
+register(validPalindromeIIDefinition);
+register(treeInorderDefinition);
+register(treePreorderDefinition);
+register(treePostorderDefinition);
+register(treeLevelOrderDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -108,7 +142,7 @@ export function resolveCodeRange(
   return { start: line - lead, end: line + span - 1 };
 }
 
-/** How a definition's trace is drawn: 'array' unless it declares otherwise (every existing algorithm is 'array'). */
+/** How a definition's trace is drawn: 'array' unless it declares otherwise. */
 export const visualKindOf = (def: Pick<AlgorithmDefinition, 'visual'> | undefined): VisualKind =>
   def?.visual ?? 'array';
 
