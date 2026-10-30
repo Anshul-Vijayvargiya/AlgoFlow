@@ -15,6 +15,9 @@ import {
   isImplementedAlgorithm,
   topicOfAlgorithm,
 } from '../../src/data/algorithmCatalog';
+import { DailyGoalLog } from '../models/DailyGoalLog';
+import { ALGORITHM_NAV } from '../../src/data/algorithmMetadata';
+import { currentStreak, isManualGoal, longestStreak, nextUtcMidnight, utcDay } from '../../src/data/dailyGoals';
 
 const router = Router();
 
@@ -69,39 +72,15 @@ function toDateString(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-// Helper: Calculate authentic active streak
-async function calculateStreak(userId: any): Promise<number> {
+// Helper: the active streak, from the days with recorded activity (visualizer walkthroughs and practice submissions;
+// ticking a daily goal is not activity). Days are UTC, and past days are never deleted.
+async function calculateStreaks(userId: any): Promise<{ current: number; longest: number }> {
   const distinctDays: string[] = await ActivityLog.distinct('date', { userId });
-  if (distinctDays.length === 0) return 0;
+  return { current: currentStreak(distinctDays, toDateString(new Date())), longest: longestStreak(distinctDays) };
+}
 
-  const daySet = new Set(distinctDays);
-  const now = new Date();
-  const todayStr = toDateString(now);
-
-  const yesterday = new Date(now);
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const yesterdayStr = toDateString(yesterday);
-
-  // If user has no activity today and no activity yesterday, the streak is 0
-  if (!daySet.has(todayStr) && !daySet.has(yesterdayStr)) {
-    return 0;
-  }
-
-  // Count backwards from latest active day
-  let currentCheck = daySet.has(todayStr) ? now : yesterday;
-  let streak = 0;
-
-  while (true) {
-    const dStr = toDateString(currentCheck);
-    if (daySet.has(dStr)) {
-      streak++;
-      currentCheck.setUTCDate(currentCheck.getUTCDate() - 1);
-    } else {
-      break;
-    }
-  }
-
-  return streak;
+async function calculateStreak(userId: any): Promise<number> {
+  return (await calculateStreaks(userId)).current;
 }
 
 interface WeeklyDay {
@@ -180,7 +159,7 @@ router.get('/summary', requireAuth, async (req: AuthRequest, res, next) => {
     const userId = req.user?.userId;
 
     // 1. Calculate streak
-    const streakDays = await calculateStreak(userId);
+    const { current: streakDays, longest: longestStreakDays } = await calculateStreaks(userId);
 
     // 2. Count distinct solved problems
     const solvedProblemIds = await Submission.distinct('problemId', {
@@ -257,6 +236,7 @@ router.get('/summary', requireAuth, async (req: AuthRequest, res, next) => {
 
     res.json({
       streakDays,
+      longestStreakDays,
       solvedCount,
       algorithmsLearned,
       weeklyActivity,
@@ -324,6 +304,122 @@ router.post('/visualizer-activity', requireAuth, validateBody(visualizerActivity
     await ProgressTrack.updateOne({ userId, algorithmId, status: 'not_started' }, { $set: { status: 'in_progress' } });
 
     res.json({ recorded: true, algorithmId, date: toDateString(now), stepsViewed: (log as { steps?: number } | null)?.steps ?? stepsViewed });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** today's (UTC) verified activity and the daily goals the user ticked themselves */
+async function todayFor(userId: any) {
+  const now = new Date();
+  const date = utcDay(now);
+  const start = new Date(`${date}T00:00:00.000Z`);
+  const end = nextUtcMidnight(now);
+  const createdToday = { userId, createdAt: { $gte: start, $lt: end } };
+  const [walkthroughs, submissions, accepted, log] = await Promise.all([
+    ActivityLog.countDocuments({ userId, date, activityType: 'visualizer_step' }),
+    // judging failures are not the learner's practice (as in the weekly chart)
+    Submission.countDocuments({ ...createdToday, status: { $ne: 'JUDGING_ERROR' } }),
+    Submission.countDocuments({ ...createdToday, status: 'ACCEPTED' }),
+    DailyGoalLog.findOne({ userId, date }).lean(),
+  ]);
+  const ticked = ((log as { completed?: string[] } | null)?.completed ?? []).filter(isManualGoal);
+  return { date, resetsAt: end.toISOString(), verified: { walkthroughs, submissions, accepted }, manualCompleted: [...new Set(ticked)] };
+}
+
+// GET /api/progress/today — the daily checklist's data for the signed-in user
+router.get('/today', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    res.json(await todayFor(req.user?.userId));
+  } catch (err) {
+    next(err);
+  }
+});
+
+const dailyGoalSchema = z.object({ done: z.boolean() }).strict();
+
+/**
+ * PUT /api/progress/today/goals/:goalId — tick or untick one of the user's own (manual) goals for today (UTC).
+ * Idempotent ($addToSet / $pull on the day's single record). Verified goals cannot be set: they follow the activity.
+ */
+router.put('/today/goals/:goalId', requireAuth, validateBody(dailyGoalSchema), async (req: AuthRequest, res, next) => {
+  try {
+    const { goalId } = req.params;
+    if (!isManualGoal(goalId)) {
+      res.status(400).json({ error: 'Only your own goals can be ticked; the others are checked from your activity.' });
+      return;
+    }
+    const userId = req.user?.userId as unknown as IProgressTrack['userId'];
+    const { done } = req.body as z.infer<typeof dailyGoalSchema>;
+    const date = utcDay(new Date());
+    if (done) {
+      await upsertOnce(() =>
+        DailyGoalLog.findOneAndUpdate({ userId, date }, { $addToSet: { completed: goalId } }, { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true })
+      );
+    } else {
+      // unticking never creates a record
+      await DailyGoalLog.updateOne({ userId, date }, { $pull: { completed: goalId } });
+    }
+    res.json(await todayFor(userId));
+  } catch (err) {
+    next(err);
+  }
+});
+
+const recentQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(20).default(8) });
+
+/**
+ * GET /api/progress/recent — the user's latest practice submissions and visualizer walkthroughs, newest first.
+ * Submissions carry their verdict (never the code); a walkthrough is one algorithm stepped through on one UTC day.
+ */
+router.get('/recent', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const parsed = recentQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Validation failed', details: parsed.error.issues.map(i => ({ field: i.path.join('.'), message: i.message })) });
+      return;
+    }
+    const { limit } = parsed.data;
+    // the session's user id, typed as the models declare it (Mongoose casts the string at runtime)
+    const userId = req.user?.userId as unknown as IProgressTrack['userId'];
+    const [submissions, walkthroughs] = await Promise.all([
+      Submission.find({ userId }).sort({ createdAt: -1 }).limit(limit).select('problemId status language createdAt').lean(),
+      ActivityLog.find({ userId, activityType: 'visualizer_step' }).sort({ updatedAt: -1 }).limit(limit).select('targetId date steps updatedAt').lean(),
+    ]);
+    const subs = (submissions ?? []) as unknown as { _id: { toString(): string }; problemId: string; status: string; language: string; createdAt: Date }[];
+    const walks = (walkthroughs ?? []) as unknown as { _id: { toString(): string }; targetId: string; date: string; steps?: number; updatedAt: Date }[];
+    const problemIds = [...new Set(subs.map(s => s.problemId))];
+    const problems = problemIds.length
+      ? ((await Problem.find({ problemId: { $in: problemIds } }).select('problemId title').lean()) as unknown as { problemId: string; title: string }[])
+      : [];
+    const titles = new Map(problems.map(p => [p.problemId, p.title]));
+
+    const events = [
+      ...subs.map(s => ({
+        id: `submission:${s._id.toString()}`,
+        kind: 'submission' as const,
+        targetId: s.problemId,
+        title: titles.get(s.problemId) ?? s.problemId,
+        status: s.status,
+        language: s.language,
+        at: new Date(s.createdAt).toISOString(),
+      })),
+      ...walks
+        .filter(w => isImplementedAlgorithm(w.targetId))
+        .map(w => ({
+          id: `walkthrough:${w._id.toString()}`,
+          kind: 'walkthrough' as const,
+          targetId: w.targetId,
+          title: ALGORITHM_NAV.find(a => a.id === w.targetId)?.name ?? w.targetId,
+          date: w.date,
+          stepsViewed: w.steps ?? 0,
+          at: new Date(w.updatedAt).toISOString(),
+        })),
+    ]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, limit);
+
+    res.json({ events });
   } catch (err) {
     next(err);
   }

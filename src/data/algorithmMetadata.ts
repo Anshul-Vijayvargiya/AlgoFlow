@@ -175,6 +175,21 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Two pointers decide the lower side’s water, one bar per step.',
     implemented: true,
   },
+  {
+    id: 'maximum-subarray',
+    name: 'Maximum Subarray',
+    category: 'ARRAYS',
+    subtitle: "Kadane's algorithm: extend the run or start over, in one pass.",
+    implemented: true,
+  },
+  // listed with the other arrays (the merge had placed it after STRINGS, out of the sidebar's order)
+  {
+    id: 'remove-duplicates-sorted',
+    name: 'Remove Duplicates from Sorted Array',
+    category: 'ARRAYS',
+    subtitle: 'Slow/fast pointers keep one copy of each value, in place.',
+    implemented: true,
+  },
 
   // ─── STRINGS ────────────────────────────────────────────
   {
@@ -232,13 +247,6 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     category: 'STRINGS',
     subtitle: 'Two pointers; at the first mismatch, try deleting either side.',
      implemented: true,
-  },
-  {
-    id: 'remove-duplicates-sorted',
-    name: 'Remove Duplicates from Sorted Array',
-    category: 'ARRAYS',
-    subtitle: 'Slow/fast pointers keep one copy of each value, in place.',
-    implemented: true,
   },
 
   // ─── LINKED LIST ────────────────────────────────────────

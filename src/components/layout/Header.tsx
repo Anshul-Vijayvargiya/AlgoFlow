@@ -88,9 +88,10 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-16 bg-page/90 backdrop-blur-md border-b border-cyan-500/15 px-2.5 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sticky top-0 z-40">
-        {/* Brand Logo (phones: tighter spacing here and in the controls, so the name fits at 360px) */}
-        <NavLink to="/dashboard" className="flex items-center gap-2 sm:gap-3 group min-w-0 shrink">
+      <header className="h-16 bg-page/90 backdrop-blur-md border-b border-cyan-500/15 px-2 sm:px-4 lg:px-6 flex items-center justify-between gap-1.5 sm:gap-2 sticky top-0 z-40">
+        {/* Brand Logo (phones: tighter spacing here and in the controls, so the name fits at 360px with room to spare:
+            a page's classic scrollbar, as in Linux WebKit, or wider fonts take some of the width) */}
+        <NavLink to="/dashboard" className="flex items-center gap-1.5 sm:gap-3 group min-w-0 shrink">
           <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-300">
             <div className="w-full h-full bg-page rounded-[10px] flex items-center justify-center">
               <Play className="w-4 h-4 text-cyan-400 fill-cyan-400/20 ml-0.5" />
@@ -134,7 +135,7 @@ export const Header: React.FC = () => {
           <button
             id="header-ai-tutor-btn"
             onClick={() => setAiDrawerOpen(true)}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-purple-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 text-xs font-mono font-bold shadow-sm transition-all"
+            className="flex items-center gap-1.5 px-1.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 via-blue-500/10 to-purple-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 text-xs font-mono font-bold shadow-sm transition-all"
             title="Open the AI Tutor"
             aria-label="AI Tutor"
           >
@@ -150,7 +151,7 @@ export const Header: React.FC = () => {
               named) select laid transparently over it, as the compact theme picker does; the wrapper draws its focus ring */}
           <div
             title={`Programming language: ${currentLanguage.label}`}
-            className="relative flex items-center bg-slate-900/80 border border-slate-700/60 rounded-lg px-2.5 py-1 max-sm:w-11 max-sm:px-0 max-sm:justify-center max-sm:has-[select:focus-visible]:outline-2 max-sm:has-[select:focus-visible]:outline-[var(--af-focus)] max-sm:has-[select:focus-visible]:outline-offset-2"
+            className="relative flex items-center bg-slate-900/80 border border-slate-700/60 rounded-lg px-2.5 py-1 max-sm:w-10 max-sm:px-0 max-sm:justify-center max-sm:has-[select:focus-visible]:outline-2 max-sm:has-[select:focus-visible]:outline-[var(--af-focus)] max-sm:has-[select:focus-visible]:outline-offset-2"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400 mr-1.5 max-sm:hidden" aria-hidden="true" />
             <span aria-hidden="true" data-testid="header-language-short" className="hidden max-sm:inline h-6 leading-6 text-xs font-mono font-bold text-cyan-200">

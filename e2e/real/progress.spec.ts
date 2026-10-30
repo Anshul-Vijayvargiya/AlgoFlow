@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { VisualizerApp } from '../support/visualizerApp';
 import { ALGORITHM_NAV } from '../../src/data/algorithmMetadata';
+import { isImplementedAlgorithm } from '../../src/data/algorithmCatalog';
+import { LEARNING_TRACKS } from '../../src/pages/learning/learningPaths';
 import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, tracksOf, waitForDashboard, API_ORIGIN } from './fixtures';
 
 /**
@@ -10,6 +12,9 @@ import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, track
 
 /** the visualized algorithms, from the catalogue */
 const IMPLEMENTED = ALGORITHM_NAV.filter(a => a.implemented).length;
+
+/** roadmap milestones whose algorithm can be visualized: shown as not started on a new account (the rest: coming soon) */
+const VISUALIZABLE_MILESTONES = LEARNING_TRACKS.flatMap(t => t.milestones).filter(m => isImplementedAlgorithm(m.algorithmId)).length;
 
 /** steps once in the visualizer (Bubble Sort, the default) and waits for the server to accept the activity */
 async function stepBubbleSort(page: Page) {
@@ -35,7 +40,7 @@ test.describe('Real backend — progress', () => {
     expect(await tracksOf(page)).toEqual([]);
     await openRoadmap(page);
     await expect(page.locator('[data-status="explored"]')).toHaveCount(0);
-    await expect(page.locator('[data-status="not-started"]')).toHaveCount(9);
+    await expect(page.locator('[data-status="not-started"]')).toHaveCount(VISUALIZABLE_MILESTONES);
   });
 
   test('opening the visualizer records nothing; stepping is recorded by the server', async ({ page }, testInfo) => {
@@ -108,7 +113,8 @@ test.describe('Real backend — progress', () => {
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-stats')).toHaveAttribute('aria-busy', 'false');
     await expect(page.getByTestId('continue-learning')).toContainText('Bubble Sort');
-    await expect(page.getByTestId('dashboard-stats')).toContainText('0Algorithms Learned');
+    // the same "explored" count as the Progress page
+    await expect(page.locator('[data-stat="Algorithms Explored"]')).toContainText(`1 / ${IMPLEMENTED}Algorithms Explored`);
   });
 
   test("switching accounts in the same tab never shows the previous user's progress", async ({ page }, testInfo) => {

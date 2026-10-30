@@ -97,6 +97,20 @@ suite('local Python provider: what a program cannot reach', () => {
     }
   });
 
+  it("a blocked module this Python does not have fails as a normal ImportError, so the library's optional imports work", async () => {
+    // Python 3.14's pathlib does `try: import _winapi / except ImportError`; on Linux there is no _winapi, and refusing it
+    // with PermissionError made every `import pathlib` fail. The platform's missing blocked module: _winapi off Windows,
+    // _posixsubprocess on Windows
+    const missing = process.platform === 'win32' ? '_posixsubprocess' : '_winapi';
+    const r = await run(`try:\n    import ${missing}\nexcept ImportError as e:\n    print(type(e).__name__)\nimport pathlib\nprint("pathlib ok")\n`);
+    expect(r).toMatchObject({ status: 'success', stdout: 'ModuleNotFoundError\npathlib ok\n' });
+    // a blocked module it does have is still refused, even inside the same kind of guarded import
+    const blocked = await run('try:\n    import mmap\nexcept ImportError:\n    print("fell back")\n');
+    expect(blocked.status).toBe('runtime_error');
+    expect(blocked.stdout).toBe('');
+    expect(blocked.stderr).toMatch(/PermissionError: Importing mmap is not allowed here\./);
+  });
+
   it('the Python standard library can still be imported and read', async () => {
     const r = await run('import json, collections, heapq, itertools, math, re\nprint(json.dumps(sorted(collections.Counter("abca").items())))\n');
     expect(r).toMatchObject({ status: 'success', stdout: '[["a", 2], ["b", 1], ["c", 1]]\n' });

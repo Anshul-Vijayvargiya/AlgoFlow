@@ -59,7 +59,18 @@ test.describe('Learning Paths', () => {
     void app;
     await openRoadmap(page);
     const ids = await page.locator('a[data-algorithm]').evaluateAll(els => els.map(e => (e as HTMLElement).dataset.algorithm!));
-    expect(ids).toEqual(['linear-search', 'binary-search', 'two-pointer', 'bubble-sort', 'selection-sort', 'insertion-sort', 'merge-sort', 'quick-sort', 'reverse-linked-list']);
+expect(ids).toEqual([
+  'linear-search',
+  'binary-search',
+  'two-pointer',
+  'bubble-sort',
+  'selection-sort',
+  'insertion-sort',
+  'merge-sort',
+  'quick-sort',
+  'reverse-linked-list',
+  'tree-level-order',
+]);
     for (const id of ids) {
       await openRoadmap(page);
       await page.locator(`a[data-algorithm="${id}"]`).click();

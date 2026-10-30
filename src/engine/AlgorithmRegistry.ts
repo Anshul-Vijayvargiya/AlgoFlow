@@ -66,6 +66,7 @@ import { treePostorderDefinition } from './algorithms/tree/postorder';
 import { treeLevelOrderDefinition } from './algorithms/tree/levelOrder';
 
 import { removeDuplicatesSortedDefinition } from './algorithms/removeDuplicatesSorted';
+import { maximumSubarrayDefinition } from './algorithms/maximumSubarray';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -123,6 +124,7 @@ register(treePostorderDefinition);
 register(treeLevelOrderDefinition);
 
 register(removeDuplicatesSortedDefinition);
+register(maximumSubarrayDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

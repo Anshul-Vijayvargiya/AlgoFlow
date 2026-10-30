@@ -16,6 +16,8 @@ import type {
   TutorReply,
   SubmissionRecord,
   SubmissionResult,
+  TodayProgress,
+  RecentActivityEvent,
 } from './client';
 import { FAKE_LANGUAGE_LABELS, FakeProviderUnavailableError, fakeExecute } from '../execution/fakeExecution';
 import { outputsMatch } from '../execution/judgeCore';
@@ -29,6 +31,8 @@ import {
   topicOfAlgorithm,
 } from '../data/algorithmCatalog';
 import type { PracticeProblem } from '../types/algorithm';
+import { ALGORITHM_NAV } from '../data/algorithmMetadata';
+import { currentStreak, isManualGoal, longestStreak, nextUtcMidnight } from '../data/dailyGoals';
 
 
 /**
@@ -109,9 +113,8 @@ const INITIAL_NOTES: NoteRecord[] = [
 
 /** visualizer activity recorded by the mock API, kept on the device so it survives reloads (as the server keeps it) */
 const MOCK_VISUALIZER_ACTIVITY_KEY = 'algoflow_visualizer_activity';
-// the estimated minutes stay fixed demo values (the daily goal's tests use them); every count is derived from what
-// was done in this browser, the same way the server derives it
-const MOCK_DEMO_MINUTES = [45, 60, 30, 80, 65, 90, 75];
+/** the daily goals ticked on this device: date → goal ids (the server keeps them per account) */
+const MOCK_DAILY_GOALS_KEY = 'algoflow_daily_goals';
 // the AI Tutor's test controls (see tutor below and e2e/tests/tutor.spec.ts)
 const MOCK_TUTOR_STATUS_KEY = 'algoflow_mock_tutor_status';
 const MOCK_TUTOR_RELEASE_EVENT = 'algoflow-mock-tutor-release';
@@ -123,12 +126,31 @@ interface MockVisualizerActivity {
 const mockDateString = (d: Date) => d.toISOString().slice(0, 10);
 
 /** the last 7 UTC days (today last), as the server builds them: walkthroughs and submissions recorded on each */
-function mockWeeklyActivity(activity: MockVisualizerActivity): UserProgressData['weeklyActivity'] {
-  const { submissions } = readPracticeState();
-  const submittedOn = Object.values(submissions)
+/** the UTC days of the practice submissions made on this device (judging failures are not practice) */
+function mockSubmissionDays(): string[] {
+  return Object.values(readPracticeState().submissions)
     .flat()
     .filter(s => s.status !== 'JUDGING_ERROR' && s.createdAt)
     .map(s => s.createdAt!.slice(0, 10));
+}
+
+/** the days with recorded activity (walkthroughs and submissions), as the server's activity log has them */
+function mockActiveDays(activity: MockVisualizerActivity): string[] {
+  return [...new Set([...Object.keys(activity.days).filter(d => Object.keys(activity.days[d]).length > 0), ...mockSubmissionDays()])];
+}
+
+function readMockDailyGoals(): Record<string, string[]> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MOCK_DAILY_GOALS_KEY) ?? 'null');
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    // unreadable: start again
+  }
+  return {};
+}
+
+function mockWeeklyActivity(activity: MockVisualizerActivity): UserProgressData['weeklyActivity'] {
+  const submittedOn = mockSubmissionDays();
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setUTCDate(d.getUTCDate() - (6 - i));
@@ -137,7 +159,8 @@ function mockWeeklyActivity(activity: MockVisualizerActivity): UserProgressData[
     return {
       day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()],
       date,
-      minutes: MOCK_DEMO_MINUTES[i],
+      // estimated as the server estimates them: 5 minutes per practice submission
+      minutes: 5 * submittedOn.filter(day => day === date).length,
       steps: Object.values(stepped).reduce((a, b) => a + b, 0),
       submissions: submittedOn.filter(day => day === date).length,
       walkthroughs: Object.keys(stepped).length,
@@ -290,9 +313,12 @@ export class MockApiClient implements ApiClient {
 
   progress = {
     async getUserProgress(): Promise<UserProgressData> {
-      // minutes, solved problems and the streak are fixed demo values; everything about algorithms, and the weekly
-      // counts, is derived from the activity recorded on this device, the same way the server derives it
+      // everything is derived from what was done on this device, the same way the server derives it from its records
       const activity = readMockVisualizerActivity();
+      const { submissions } = readPracticeState();
+      const solved = MOCK_PROBLEMS.filter(p => (submissions[p.id] ?? []).some(s => s.passed));
+      const solvedOf = (difficulty: string) => solved.filter(p => p.difficulty === difficulty).length;
+      const activeDays = mockActiveDays(activity);
       const tracks = Object.keys(activity.tracks).filter(isImplementedAlgorithm);
       const topicCoverage = IMPLEMENTED_TOPICS.map(({ topic, algorithmIds }) => ({
         topic,
@@ -303,9 +329,9 @@ export class MockApiClient implements ApiClient {
       return {
         weeklyActivity: mockWeeklyActivity(activity),
         difficultyDistribution: [
-          { name: 'Easy', value: 24, color: '#10B981' },
-          { name: 'Medium', value: 14, color: '#F59E0B' },
-          { name: 'Hard', value: 4, color: '#F43F5E' },
+          { name: 'Easy', value: solvedOf('Easy'), color: '#10B981' },
+          { name: 'Medium', value: solvedOf('Medium'), color: '#F59E0B' },
+          { name: 'Hard', value: solvedOf('Hard'), color: '#F43F5E' },
         ],
         topicProficiency: topicCoverage.map(t => ({ topic: t.topic, score: 0 })),
         topicCoverage,
@@ -315,8 +341,9 @@ export class MockApiClient implements ApiClient {
           practised: tracks.length,
           completed: 0,
         },
-        streakDays: 14,
-        solvedCount: 42,
+        streakDays: currentStreak(activeDays, mockDateString(new Date())),
+        longestStreakDays: longestStreak(activeDays),
+        solvedCount: solved.length,
         // nothing can be completed: there is no verified completion rule
         algorithmsLearned: 0,
         overallProgressPercent: 0,
@@ -385,6 +412,71 @@ export class MockApiClient implements ApiClient {
       };
       localStorage.setItem(MOCK_VISUALIZER_ACTIVITY_KEY, JSON.stringify(activity));
       return { recorded: true, algorithmId, date, stepsViewed: day[algorithmId] };
+    },
+    async getToday(): Promise<TodayProgress> {
+      // the same counts as GET /api/progress/today, from this device's records
+      const now = new Date();
+      const date = mockDateString(now);
+      const todays = Object.values(readPracticeState().submissions).flat().filter(s => s.createdAt?.slice(0, 10) === date);
+      return {
+        date,
+        resetsAt: nextUtcMidnight(now).toISOString(),
+        verified: {
+          walkthroughs: Object.keys(readMockVisualizerActivity().days[date] ?? {}).length,
+          submissions: todays.filter(s => s.status !== 'JUDGING_ERROR').length,
+          accepted: todays.filter(s => s.status === 'ACCEPTED').length,
+        },
+        manualCompleted: (readMockDailyGoals()[date] ?? []).filter(isManualGoal),
+      };
+    },
+    async setDailyGoal(goalId: string, done: boolean): Promise<TodayProgress> {
+      // the same rules as PUT /api/progress/today/goals/:goalId: only manual goals, idempotent, past days kept
+      if (!isManualGoal(goalId)) throw new Error('Only your own goals can be ticked; the others are checked from your activity.');
+      if (typeof done !== 'boolean') throw new Error('Validation failed');
+      const goals = readMockDailyGoals();
+      const date = mockDateString(new Date());
+      const ticked = new Set(goals[date] ?? []);
+      if (done) ticked.add(goalId);
+      else ticked.delete(goalId);
+      goals[date] = [...ticked];
+      localStorage.setItem(MOCK_DAILY_GOALS_KEY, JSON.stringify(goals));
+      return this.getToday();
+    },
+    async getRecentActivity(limit = 8): Promise<RecentActivityEvent[]> {
+      // the same events as GET /api/progress/recent, from this device's records
+      const { submissions } = readPracticeState();
+      const activity = readMockVisualizerActivity();
+      const subs: RecentActivityEvent[] = Object.entries(submissions).flatMap(([problemId, list]) =>
+        list
+          .filter(s => s.createdAt)
+          .map(s => ({
+            id: `submission:${s.id}`,
+            kind: 'submission' as const,
+            targetId: problemId,
+            title: MOCK_PROBLEMS.find(p => p.id === problemId)?.title ?? problemId,
+            status: s.status,
+            language: s.language,
+            at: s.createdAt!,
+          }))
+      );
+      const walks: RecentActivityEvent[] = Object.entries(activity.days).flatMap(([date, stepped]) =>
+        Object.entries(stepped)
+          .filter(([id]) => isImplementedAlgorithm(id))
+          .map(([id, steps]) => {
+            // the device keeps the time of the latest walkthrough of each algorithm; earlier days only have their date
+            const last = activity.tracks[id]?.lastActivityAt;
+            return {
+              id: `walkthrough:${date}:${id}`,
+              kind: 'walkthrough' as const,
+              targetId: id,
+              title: ALGORITHM_NAV.find(a => a.id === id)?.name ?? id,
+              date,
+              stepsViewed: steps,
+              at: last?.slice(0, 10) === date ? last : `${date}T00:00:00.000Z`,
+            };
+          })
+      );
+      return [...subs, ...walks].sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
     },
   };
 

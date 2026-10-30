@@ -86,7 +86,7 @@ jobs:
     services:
       # a disposable database for this job only (see server/e2e/testDatabase.ts for what the suite accepts)
       mongo:
-        image: mongo:8
+        image: mongo:7.0
         ports:
           - 27999:27017
     env:
@@ -112,10 +112,21 @@ jobs:
             test-results/real/
           retention-days: 14
 
+  # the same projects as `npm run e2e:cross`, split across runners: in one job (about 1,360 tests) the suite outgrew a
+  # 45-minute limit. Desktop Firefox and WebKit run every non-@mobile test; WebKit, the slowest, is split in two shards.
   e2e-cross:
-    name: Playwright E2E (Firefox, WebKit, mobile emulation)
+    name: Playwright E2E (${{ matrix.name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
+    strategy:
+      # one browser's failure does not cancel the others' results
+      fail-fast: false
+      matrix:
+        include:
+          - { id: firefox, name: 'Firefox', browsers: firefox, projects: '--project=firefox', shard: '1/1' }
+          - { id: webkit-1, name: 'WebKit 1/2', browsers: webkit, projects: '--project=webkit', shard: '1/2' }
+          - { id: webkit-2, name: 'WebKit 2/2', browsers: webkit, projects: '--project=webkit', shard: '2/2' }
+          - { id: mobile, name: 'Pixel 7 and iPhone 14 emulation', browsers: 'chromium webkit', projects: '--project=mobile-chromium --project=mobile-webkit', shard: '1/1' }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -124,14 +135,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium firefox webkit
-      - name: Run E2E tests (Firefox, WebKit, Pixel 7 and iPhone 14 emulation)
-        run: npm run e2e:cross
+        run: npx playwright install --with-deps ${{ matrix.browsers }}
+      - name: Run E2E tests (${{ matrix.name }})
+        run: npx playwright test ${{ matrix.projects }} --shard=${{ matrix.shard }}
       - name: Upload report and traces
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-cross
+          name: playwright-report-cross-${{ matrix.id }}
           path: |
             playwright-report/
             test-results/

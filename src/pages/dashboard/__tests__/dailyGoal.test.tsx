@@ -14,6 +14,19 @@ const progressStore = vi.hoisted(() => ({
   isLoading: false,
   error: null as string | null,
   fetchProgress: () => Promise.resolve(),
+  // today's checklist has loaded (the practice-time line is part of it)
+  today: { date: '2026-10-21', resetsAt: '2026-10-22T00:00:00.000Z', verified: { walkthroughs: 0, submissions: 0, accepted: 0 }, manualCompleted: [] },
+  todayLoading: false,
+  todayError: null,
+  goalSaving: null,
+  goalError: null,
+  fetchToday: () => Promise.resolve(),
+  setManualGoal: () => Promise.resolve(),
+  recent: [],
+  recentLoaded: true,
+  recentLoading: false,
+  recentError: null,
+  fetchRecent: () => Promise.resolve(),
 }));
 vi.mock('../../../store/useProgressStore', () => ({ useProgressStore: () => progressStore }));
 vi.mock('../../../store/useVisualizerStore', () => ({
@@ -54,14 +67,14 @@ describe('daily goal summary', () => {
 });
 
 describe('Dashboard — daily goal', () => {
-  it("shows the signed-in account's goal against today's minutes, with a progress bar and the estimate caveat", () => {
+  it("shows the signed-in account's goal against today's minutes in the checklist, marked as an estimate", () => {
     signIn(45);
     progressStore.progress = progress(15);
     const html = render();
     expect(html).toMatch(/data-testid="daily-goal-text"[^>]*>15 of 45 min today</);
-    expect(html).toMatch(/role="progressbar" aria-label="Daily goal" aria-valuemin="0" aria-valuemax="45" aria-valuenow="15"/);
-    expect(html).toContain('Minutes are estimated');
-    expect(html).toMatch(/<h2 id="daily-goal-heading"/);
+    expect(html).toMatch(/data-testid="daily-goal" title="Estimated: each practice submission counts as 5 minutes; visualizer time is not measured\."[^>]*>Practice time \(estimated\):/);
+    // inside today's checklist, after the goals
+    expect(html.indexOf('data-testid="daily-goal"')).toBeGreaterThan(html.indexOf('data-testid="daily-checklist"'));
   });
 
   it('a reached goal says so', () => {
