@@ -182,6 +182,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: "Kadane's algorithm: extend the run or start over, in one pass.",
     implemented: true,
   },
+  {
+    id: 'three-sum',
+    name: '3Sum',
+    category: 'ARRAYS',
+    subtitle: 'Sort, fix one value, two pointers find the other two.',
+    implemented: true,
+  },
   // listed with the other arrays (the merge had placed it after STRINGS, out of the sidebar's order)
   {
     id: 'remove-duplicates-sorted',
