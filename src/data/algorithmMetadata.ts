@@ -189,6 +189,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Sort, fix one value, two pointers find the other two.',
     implemented: true,
   },
+  {
+    id: 'four-sum',
+    name: '4Sum',
+    category: 'ARRAYS',
+    subtitle: 'Sort, fix two values, two pointers find the other two.',
+    implemented: true,
+  },
   // listed with the other arrays (the merge had placed it after STRINGS, out of the sidebar's order)
   {
     id: 'remove-duplicates-sorted',

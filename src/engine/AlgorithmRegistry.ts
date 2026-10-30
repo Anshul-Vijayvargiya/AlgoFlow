@@ -68,6 +68,7 @@ import { treeLevelOrderDefinition } from './algorithms/tree/levelOrder';
 import { removeDuplicatesSortedDefinition } from './algorithms/removeDuplicatesSorted';
 import { maximumSubarrayDefinition } from './algorithms/maximumSubarray';
 import { threeSumDefinition } from './algorithms/threeSum';
+import { fourSumDefinition } from './algorithms/fourSum';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,7 @@ register(treeLevelOrderDefinition);
 register(removeDuplicatesSortedDefinition);
 register(maximumSubarrayDefinition);
 register(threeSumDefinition);
+register(fourSumDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
