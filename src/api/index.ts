@@ -13,3 +13,6 @@ export { MockApiClient, mockApiClient } from './mockAdapter';
 const { useMock } = resolveApiRuntime(import.meta.env);
 
 export const apiClient: ApiClient = useMock ? mockApiClient : httpApiClient;
+
+/** the mock API is in use: data is kept in this browser, not on a server (pages say so instead of passing it off as an account's) */
+export const isMockApi = useMock;

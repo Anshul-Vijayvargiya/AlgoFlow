@@ -21,6 +21,8 @@ import type {
   AdminMetrics,
   AdminUserItem,
   AdminAuditItem,
+  TodayProgress,
+  RecentActivityEvent,
 } from './client';
 import { normalizeRole } from './client';
 import { resolveApiRuntime } from '../config/deployment';
@@ -254,6 +256,22 @@ export class HttpApiClient implements ApiClient {
         method: 'POST',
         body: JSON.stringify({ algorithmId, stepIndex }),
       });
+    },
+
+    async getToday(): Promise<TodayProgress> {
+      return request<TodayProgress>('/progress/today');
+    },
+
+    async setDailyGoal(goalId: string, done: boolean): Promise<TodayProgress> {
+      return request<TodayProgress>(`/progress/today/goals/${encodeURIComponent(goalId)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ done }),
+      });
+    },
+
+    async getRecentActivity(limit = 8): Promise<RecentActivityEvent[]> {
+      const res = await request<{ events: RecentActivityEvent[] }>(`/progress/recent?limit=${limit}`);
+      return res.events || [];
     },
   };
 

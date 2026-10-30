@@ -76,7 +76,8 @@ export type AlgorithmId =
   | 'tree-preorder'
   | 'tree-postorder'
   | 'tree-level-order'
-  | 'remove-duplicates-sorted';
+  | 'remove-duplicates-sorted'
+  | 'maximum-subarray';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")

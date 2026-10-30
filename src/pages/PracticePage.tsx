@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Code2, 
   Search, 
@@ -14,6 +15,7 @@ import {
   Layers
 } from 'lucide-react';
 import { usePracticeStore } from '../store/usePracticeStore';
+import { apiClient } from '../api';
 import { TONE_PANEL, TONE_TEXT, verdictOf } from './practice/verdicts';
 import { solvedPercent } from './practice/topicSets';
 import type { PracticeProblem, ProgrammingLanguage } from '../types/algorithm';
@@ -54,6 +56,33 @@ export const PracticePage: React.FC = () => {
   } = usePracticeStore();
 
   const [activeModalProblem, setActiveModalProblem] = useState<PracticeProblem | null>(null);
+  // /practice?problem=<id> (e.g. from the Dashboard's recent activity) opens that problem
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedProblemId = searchParams.get('problem');
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!linkedProblemId) return;
+    let cancelled = false;
+    apiClient.practice
+      .getProblemById(linkedProblemId)
+      .then(prob => {
+        if (cancelled) return;
+        setLinkError(null);
+        if (!prob) {
+          setLinkError('That problem could not be found. Choose one from the list below.');
+          return;
+        }
+        setActiveModalProblem(prob);
+        selectProblem(prob);
+      })
+      .catch(() => {
+        if (!cancelled) setLinkError('That problem could not be opened. Choose one from the list below.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedProblemId, selectProblem]);
 
   useEffect(() => {
     fetchProblems();
@@ -78,6 +107,7 @@ export const PracticePage: React.FC = () => {
 
   const handleCloseModal = () => {
     setActiveModalProblem(null);
+    if (linkedProblemId) setSearchParams({}, { replace: true });
   };
 
   return (
@@ -220,6 +250,13 @@ export const PracticePage: React.FC = () => {
           </select>
         </div>
       </div>
+
+      {linkError && (
+        <div role="status" data-testid="practice-link-error" className="flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>{linkError}</span>
+        </div>
+      )}
 
       {error && problems.length > 0 && (
         <div role="status" data-testid="practice-refresh-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">

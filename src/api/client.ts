@@ -1,5 +1,6 @@
 import type { PracticeProblem } from '../types/algorithm';
 import type { ExecutionTrace } from '../execution/trace';
+import type { VerifiedActivityToday } from '../data/dailyGoals';
 
 export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -117,7 +118,10 @@ export interface UserProgressData {
   weeklyActivity: { day: string; date?: string; minutes: number; steps: number; submissions?: number; walkthroughs?: number }[];
   difficultyDistribution: { name: string; value: number; color: string }[];
   topicProficiency: { topic: string; score: number }[];
+  /** consecutive UTC days with recorded activity, ending today or yesterday */
   streakDays: number;
+  /** the longest such run ever recorded (absent from older servers); a missed day never lowers it */
+  longestStreakDays?: number;
   solvedCount: number;
   algorithmsLearned: number;
   overallProgressPercent: number;
@@ -177,6 +181,22 @@ export interface AlgorithmTrack {
   lastActivityAt: string;
 }
 
+/** the daily checklist's data for today (a UTC day); see src/data/dailyGoals.ts */
+export interface TodayProgress {
+  /** YYYY-MM-DD (UTC) */
+  date: string;
+  /** when the checklist resets (the next 00:00 UTC), ISO */
+  resetsAt: string;
+  /** counted by the server from its own records */
+  verified: VerifiedActivityToday;
+  /** the manual goals the user ticked today */
+  manualCompleted: string[];
+}
+
+export type RecentActivityEvent =
+  | { id: string; kind: 'submission'; targetId: string; title: string; status: SubmissionStatus; language: string; at: string }
+  | { id: string; kind: 'walkthrough'; targetId: string; title: string; date: string; stepsViewed: number; at: string };
+
 export interface ProgressApi {
   getUserProgress(): Promise<UserProgressData>;
   getAlgorithmTracks(): Promise<AlgorithmTrack[]>;
@@ -186,6 +206,12 @@ export interface ProgressApi {
   updateAlgorithmProgress(algorithmId: string, data: AlgorithmProgressReset): Promise<AlgorithmTrack>;
   /** records that the signed-in user stepped to stepIndex (>= 1) of a visualizer trace; idempotent on the server */
   recordVisualizerActivity(algorithmId: string, stepIndex: number): Promise<VisualizerActivityResult>;
+  /** today's verified activity and ticked goals */
+  getToday(): Promise<TodayProgress>;
+  /** ticks or unticks one of the user's own (manual) goals for today; returns today's data */
+  setDailyGoal(goalId: string, done: boolean): Promise<TodayProgress>;
+  /** the latest submissions and walkthroughs, newest first */
+  getRecentActivity(limit?: number): Promise<RecentActivityEvent[]>;
 }
 
 export interface NoteRecord {

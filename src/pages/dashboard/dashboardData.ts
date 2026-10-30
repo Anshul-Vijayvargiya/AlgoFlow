@@ -2,21 +2,41 @@
  * What the Dashboard shows, derived only from data the app really has: the progress API (UserProgressData and the
  * per-algorithm tracks) and the algorithm registry. Nothing here invents activity, time or difficulty.
  */
-import type { AlgorithmTrack, UserProgressData } from '../../api';
+import type { AlgorithmTrack, RecentActivityEvent, TodayProgress, UserProgressData } from '../../api';
 import type { AlgorithmId } from '../../types/algorithm';
 import { ALGORITHM_CATEGORIES, ALGORITHM_NAV } from '../../data/algorithmMetadata';
 import { getAlgorithmDefinition } from '../../engine/AlgorithmRegistry';
+import { dailyGoalStatuses, type DailyGoalStatus } from '../../data/dailyGoals';
+import { verdictOf, type VerdictTone } from '../practice/verdicts';
+import { LEARNING_TRACKS, trackSummary, type LearningTrack } from '../learning/learningPaths';
+
+const categoryLabel = (id: string) => ALGORITHM_CATEGORIES.find(c => c.id === id)?.label ?? id;
 
 export interface ContinueItem {
   id: AlgorithmId;
   name: string;
+  categoryLabel: string;
   /** when the track was last active (ISO string from the server) */
   lastActivityAt: string;
+  /** the learning path this algorithm is a milestone of, if any (src/pages/learning/learningPaths.ts) */
+  path: ContinuePath | null;
+}
+
+export interface ContinuePath {
+  title: string;
+  /** the path's level (algorithms themselves have no difficulty rating) */
+  level: LearningTrack['level'];
+  /** the milestone's authored estimate, not a measurement */
+  estimatedMinutes: number;
+  /** the path's milestones explored in the visualizer, from the progress tracks */
+  explored: number;
+  available: number;
 }
 
 /**
  * The algorithm to continue: the most recently active track that is still in progress and is implemented in the
- * visualizer. The visualizer does not restore a step, so only the algorithm is offered, never a step.
+ * visualizer. The visualizer does not restore a step, so only the algorithm is offered, never a step; and no step count
+ * is shown, because only a few milestone steps of a trace are recorded (src/progress/visualizerActivity.ts).
  */
 export function continueLearning(tracks: readonly AlgorithmTrack[]): ContinueItem | null {
   const candidates = tracks
@@ -24,7 +44,25 @@ export function continueLearning(tracks: readonly AlgorithmTrack[]): ContinueIte
     .sort((a, b) => Date.parse(b.lastActivityAt) - Date.parse(a.lastActivityAt));
   const t = candidates[0];
   if (!t) return null;
-  return { id: t.algorithmId as AlgorithmId, name: getAlgorithmDefinition(t.algorithmId as AlgorithmId)!.name, lastActivityAt: t.lastActivityAt };
+  const def = getAlgorithmDefinition(t.algorithmId as AlgorithmId)!;
+  return {
+    id: def.id,
+    name: def.name,
+    categoryLabel: categoryLabel(def.category),
+    lastActivityAt: t.lastActivityAt,
+    path: pathOf(def.id, tracks),
+  };
+}
+
+/** the first learning path that has the algorithm as a milestone, with the user's real progress through it */
+function pathOf(algorithmId: string, tracks: readonly AlgorithmTrack[]): ContinuePath | null {
+  for (const track of LEARNING_TRACKS) {
+    const milestone = track.milestones.find(m => m.algorithmId === algorithmId);
+    if (!milestone) continue;
+    const { explored, available } = trackSummary(track, tracks);
+    return { title: track.title, level: track.level, estimatedMinutes: milestone.estimatedMinutes, explored, available };
+  }
+  return null;
 }
 
 export interface Recommendation {
@@ -34,8 +72,6 @@ export interface Recommendation {
   /** average time complexity from the algorithm's definition */
   complexity: string;
 }
-
-const categoryLabel = (id: string) => ALGORITHM_CATEGORIES.find(c => c.id === id)?.label ?? id;
 
 /**
  * Implemented algorithms the user has not completed, in the learning order of the algorithm list, skipping the one
@@ -159,4 +195,113 @@ export function lastActiveText(iso: string, now = Date.now()): string {
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days} days ago`;
   return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+/** a greeting for the local time of day */
+export function greeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+export interface StreakView {
+  current: number;
+  longest: number;
+  /** e.g. "3 Days" */
+  value: string;
+  /** what the number means right now */
+  note: string;
+}
+
+/**
+ * The streak as the server computed it (UTC days with recorded activity). A missed day ends the current streak but
+ * not the record of the best one, which is shown so a reset never looks like lost history.
+ */
+export function streakView(progress: Pick<UserProgressData, 'streakDays' | 'longestStreakDays'>): StreakView {
+  const current = Math.max(0, progress.streakDays || 0);
+  const longest = Math.max(current, progress.longestStreakDays ?? 0);
+  const value = `${current} ${current === 1 ? 'Day' : 'Days'}`;
+  if (current > 0) return { current, longest, value, note: `Best: ${count(longest, 'day', 'days')}` };
+  if (longest > 0) return { current, longest, value, note: `Best: ${count(longest, 'day', 'days')} · any activity today starts a new streak` };
+  return { current, longest, value, note: 'Step through an algorithm or submit a solution to start one' };
+}
+
+export interface ChecklistSummary {
+  goals: DailyGoalStatus[];
+  done: number;
+  total: number;
+  percent: number;
+  allDone: boolean;
+  /** "2 of 4 goals complete" */
+  text: string;
+}
+
+export function checklistSummary(today: TodayProgress): ChecklistSummary {
+  const goals = dailyGoalStatuses(today.verified, today.manualCompleted);
+  const done = goals.filter(g => g.done).length;
+  return {
+    goals,
+    done,
+    total: goals.length,
+    percent: goals.length ? Math.round((done / goals.length) * 100) : 0,
+    allDone: goals.length > 0 && done === goals.length,
+    text: `${done} of ${goals.length} goals complete`,
+  };
+}
+
+/** when the checklist resets, in the viewer's own time: "Resets at 00:00 UTC (5:30 am your time)" */
+export function resetText(resetsAt: string, timeZone?: string): string {
+  const t = new Date(resetsAt);
+  if (Number.isNaN(t.getTime())) return 'Resets daily at 00:00 UTC';
+  const local = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', ...(timeZone ? { timeZone } : {}) }).format(t);
+  return `Resets at 00:00 UTC (${local} your time)`;
+}
+
+export interface RecentEventView {
+  id: string;
+  kind: RecentActivityEvent['kind'];
+  title: string;
+  typeLabel: string;
+  statusLabel: string;
+  tone: VerdictTone;
+  at: string;
+  /** a date and time in the viewer's time zone */
+  when: string;
+  /** where the event can be continued: a practice problem, or an algorithm to open in the visualizer */
+  link: { to: string; algorithmId?: AlgorithmId } | null;
+}
+
+export function recentEventView(e: RecentActivityEvent, timeZone?: string): RecentEventView {
+  const t = new Date(e.at);
+  const when = Number.isNaN(t.getTime())
+    ? ''
+    : new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', ...(timeZone ? { timeZone } : {}) }).format(t);
+  if (e.kind === 'submission') {
+    const v = verdictOf(e.status);
+    return {
+      id: e.id,
+      kind: e.kind,
+      title: e.title,
+      typeLabel: 'Practice submission',
+      statusLabel: v.label,
+      tone: v.tone,
+      at: e.at,
+      when,
+      link: e.targetId ? { to: `/practice?problem=${encodeURIComponent(e.targetId)}` } : null,
+    };
+  }
+  const def = getAlgorithmDefinition(e.targetId as AlgorithmId);
+  return {
+    id: e.id,
+    kind: e.kind,
+    title: def?.name ?? e.title,
+    typeLabel: 'Visualizer walkthrough',
+    // only milestone steps are recorded, so the step number would understate how far the learner went: none is shown
+    statusLabel: 'Stepped through',
+    tone: 'neutral',
+    at: e.at,
+    // a date-only record (no time kept) shows only its date
+    when,
+    link: def ? { to: '/visualizer', algorithmId: def.id } : null,
+  };
 }

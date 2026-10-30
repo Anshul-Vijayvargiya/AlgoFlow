@@ -108,7 +108,8 @@ test.describe('Real backend — progress', () => {
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-stats')).toHaveAttribute('aria-busy', 'false');
     await expect(page.getByTestId('continue-learning')).toContainText('Bubble Sort');
-    await expect(page.getByTestId('dashboard-stats')).toContainText('0Algorithms Learned');
+    // the same "explored" count as the Progress page
+    await expect(page.locator('[data-stat="Algorithms Explored"]')).toContainText(`1 / ${IMPLEMENTED}Algorithms Explored`);
   });
 
   test("switching accounts in the same tab never shows the previous user's progress", async ({ page }, testInfo) => {

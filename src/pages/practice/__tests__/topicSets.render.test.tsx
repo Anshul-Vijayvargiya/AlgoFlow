@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import type { TopicSet } from '../topicSets';
 
 // The Practice page's topic learning sets in each state. Static rendering reads a store's initial state, so the
@@ -17,7 +18,7 @@ const store = vi.hoisted(() => ({
 vi.mock('../../../store/usePracticeStore', () => ({ usePracticeStore: () => store }));
 
 const { PracticePage } = await import('../../PracticePage');
-const render = () => renderToStaticMarkup(<PracticePage />);
+const render = () => renderToStaticMarkup(<MemoryRouter><PracticePage /></MemoryRouter>);
 
 const set = (topic: string, total: number, solved: number): TopicSet => ({ topic, total, solved, byDifficulty: { Easy: total, Medium: 0, Hard: 0 } });
 const LOADED = [set('Arrays', 2, 1), set('Trees', 1, 0)];

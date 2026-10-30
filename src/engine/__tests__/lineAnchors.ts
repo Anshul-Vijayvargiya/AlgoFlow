@@ -570,6 +570,18 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     write: /\bnums\[slow\] = nums\[fast\]/,
     return: /return slow \+ 1/,
   },
+  'maximum-subarray': {
+    'fn-entry': /\bmax_?[Ss]ub_?[Aa]rray\(/,
+    'init-sums': /\bcurrent_?[Ss]um = (nums\[0\], maxSum = nums\[0\]|max_sum = nums\[0\])/,
+    'init-bounds': /\bstart = 0, bestStart = 0, bestEnd = 0|start = best_start = best_end = 0/,
+    loop: /for \(int i = 1; i < |for i in range\(1, len\(nums\)\):/,
+    compare: /if \(?current_?[Ss]um \+ nums\[i\] < nums\[i\]/,
+    'start-new': /^\s*current_?[Ss]um = nums\[i\];?\s*$/,
+    extend: /^\s*current_?[Ss]um \+= nums\[i\];?\s*$/,
+    'check-max': /if \(?current_?[Ss]um > max_?[Ss]um/,
+    'update-max': /^\s*max_?[Ss]um = current_?[Ss]um;?\s*$/,
+    return: /return .*max_?[Ss]um, best_?[Ss]tart, best_?[Ee]nd/,
+  },
 };
 
 /**

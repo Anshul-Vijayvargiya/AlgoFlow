@@ -21,7 +21,15 @@ describe('continue learning', () => {
       track('quick-sort', 'in_progress', '2026-10-20T09:00:00Z'),
       track('merge-sort', 'completed', '2026-10-20T12:00:00Z'),
     ];
-    expect(continueLearning(tracks)).toEqual({ id: 'quick-sort', name: 'Quick Sort', lastActivityAt: '2026-10-20T09:00:00Z' });
+    // with its category; no step count (only milestone steps are recorded, so it would understate the progress)
+    // Quick Sort is milestone m8 of the sorting path; Bubble Sort (in progress) and Merge Sort (completed) are explored there
+    expect(continueLearning(tracks)).toEqual({
+      id: 'quick-sort',
+      name: 'Quick Sort',
+      categoryLabel: 'SORTING',
+      lastActivityAt: '2026-10-20T09:00:00Z',
+      path: { title: 'Track 2: Core Sorting Algorithms', level: 'Intermediate', estimatedMinutes: 35, explored: 3, available: 5 },
+    });
   });
 
   it('is nothing when no algorithm is in progress, or only unimplemented ones are', () => {

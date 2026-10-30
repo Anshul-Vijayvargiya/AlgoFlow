@@ -89,13 +89,13 @@ test.describe('Progress', () => {
     await expect.poll(() => todaysSteps(page)).toEqual([2]);
 
     await openProgress(page);
-    const learned = await page.getByRole('progressbar', { name: 'Algorithms learned' }).getAttribute('aria-valuenow');
-    const percentText = (await page.getByTestId('learned-percent').textContent())!.match(/^\s*(\d+)%/)![1];
+    const streak = (await page.getByTestId('stat-streak').textContent())!.match(/(\d+) Days?/)![1];
 
+    // the Dashboard shows the same streak, and the algorithms explored from the same totals (1 stepped through)
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-stats')).toHaveAttribute('aria-busy', 'false');
-    await expect(page.getByTestId('dashboard-stats')).toContainText(`${learned}Algorithms Learned`);
-    await expect(page.getByTestId('dashboard-stats')).toContainText(`${percentText}%Learning Progress`);
+    await expect(page.locator('[data-stat="Current Streak"]')).toContainText(`${streak} Day`);
+    await expect(page.locator('[data-stat="Algorithms Explored"]')).toContainText(/^1 \/ \d+Algorithms Explored/);
     // the algorithm stepped through is the one to continue
     await expect(page.getByTestId('continue-learning')).toContainText('Bubble Sort');
   });
