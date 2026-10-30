@@ -86,7 +86,7 @@ jobs:
     services:
       # a disposable database for this job only (see server/e2e/testDatabase.ts for what the suite accepts)
       mongo:
-        image: mongo:8
+        image: mongo:7.0
         ports:
           - 27999:27017
     env:
