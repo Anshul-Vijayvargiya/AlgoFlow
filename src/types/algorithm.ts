@@ -78,7 +78,8 @@ export type AlgorithmId =
   | 'tree-level-order'
   | 'remove-duplicates-sorted'
   | 'maximum-subarray'
-  | 'three-sum';
+  | 'three-sum'
+  | 'four-sum';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
