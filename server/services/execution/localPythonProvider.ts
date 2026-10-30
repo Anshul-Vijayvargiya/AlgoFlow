@@ -134,7 +134,19 @@ def _make_hook():
         "telnetlib.Telnet.open", "sqlite3.connect", "shutil.copyfile", "shutil.copymode", "shutil.copystat",
         "shutil.copytree", "shutil.move", "shutil.rmtree", "shutil.make_archive", "shutil.unpack_archive"))
     denied_prefixes = ("os.exec", "os.spawn", "socket.", "ctypes.", "_winapi.", "winreg.", "msvcrt.", "_posixsubprocess.")
-    denied_imports = frozenset(("ctypes", "_ctypes", "_winapi", "winreg", "msvcrt", "_posixsubprocess", "_overlapped", "mmap"))
+    # only the blocked modules this Python has: a missing one (e.g. _winapi on Linux) fails as usual with
+    # ModuleNotFoundError, so the standard library's optional imports (try: import _winapi / except ImportError, as in
+    # Python 3.14's pathlib) keep working. A program cannot add a module (it cannot write files), so nothing opens up.
+    import importlib.util
+    def installed(name):
+        if name in sys.modules:
+            return True
+        try:
+            return importlib.util.find_spec(name) is not None
+        except Exception:
+            return True  # unknown: keep it blocked
+    denied_imports = frozenset(n for n in ("ctypes", "_ctypes", "_winapi", "winreg", "msvcrt", "_posixsubprocess", "_overlapped", "mmap")
+                               if installed(n))
     deny = PermissionError
 
     def readable(path):
