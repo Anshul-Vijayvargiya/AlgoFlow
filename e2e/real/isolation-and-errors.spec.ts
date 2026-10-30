@@ -1,4 +1,9 @@
 import { test, expect, account, registerViaApi, signInViaUi, tracksOf, API_ORIGIN } from './fixtures';
+import { isImplementedAlgorithm } from '../../src/data/algorithmCatalog';
+import { LEARNING_TRACKS } from '../../src/pages/learning/learningPaths';
+
+/** roadmap milestones whose algorithm can be visualized: shown as not started on a new account (the rest: coming soon) */
+const VISUALIZABLE_MILESTONES = LEARNING_TRACKS.flatMap(t => t.milestones).filter(m => isImplementedAlgorithm(m.algorithmId)).length;
 
 /**
  * Ownership and error handling against the real API and database. One test injects a network failure (clearly
@@ -118,7 +123,7 @@ test.describe('Real backend — errors', () => {
     await alert.getByRole('button', { name: 'Retry' }).click();
     await real;
     await expect(alert).toHaveCount(0);
-    await expect(page.locator('[data-status="not-started"]')).toHaveCount(9);
+    await expect(page.locator('[data-status="not-started"]')).toHaveCount(VISUALIZABLE_MILESTONES);
   });
   });
 
