@@ -80,7 +80,8 @@ export type AlgorithmId =
   | 'maximum-subarray'
   | 'three-sum'
   | 'four-sum'
-  | 'print-all-pairs';
+  | 'print-all-pairs'
+  | 'print-subarrays';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")

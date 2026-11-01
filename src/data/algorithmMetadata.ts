@@ -203,6 +203,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Two nested loops print each pair i < j once, in order.',
     implemented: true,
   },
+  {
+    id: 'print-subarrays',
+    name: 'Print Subarrays',
+    category: 'ARRAYS',
+    subtitle: 'Every contiguous start..end, printed value by value, in order.',
+    implemented: true,
+  },
   // listed with the other arrays (the merge had placed it after STRINGS, out of the sidebar's order)
   {
     id: 'remove-duplicates-sorted',

@@ -91,6 +91,12 @@ test.describe('every algorithm renders its default trace faithfully (real UI, no
         expect(final.outcome?.kind).toBe('complete');
         expect(final.outcome?.text).toMatch(new RegExp(`^${(n * (n - 1)) / 2} pairs printed`));
         expect(final.bars.every(b => b.role === 'default')).toBe(true);
+      } else if (id === 'print-subarrays') {
+        // it prints subarrays, it does not search: the run completes with the subarray count in words, no bar marked found
+        const n = d.defaultInput.length;
+        expect(final.outcome?.kind).toBe('complete');
+        expect(final.outcome?.text).toMatch(new RegExp(`^${(n * (n + 1)) / 2} subarrays printed`));
+        expect(final.bars.every(b => b.role === 'default' && b.inRange)).toBe(true);
       } else {
         expect(final.outcome?.kind).toBe('found');
         expect(final.bars.filter(b => b.role === 'found').length).toBeGreaterThan(0);

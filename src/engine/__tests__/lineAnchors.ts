@@ -655,6 +655,23 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     // nothing is returned: the void functions (and Python's def) end on their signature
     'fn-exit': /void printAllPairs\(|def print_all_pairs\(/,
   },
+  'print-subarrays': {
+    // n = arr.size() / arr.length / len(arr); in C n is a parameter of the signature
+    'init-n': /\bn = (arr\.size\(\)|arr\.length|len\(arr\))|printSubarrays\(const int arr\[\], int n\)/,
+    'outer-loop': /for \(int start = 0; start < n; start\+\+\)|for start in range\(n\):/,
+    'inc-start': /for \(int start = 0; start < n; start\+\+\)|for start in range\(n\):/,
+    'init-end': /for \(int end = start; end < n; end\+\+\)|for end in range\(start, n\):/,
+    'inner-loop': /for \(int end = start; end < n; end\+\+\)|for end in range\(start, n\):/,
+    'inc-end': /for \(int end = start; end < n; end\+\+\)|for end in range\(start, n\):/,
+    open: /(printf|cout <<|System\.out\.print|print)\(?\s*"\["/,
+    'init-k': /for \(int k = start; k <= end; k\+\+\)|for k in range\(start, end \+ 1\):/,
+    'k-loop': /for \(int k = start; k <= end; k\+\+\)|for k in range\(start, end \+ 1\):/,
+    'inc-k': /for \(int k = start; k <= end; k\+\+\)|for k in range\(start, end \+ 1\):/,
+    'print-elem': /k > start.*arr\[k\]/,
+    close: /(printf|cout <<|System\.out\.println|print)\(?\s*"\]/,
+    // nothing is returned: the void functions (and Python's def) end on their signature
+    'fn-exit': /void printSubarrays\(|def print_subarrays\(/,
+  },
 };
 
 /**
