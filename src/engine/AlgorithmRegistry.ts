@@ -70,6 +70,7 @@ import { maximumSubarrayDefinition } from './algorithms/maximumSubarray';
 import { threeSumDefinition } from './algorithms/threeSum';
 import { fourSumDefinition } from './algorithms/fourSum';
 import { printAllPairsDefinition } from './algorithms/printAllPairs';
+import { printSubarraysDefinition } from './algorithms/printSubarrays';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ register(maximumSubarrayDefinition);
 register(threeSumDefinition);
 register(fourSumDefinition);
 register(printAllPairsDefinition);
+register(printSubarraysDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
