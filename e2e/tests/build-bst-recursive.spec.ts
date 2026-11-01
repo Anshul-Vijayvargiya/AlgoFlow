@@ -131,15 +131,17 @@ test.describe('Build a Binary Search Tree (Recursive)', () => {
     await expect(page.getByTestId('tree-result')).toHaveText('BST of 4 nodes; inorder: [-7, -4, 0, 6]; 2 duplicates skipped');
   });
 
-  test('16 sorted values: the 16-call stack is listed in full and the running call stays in view', async ({ app, page }) => {
+  test('a 9-call stack (9 sorted values) is listed in full and the running call stays in view', async ({ app, page }) => {
+    // 9 calls are more than the list shows at once (about 7), and the deepest is 242 steps in (16 values take 767, too
+    // many clicks for the test time in slower browsers); a 16-call stack is checked by the unit and render tests
     await app.selectAlgorithm(ID);
-    const values = Array.from({ length: 16 }, (_, k) => k + 1);
+    const values = Array.from({ length: 9 }, (_, k) => k + 1);
     await enter(page, values);
     const steps = engine(values);
-    const deepest = steps.findIndex(s => s.tree!.build!.calls!.length === 16);
+    const deepest = steps.findIndex(s => s.tree!.build!.calls!.length === 9);
     await app.advance(deepest);
-    await expect(page.locator('[data-frame]')).toHaveCount(16);
-    // the 16-level tree is tall, so bring the call stack on screen; within it, nothing else is scrolled by hand
+    await expect(page.locator('[data-frame]')).toHaveCount(9);
+    // the deep tree is tall, so bring the call stack on screen; within it, nothing else is scrolled by hand
     const region = page.getByRole('region', { name: 'Call stack' });
     await region.evaluate(el => el.parentElement!.scrollIntoView({ block: 'start' }));
     // the list is taller than its region, and the region starts at its end: the running (innermost) call

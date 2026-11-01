@@ -128,16 +128,21 @@ test.describe('Build a Binary Search Tree', () => {
     expect(observed.at(-1)!.result).toBe('BST of 4 nodes; inorder: [-3, 0, 5, 8]; 2 duplicates skipped');
   });
 
-  test('a sorted input of 16 values builds a 16-level chain that stays within the tree view', async ({ app, page }) => {
+  test('a sorted input builds a deep chain (8 levels) drawn in compact rows within the tree view', async ({ app, page }) => {
+    // 8 levels is past the compact-row threshold (6) and takes 170 steps to reach the end (16 values take 594, too many
+    // clicks for the test time in slower browsers); the 16-level size itself is checked by the render unit test
     await app.selectAlgorithm(ID);
-    const values = Array.from({ length: 16 }, (_, k) => k + 1);
+    const values = Array.from({ length: 8 }, (_, k) => k + 1);
     await enter(page, values);
     await app.goToLastStep();
-    await expect(page.locator('[data-node-id]')).toHaveCount(16);
-    const svg = await page.getByTestId('tree-svg').boundingBox();
-    // compact rows: 16 levels in 788 px rather than 16 × 66
-    expect(svg!.height).toBe(788);
-    await expect(page.getByTestId('tree-result')).toHaveText(`BST of 16 nodes; inorder: [${values.join(', ')}]`);
+    await expect(page.locator('[data-node-id]')).toHaveCount(8);
+    const svg = (await page.getByTestId('tree-svg').boundingBox())!;
+    // compact rows: 8 levels × 46 px plus padding, rather than 8 × 66
+    expect(svg.height).toBe(8 * 46 + 52);
+    const view = (await page.getByTestId('tree-visualizer').boundingBox())!;
+    expect(svg.x).toBeGreaterThanOrEqual(view.x);
+    expect(svg.x + svg.width).toBeLessThanOrEqual(view.x + view.width);
+    await expect(page.getByTestId('tree-result')).toHaveText(`BST of 8 nodes; inorder: [${values.join(', ')}]`);
   });
 
   test('an empty input completes with the empty tree', async ({ app, page }) => {
