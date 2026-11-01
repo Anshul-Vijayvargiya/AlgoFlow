@@ -643,6 +643,18 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'move-right': /^\s*right(--;| -= 1)$/,
     return: /^\s*return (count|result);?$/,
   },
+  'print-all-pairs': {
+    // n = arr.size() / arr.length / len(arr); in C n is a parameter of the signature
+    'init-n': /\bn = (arr\.size\(\)|arr\.length|len\(arr\))|printAllPairs\(const int arr\[\], int n\)/,
+    'outer-loop': /for \(int i = 0; i < n; i\+\+\)|for i in range\(n\):/,
+    'inc-i': /for \(int i = 0; i < n; i\+\+\)|for i in range\(n\):/,
+    'init-j': /for \(int j = i \+ 1; j < n; j\+\+\)|for j in range\(i \+ 1, n\):/,
+    'inner-loop': /for \(int j = i \+ 1; j < n; j\+\+\)|for j in range\(i \+ 1, n\):/,
+    'inc-j': /for \(int j = i \+ 1; j < n; j\+\+\)|for j in range\(i \+ 1, n\):/,
+    print: /(printf|cout|System\.out\.println|print)\b.*arr\[i\].*arr\[j\]/,
+    // nothing is returned: the void functions (and Python's def) end on their signature
+    'fn-exit': /void printAllPairs\(|def print_all_pairs\(/,
+  },
 };
 
 /**

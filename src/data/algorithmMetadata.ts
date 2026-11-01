@@ -196,6 +196,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Sort, fix two values, two pointers find the other two.',
     implemented: true,
   },
+  {
+    id: 'print-all-pairs',
+    name: 'Print All Pairs in an Array',
+    category: 'ARRAYS',
+    subtitle: 'Two nested loops print each pair i < j once, in order.',
+    implemented: true,
+  },
   // listed with the other arrays (the merge had placed it after STRINGS, out of the sidebar's order)
   {
     id: 'remove-duplicates-sorted',

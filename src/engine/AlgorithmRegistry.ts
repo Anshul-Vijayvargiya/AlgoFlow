@@ -69,6 +69,7 @@ import { removeDuplicatesSortedDefinition } from './algorithms/removeDuplicatesS
 import { maximumSubarrayDefinition } from './algorithms/maximumSubarray';
 import { threeSumDefinition } from './algorithms/threeSum';
 import { fourSumDefinition } from './algorithms/fourSum';
+import { printAllPairsDefinition } from './algorithms/printAllPairs';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -129,6 +130,7 @@ register(removeDuplicatesSortedDefinition);
 register(maximumSubarrayDefinition);
 register(threeSumDefinition);
 register(fourSumDefinition);
+register(printAllPairsDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
