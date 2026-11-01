@@ -232,6 +232,10 @@ export class MockApiClient implements ApiClient {
     async logout(): Promise<void> {
       localStorage.removeItem('algoflow_user');
     },
+    // the mock has one session per browser: the same as logout
+    async logoutAll(): Promise<void> {
+      localStorage.removeItem('algoflow_user');
+    },
     async getCurrentUser(): Promise<UserProfile | null> {
       const saved = localStorage.getItem('algoflow_user');
       if (saved) {

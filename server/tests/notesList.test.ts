@@ -17,7 +17,7 @@ vi.mock('../services/sessionService', () => import('./helpers/sessionStub'));
 
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const list = (qs = '', id = USER) => request(app).get(`/api/notes${qs}`).set('Cookie', [`algoflow_token=${tokenFor(id, 'USER')}`]);
+const list = (qs = '', id = USER) => request(app).get(`/api/notes${qs}`).set('Authorization', `Bearer ${tokenFor(id, 'USER')}`);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -100,7 +100,7 @@ describe('GET /api/notes — search and tags across the whole set', () => {
 describe('GET /api/notes/tags', () => {
   it("every tag the user has used, sorted, from the user's notes only", async () => {
     Note.distinct.mockResolvedValue(['Trees', 'Arrays', '', 'Graphs']);
-    const res = await request(app).get('/api/notes/tags').set('Cookie', [`algoflow_token=${tokenFor(OTHER, 'USER')}`]);
+    const res = await request(app).get('/api/notes/tags').set('Authorization', `Bearer ${tokenFor(OTHER, 'USER')}`);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ tags: ['Arrays', 'Graphs', 'Trees'] });
     expect(Note.distinct).toHaveBeenCalledWith('tags', { userId: OTHER });
@@ -108,7 +108,7 @@ describe('GET /api/notes/tags', () => {
 
   it('no notes: no tags', async () => {
     Note.distinct.mockResolvedValue([]);
-    const res = await request(app).get('/api/notes/tags').set('Cookie', [`algoflow_token=${tokenFor(USER, 'USER')}`]);
+    const res = await request(app).get('/api/notes/tags').set('Authorization', `Bearer ${tokenFor(USER, 'USER')}`);
     expect(res.body).toEqual({ tags: [] });
   });
 });

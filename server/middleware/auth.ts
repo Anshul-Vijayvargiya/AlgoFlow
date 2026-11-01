@@ -1,24 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../services/authService';
+import { verifyAccessToken } from '../services/authService';
 import { resolveSession, type SessionPrincipal } from '../services/sessionService';
-import { AUTH_COOKIE_NAME, authCookieOptions } from '../config/authCookie';
 import type { UserRole } from '../models/User';
 
 export interface AuthRequest extends Request {
   user?: SessionPrincipal;
 }
 
-export function extractToken(req: Request): string | undefined {
-  if (req.cookies?.[AUTH_COOKIE_NAME]) {
-    return req.cookies[AUTH_COOKIE_NAME];
-  }
-  if (req.headers.authorization?.startsWith('Bearer ')) {
-    return req.headers.authorization.split(' ')[1];
+/**
+ * The access token, from the Authorization header only. It is never read from a cookie, the URL or the body: the
+ * browser keeps it in memory, and the only auth cookie (the refresh token) is scoped to /api/auth and is not a JWT.
+ */
+export function extractAccessToken(req: Request): string | undefined {
+  const header = req.headers.authorization;
+  if (typeof header === 'string' && header.startsWith('Bearer ')) {
+    const token = header.slice('Bearer '.length).trim();
+    return token || undefined;
   }
   return undefined;
 }
 
 const REJECTIONS = {
+  // the client refreshes on this one, then retries the request once
+  expired: { code: 'ACCESS_TOKEN_EXPIRED', error: 'Your session needs to be renewed.' },
   invalid: { code: 'SESSION_INVALID', error: 'Invalid or expired authentication session.' },
   unknown_user: { code: 'SESSION_INVALID', error: 'Invalid or expired authentication session.' },
   revoked: { code: 'SESSION_REVOKED', error: 'Your session has ended. Please log in again.' },
@@ -26,27 +30,26 @@ const REJECTIONS = {
 } as const;
 
 function reject(res: Response, reason: keyof typeof REJECTIONS): void {
-  // 401 (not 403) for suspension too: the session itself is no longer valid, and the client signs out on 401.
-  res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions());
+  // 401 (not 403) for suspension too: the session itself is no longer valid
   res.status(401).json(REJECTIONS[reason]);
 }
 
-/** Verifies the token AND checks the user's current status, role and token version in the database. */
+/** Verifies the access token AND checks the user's status, role and token version and the session in the database. */
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-  const token = extractToken(req);
+  const token = extractAccessToken(req);
   if (!token) {
-    res.status(401).json({ error: 'Authentication required. Please log in.' });
+    res.status(401).json({ code: 'AUTH_REQUIRED', error: 'Authentication required. Please log in.' });
     return;
   }
 
-  const claims = verifyToken(token);
-  if (!claims) {
-    reject(res, 'invalid');
+  const verified = verifyAccessToken(token);
+  if (!verified.ok) {
+    reject(res, verified.reason);
     return;
   }
 
   try {
-    const session = await resolveSession(claims);
+    const session = await resolveSession(verified.claims);
     if (!session.ok) {
       reject(res, session.reason);
       return;

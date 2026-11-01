@@ -21,8 +21,8 @@ vi.mock('../services/execution/quota', () => quota);
 vi.mock('../services/sessionService', () => import('./helpers/sessionStub'));
 
 const USER = '507f1f77bcf86cd799439011';
-const cookie = (id = USER) => [`algoflow_token=${tokenFor(id, 'USER')}`];
-const post = (body: unknown, id = USER) => request(app).post('/api/run/trace').set('Cookie', cookie(id)).send(body as object);
+const bearer = (id = USER) => `Bearer ${tokenFor(id, 'USER')}`;
+const post = (body: unknown, id = USER) => request(app).post('/api/run/trace').set('Authorization', bearer(id)).send(body as object);
 
 const sample = TRACE_SAMPLES.find(s => s.id === 'factorial')!;
 const valid = { language: 'python', source: sample.source, stdin: sample.stdin };
@@ -160,7 +160,7 @@ describe('POST /api/run/trace — a real provider', () => {
     const second = await post(valid);
     expect(second.status).toBe(429);
     expect(second.body.code).toBe('execution_in_progress');
-    const run = await request(app).post('/api/run').set('Cookie', cookie()).send({ language: 'python', source: 'print(1)', stdin: '' });
+    const run = await request(app).post('/api/run').set('Authorization', bearer()).send({ language: 'python', source: 'print(1)', stdin: '' });
     expect(run.status).toBe(429);
     release();
     expect((await first).body.status).toBe('traced');
@@ -191,7 +191,7 @@ describe('POST /api/run/trace — the fake provider (test mode)', () => {
 });
 
 describe('GET /api/run/languages — tracing', () => {
-  const get = () => request(app).get('/api/run/languages').set('Cookie', cookie());
+  const get = () => request(app).get('/api/run/languages').set('Authorization', bearer());
   it('a real provider traces Python for real; the fake one has recorded traces only; none without a provider', async () => {
     expect((await get()).body.tracing).toEqual({ languages: ['python'], mode: 'runtime', maxSteps: TRACE_LIMITS.maxSteps });
     state.provider = fake();
@@ -211,7 +211,7 @@ describe('a provider offering only Python (EXECUTION_PROVIDER=local)', () => {
   it('other languages are refused before anything is charged or run', async () => {
     state.provider = local();
     for (const language of ['cpp', 'c', 'java']) {
-      const run = await request(app).post('/api/run').set('Cookie', cookie()).send({ language, source: 'x', stdin: '' });
+      const run = await request(app).post('/api/run').set('Authorization', bearer()).send({ language, source: 'x', stdin: '' });
       expect(run.status, language).toBe(400);
       expect(run.body.code, language).toBe('language_unavailable');
     }
@@ -221,7 +221,7 @@ describe('a provider offering only Python (EXECUTION_PROVIDER=local)', () => {
 
   it('Python traces are real runs (runtime mode), charged like any run', async () => {
     state.provider = local();
-    const languages = await request(app).get('/api/run/languages').set('Cookie', cookie());
+    const languages = await request(app).get('/api/run/languages').set('Authorization', bearer());
     expect(languages.body).toMatchObject({ available: true, provider: 'local', languages: [{ id: 'python' }] });
     expect(languages.body.tracing).toEqual({ languages: ['python'], mode: 'runtime', maxSteps: TRACE_LIMITS.maxSteps });
     const res = await post(valid);

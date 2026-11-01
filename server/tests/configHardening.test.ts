@@ -161,6 +161,46 @@ describe('Environment validation fails closed', () => {
       const result = validateEnv(strictEnv(nodeEnv, { MONGODB_URI: undefined }));
       expect(fieldErrors(result, 'MONGODB_URI')[0]).toMatch(/explicitly set/i);
     });
+
+    it('caps the token lifetimes tighter than development does', () => {
+      expect(fieldErrors(validateEnv(strictEnv(nodeEnv, { ACCESS_TOKEN_TTL: '2h' })), 'ACCESS_TOKEN_TTL')[0]).toBe(`ACCESS_TOKEN_TTL must be between 1m and 1h in ${nodeEnv}.`);
+      expect(fieldErrors(validateEnv(strictEnv(nodeEnv, { REFRESH_TOKEN_TTL: '60d' })), 'REFRESH_TOKEN_TTL')[0]).toBe(`REFRESH_TOKEN_TTL must be between 1h and 30d in ${nodeEnv}.`);
+      expect(validateEnv(strictEnv(nodeEnv, { ACCESS_TOKEN_TTL: '10m', REFRESH_TOKEN_TTL: '14d' })).success).toBe(true);
+    });
+  });
+});
+
+describe('Token lifetimes (ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL)', () => {
+  it('defaults to 15 minutes and 7 days, in milliseconds', () => {
+    const data = validateEnv({ NODE_ENV: 'test' }).data!;
+    expect(data.ACCESS_TOKEN_TTL).toBe(15 * 60_000);
+    expect(data.REFRESH_TOKEN_TTL).toBe(7 * 24 * 3_600_000);
+    // an empty value counts as unset
+    expect(validateEnv({ NODE_ENV: 'test', ACCESS_TOKEN_TTL: '', REFRESH_TOKEN_TTL: '' }).data!.ACCESS_TOKEN_TTL).toBe(15 * 60_000);
+  });
+
+  it('parses s / m / h / d durations', () => {
+    const data = validateEnv({ NODE_ENV: 'test', ACCESS_TOKEN_TTL: '90s', REFRESH_TOKEN_TTL: '12h' }).data!;
+    expect(data.ACCESS_TOKEN_TTL).toBe(90_000);
+    expect(data.REFRESH_TOKEN_TTL).toBe(12 * 3_600_000);
+  });
+
+  it.each(['900', '15', '15 minutes', '1w', '-5m', '0m', 'abc'])('rejects the malformed lifetime %j (no unit is ever guessed)', value => {
+    const result = validateEnv({ NODE_ENV: 'test', ACCESS_TOKEN_TTL: value });
+    expect(result.success).toBe(false);
+    expect(fieldErrors(result, 'ACCESS_TOKEN_TTL')[0]).toMatch(/duration|between/i);
+  });
+
+  it('rejects lifetimes outside the bounds, even in development', () => {
+    expect(fieldErrors(validateEnv({ NODE_ENV: 'test', ACCESS_TOKEN_TTL: '30s' }), 'ACCESS_TOKEN_TTL')[0]).toMatch(/between/i);
+    expect(fieldErrors(validateEnv({ NODE_ENV: 'test', ACCESS_TOKEN_TTL: '2d' }), 'ACCESS_TOKEN_TTL')[0]).toMatch(/between/i);
+    expect(fieldErrors(validateEnv({ NODE_ENV: 'test', REFRESH_TOKEN_TTL: '30m' }), 'REFRESH_TOKEN_TTL')[0]).toMatch(/between/i);
+    expect(fieldErrors(validateEnv({ NODE_ENV: 'test', REFRESH_TOKEN_TTL: '91d' }), 'REFRESH_TOKEN_TTL')[0]).toMatch(/between/i);
+  });
+
+  it('requires the access token to expire before the refresh token', () => {
+    const result = validateEnv({ NODE_ENV: 'test', ACCESS_TOKEN_TTL: '1h', REFRESH_TOKEN_TTL: '1h' });
+    expect(fieldErrors(result, 'ACCESS_TOKEN_TTL')).toContain('ACCESS_TOKEN_TTL must be shorter than REFRESH_TOKEN_TTL.');
   });
 });
 
@@ -207,10 +247,13 @@ describe('Strict-mode runtime behaviour (staging)', () => {
     vi.resetModules();
   });
 
-  it('sets the auth cookie Secure in staging and production, not in development', async () => {
+  it('sets the refresh cookie Secure in staging and production, not in development', async () => {
     for (const [nodeEnv, isStrict] of [['staging', true], ['production', true], ['development', false]] as const) {
-      const { authCookieOptions } = await withEnv({ NODE_ENV: nodeEnv, isStrict }, () => import('../config/authCookie'));
-      expect(authCookieOptions()).toMatchObject({ httpOnly: true, sameSite: 'lax', secure: isStrict });
+      const { refreshCookieOptions } = await withEnv({ NODE_ENV: nodeEnv, isStrict }, () => import('../config/authCookie'));
+      // HttpOnly, SameSite=Lax, scoped to the auth endpoints, host-only (no Domain): exactly these attributes
+      expect(refreshCookieOptions()).toEqual({ httpOnly: true, sameSite: 'lax', secure: isStrict, path: '/api/auth' });
+      vi.doUnmock('../config/env');
+      vi.resetModules();
     }
   });
 

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, API_ORIGIN, api } from './fixtures';
 
 /**
  * Settings against the real API and database: the preferred language and the daily goal are saved on the account,
@@ -43,7 +43,7 @@ test.describe('Real backend — Settings', () => {
     await openSettings(page);
     await expect(languageButton(page, 'PYTHON')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByLabel(/Daily Learning Goal/)).toHaveValue('45');
-    const me = await (await page.request.get(`${API_ORIGIN}/api/auth/me`)).json();
+    const me = await (await api(page).get(`${API_ORIGIN}/api/auth/me`)).json();
     expect(me.user.preferences).toMatchObject({ preferredLanguage: 'python', dailyGoalMinutes: 45 });
   });
 
@@ -51,7 +51,7 @@ test.describe('Real backend — Settings', () => {
     const a = account(testInfo, 'A');
     const b = account(testInfo, 'B');
     await registerViaApi(page.request, a);
-    expect((await page.request.patch(`${API_ORIGIN}/api/users/profile`, { data: { preferences: { preferredLanguage: 'java', dailyGoalMinutes: 90 } } })).status()).toBe(200);
+    expect((await api(page).patch(`${API_ORIGIN}/api/users/profile`, { data: { preferences: { preferredLanguage: 'java', dailyGoalMinutes: 90 } } })).status()).toBe(200);
     const setup = await browser.newContext();
     await registerViaApi(setup.request, b);
     await setup.close();
@@ -76,11 +76,11 @@ test.describe('Real backend — Settings', () => {
   test('invalid values are refused by the server and change nothing', async ({ page }, testInfo) => {
     await registerViaApi(page.request, account(testInfo, 'A'));
     for (const preferences of [{ dailyGoalMinutes: 30.5 }, { dailyGoalMinutes: 4 }, { dailyGoalMinutes: 999 }, { preferredLanguage: 'rust' }]) {
-      expect((await page.request.patch(`${API_ORIGIN}/api/users/profile`, { data: { preferences } })).status(), JSON.stringify(preferences)).toBe(400);
+      expect((await api(page).patch(`${API_ORIGIN}/api/users/profile`, { data: { preferences } })).status(), JSON.stringify(preferences)).toBe(400);
     }
-    const me = await (await page.request.get(`${API_ORIGIN}/api/auth/me`)).json();
+    const me = await (await api(page).get(`${API_ORIGIN}/api/auth/me`)).json();
     expect(me.user.preferences).toMatchObject({ preferredLanguage: 'cpp', dailyGoalMinutes: 30 });
     await page.context().clearCookies();
-    expect((await page.request.patch(`${API_ORIGIN}/api/users/profile`, { data: { preferences: { dailyGoalMinutes: 60 } } })).status()).toBe(401);
+    expect((await api(page).patch(`${API_ORIGIN}/api/users/profile`, { data: { preferences: { dailyGoalMinutes: 60 } } })).status()).toBe(401);
   });
 });

@@ -22,8 +22,8 @@ vi.mock('../services/sessionService', () => import('./helpers/sessionStub'));
 const FAKE_KEY = 'fake-test-key-NOT-A-SECRET-0000';
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const cookie = (id = USER) => [`algoflow_token=${tokenFor(id, 'USER')}`];
-const ask = (body: object, id = USER) => request(app).post('/api/tutor/messages').set('Cookie', cookie(id)).send(body);
+const bearer = (id = USER) => `Bearer ${tokenFor(id, 'USER')}`;
+const ask = (body: object, id = USER) => request(app).post('/api/tutor/messages').set('Authorization', bearer(id)).send(body);
 
 useVisualizerStore.getState().setAlgorithm('bubble-sort');
 const bubble = useVisualizerStore.getState();
@@ -59,7 +59,7 @@ describe('tutor — access', () => {
 
   it('disabled (no provider): status says unavailable; questions get 503 and no answer', async () => {
     m.state.provider = null;
-    expect((await request(app).get('/api/tutor/status').set('Cookie', cookie())).body).toMatchObject({ available: false, provider: null, model: null });
+    expect((await request(app).get('/api/tutor/status').set('Authorization', bearer())).body).toMatchObject({ available: false, provider: null, model: null });
     const res = await ask(valid);
     expect(res.status).toBe(503);
     expect(res.body).toEqual({ error: 'The AI Tutor is not available on this server.', code: 'tutor_disabled' });
@@ -67,7 +67,7 @@ describe('tutor — access', () => {
   });
 
   it('status: available, the model name (never a key), limits and usage', async () => {
-    const res = await request(app).get('/api/tutor/status').set('Cookie', cookie());
+    const res = await request(app).get('/api/tutor/status').set('Authorization', bearer());
     expect(res.body).toEqual({ available: true, provider: 'gemini', model: 'gemini-3.5-flash-lite', limits: { questionMaxChars: 500, dailyPerUser: env.TUTOR_DAILY_LIMIT_PER_USER }, usedToday: 4 });
     expect(m.quota.quotaUsed).toHaveBeenCalledWith(`tutor:user:${USER}`, '2026-10-21');
   });

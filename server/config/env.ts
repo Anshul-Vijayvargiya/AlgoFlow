@@ -57,6 +57,35 @@ export function localProviderProblem(nodeEnv: string | undefined, host: string |
 }
 const MIN_SECRET_LENGTH = 32;
 
+const DURATION_UNITS_MS = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 } as const;
+/** "90s", "15m", "12h", "7d" in milliseconds; null for anything else (no bare numbers: the unit is never guessed) */
+export function parseDuration(value: string): number | null {
+  const m = /^(\d{1,6})(s|m|h|d)$/.exec(value.trim());
+  if (!m) return null;
+  const ms = Number(m[1]) * DURATION_UNITS_MS[m[2] as keyof typeof DURATION_UNITS_MS];
+  return ms > 0 ? ms : null;
+}
+/** a token lifetime: the default when unset or empty, else a valid duration (in ms after parsing) */
+const lifetime = (fallback: string, name: string) =>
+  z.preprocess(
+    v => (v === undefined || v === '' ? fallback : v),
+    z
+      .string()
+      .refine(v => parseDuration(v) !== null, `${name} must be a duration such as 15m, 12h or 7d.`)
+      .transform(v => parseDuration(v)!)
+  );
+/** bounds for the token lifetimes (always), and tighter ones in staging / production */
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+/** 3600000 -> "1h", in the same notation the variables use */
+const formatDuration = (ms: number): string =>
+  ms % DAY === 0 ? `${ms / DAY}d` : ms % HOUR === 0 ? `${ms / HOUR}h` : `${ms / MINUTE}m`;
+export const TOKEN_LIFETIME_BOUNDS = {
+  access: { min: MINUTE, max: DAY, strictMax: HOUR },
+  refresh: { min: HOUR, max: 90 * DAY, strictMax: 30 * DAY },
+} as const;
+
 // An empty value (`JWT_SECRET=`) counts as unset.
 const optionalString = z.preprocess(v => (v === '' ? undefined : v), z.string().optional());
 const positiveInt = (fallback: number) => z.coerce.number().int().positive().default(fallback);
@@ -74,6 +103,9 @@ export const envSchema = z
     MONGODB_URI: optionalString,
     JWT_SECRET: optionalString,
     COOKIE_SECRET: optionalString,
+    // the short-lived access JWT (kept in the browser's memory) and the rotating refresh token (HttpOnly cookie), in ms
+    ACCESS_TOKEN_TTL: lifetime('15m', 'ACCESS_TOKEN_TTL'),
+    REFRESH_TOKEN_TTL: lifetime('7d', 'REFRESH_TOKEN_TTL'),
     TRUST_PROXY: z.string().default('false'),
     RATE_LIMIT_WINDOW_MS: positiveInt(900000),
     RATE_LIMIT_MAX_AUTH: positiveInt(10),
@@ -137,6 +169,18 @@ export const envSchema = z
         issue(key, `In ${data.NODE_ENV}, ${key} must be at least ${MIN_SECRET_LENGTH} characters long.`);
       }
     }
+
+    // Token lifetimes: the access token must stay short (it cannot be recalled before it expires, except by the
+    // per-request session check) and shorter than the refresh token that renews it.
+    const ttl = { access: data.ACCESS_TOKEN_TTL, refresh: data.REFRESH_TOKEN_TTL };
+    for (const [kind, key] of [['access', 'ACCESS_TOKEN_TTL'], ['refresh', 'REFRESH_TOKEN_TTL']] as const) {
+      const { min, max, strictMax } = TOKEN_LIFETIME_BOUNDS[kind];
+      const limit = strict ? strictMax : max;
+      if (ttl[kind] < min || ttl[kind] > limit) {
+        issue(key, `${key} must be between ${formatDuration(min)} and ${formatDuration(limit)}${strict ? ` in ${data.NODE_ENV}` : ''}.`);
+      }
+    }
+    if (ttl.access >= ttl.refresh) issue('ACCESS_TOKEN_TTL', 'ACCESS_TOKEN_TTL must be shorter than REFRESH_TOKEN_TTL.');
 
     if (data.EXECUTION_PROVIDER === 'judge0') {
       if (!data.JUDGE0_API_URL) issue('JUDGE0_API_URL', 'JUDGE0_API_URL must be set when EXECUTION_PROVIDER=judge0.');

@@ -24,8 +24,8 @@ vi.mock('../services/sessionService', () => import('./helpers/sessionStub'));
 
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const cookie = (id = USER) => [`algoflow_token=${tokenFor(id, 'USER')}`];
-const submit = (body: object, id = USER, problem = 'p1') => request(app).post(`/api/problems/${problem}/submit`).set('Cookie', cookie(id)).send(body);
+const bearer = (id = USER) => `Bearer ${tokenFor(id, 'USER')}`;
+const submit = (body: object, id = USER, problem = 'p1') => request(app).post(`/api/problems/${problem}/submit`).set('Authorization', bearer(id)).send(body);
 const valid = { language: 'python', code: 'print(3)' };
 
 const judged = {
@@ -234,7 +234,7 @@ describe('submit — quotas, limits and duplicates', () => {
       m.state.provider = provider(ok('', { status: 'compile_error', compileOutput: 'e' }));
       expect((await submit(valid)).status).toBe(201);
     }
-    expect((await request(app).post('/api/run').set('Cookie', cookie()).send({ language: 'c', source: 'x', stdin: '' })).status).toBe(429);
+    expect((await request(app).post('/api/run').set('Authorization', bearer()).send({ language: 'c', source: 'x', stdin: '' })).status).toBe(429);
   });
 });
 
@@ -260,7 +260,7 @@ describe('submission history', () => {
       { _id: new mongoose.Types.ObjectId(), problemId: 'p1', language: 'cpp', code: 'a', status: 'WRONG_ANSWER', passed: false, runtimeMs: 3, memoryMb: 1, message: 'm', testsPassed: 2, testsTotal: 5, failedTestNumber: 3, failedTestHidden: true, createdAt: new Date() },
       { _id: new mongoose.Types.ObjectId(), problemId: 'p1', language: 'c', code: 'b', status: 'SUBMITTED', passed: false, runtimeMs: 0, memoryMb: 0, message: 'old', createdAt: new Date() },
     ]));
-    const res = await request(app).get('/api/problems/p1/submissions').set('Cookie', cookie(OTHER));
+    const res = await request(app).get('/api/problems/p1/submissions').set('Authorization', bearer(OTHER));
     expect(res.status).toBe(200);
     expect(String(m.Submission.find.mock.calls[0][0].userId)).toBe(OTHER);
     expect(res.body.submissions[0]).toMatchObject({ status: 'WRONG_ANSWER', testsPassed: 2, testsTotal: 5, failedTestNumber: 3, failedTestHidden: true });

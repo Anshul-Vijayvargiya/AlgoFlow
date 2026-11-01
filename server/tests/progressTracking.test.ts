@@ -29,10 +29,10 @@ const queryOf = (result: unknown) => ({
 
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const cookie = (id = USER) => [`algoflow_token=${tokenFor(id, 'USER')}`];
+const bearer = (id = USER) => `Bearer ${tokenFor(id, 'USER')}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
-const post = (body: unknown, id = USER) => request(app).post('/api/progress/visualizer-activity').set('Cookie', cookie(id)).send(body as object);
+const post = (body: unknown, id = USER) => request(app).post('/api/progress/visualizer-activity').set('Authorization', bearer(id)).send(body as object);
 
 /** summary mocks: no activity, no submissions, and the given tracks */
 function mockSummary(tracks: { algorithmId: string; status: string }[], completed = tracks.filter(t => t.status === 'completed').length) {
@@ -143,7 +143,7 @@ describe('POST /api/progress/visualizer-activity', () => {
 });
 
 describe('POST /api/progress/activity (legacy) — hardened', () => {
-  const activity = (body: unknown, id = USER) => request(app).post('/api/progress/activity').set('Cookie', cookie(id)).send(body as object);
+  const activity = (body: unknown, id = USER) => request(app).post('/api/progress/activity').set('Authorization', bearer(id)).send(body as object);
   const UNIMPLEMENTED = ALGORITHM_NAV.find(a => !a.implemented)!.id;
 
   beforeEach(() => {
@@ -223,7 +223,7 @@ describe('POST /api/progress/activity (legacy) — hardened', () => {
 });
 
 describe('PUT /api/progress/algorithms/:id (legacy) — hardened', () => {
-  const put = (id: string, body: unknown, user = USER) => request(app).put(`/api/progress/algorithms/${id}`).set('Cookie', cookie(user)).send(body as object);
+  const put = (id: string, body: unknown, user = USER) => request(app).put(`/api/progress/algorithms/${id}`).set('Authorization', bearer(user)).send(body as object);
 
   it('requires a signed-in user', async () => {
     const res = await request(app).put('/api/progress/algorithms/bubble-sort').send({ status: 'not_started' });
@@ -287,7 +287,7 @@ describe('GET /api/progress/summary — totals', () => {
       { algorithmId: ALGORITHM_NAV.find(a => !a.implemented)!.id, status: 'completed' },
       { algorithmId: 'no-such-algo', status: 'in_progress' },
     ], 1);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.status).toBe(200);
     expect(res.body.algorithmTotals).toEqual({ available: ALGORITHM_NAV.length, implemented: IMPLEMENTED_ALGORITHM_COUNT, practised: 3, completed: 1 });
     expect(IMPLEMENTED_ALGORITHM_COUNT).toBe(ALGORITHM_NAV.filter(a => a.implemented).length);
@@ -304,7 +304,7 @@ describe('GET /api/progress/summary — totals', () => {
       { algorithmId: 'merge-sort', status: 'completed' },
       { algorithmId: 'reverse-linked-list', status: 'in_progress' },
     ]);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     const coverage = res.body.topicCoverage as { topic: string; implemented: number; practised: number; completed: number }[];
     expect(coverage.map(t => t.topic)).toEqual(IMPLEMENTED_TOPICS.map(t => t.topic));
     expect(coverage.find(t => t.topic === 'Sorting')).toMatchObject({ practised: 2, completed: 1 });
@@ -320,7 +320,7 @@ describe('GET /api/progress/summary — totals', () => {
       { algorithmId: 'build-bst-recursive', status: 'in_progress' },
       { algorithmId: 'tree-inorder', status: 'not_started' },
     ]);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.status).toBe(200);
     expect(mockProgressTrack.find).toHaveBeenCalledWith({ userId: expect.anything() });
     for (const [filter] of mockProgressTrack.find.mock.calls) expect(String(filter.userId)).toBe(USER);
@@ -333,7 +333,7 @@ describe('GET /api/progress/summary — totals', () => {
 
   it('a new account: all zeros, nothing invented', async () => {
     mockSummary([]);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.body.algorithmTotals).toMatchObject({ practised: 0, completed: 0 });
     expect(res.body.overallProgressPercent).toBe(0);
     expect(res.body.weeklyActivity.every((d: { steps: number; minutes: number }) => d.steps === 0 && d.minutes === 0)).toBe(true);
@@ -344,14 +344,14 @@ describe('GET /api/progress/summary — totals', () => {
     mockSubmission.distinct.mockResolvedValue(['two-sum']);
     mockSubmission.find.mockReturnValue(queryOf([{ problemId: 'two-sum' }]));
     mockProblem.find.mockReturnValue(queryOf([{ difficulty: 'Medium' }]));
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(mockProblem.find).toHaveBeenCalledWith({ problemId: { $in: ['two-sum'] } });
     expect(res.body.difficultyDistribution.map((d: { value: number }) => d.value)).toEqual([0, 1, 0]);
   });
 
   it("summaries read only the signed-in user's records", async () => {
     mockSummary([]);
-    await request(app).get('/api/progress/summary').set('Cookie', cookie(OTHER));
+    await request(app).get('/api/progress/summary').set('Authorization', bearer(OTHER));
     expect(String(mockProgressTrack.find.mock.calls[0][0].userId)).toBe(OTHER);
     expect(String(mockActivityLog.find.mock.calls[0][0].userId)).toBe(OTHER);
   });
@@ -385,7 +385,7 @@ describe('weekly activity: daily counts from real records', () => {
       { createdAt: new Date(startOfDay(dayOffset(6)).getTime() - 1) },
       {},
     ]);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.status).toBe(200);
     const week = res.body.weeklyActivity;
     expect(week.map((d: { date: string }) => d.date)).toEqual([6, 5, 4, 3, 2, 1, 0].map(dayOffset));
@@ -406,7 +406,7 @@ describe('weekly activity: daily counts from real records', () => {
   it('asks for this user\'s submissions since the first day (00:00 UTC), judging failures excluded', async () => {
     mockSummary([]);
     submissionsFor([]);
-    await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    await request(app).get('/api/progress/summary').set('Authorization', bearer());
     const weeklyQuery = mockSubmission.find.mock.calls.map(c => c[0]).find((f: Record<string, unknown>) => !('passed' in f));
     expect(weeklyQuery).toEqual({ userId: USER, createdAt: { $gte: startOfDay(dayOffset(6)) }, status: { $ne: 'JUDGING_ERROR' } });
   });
@@ -414,7 +414,7 @@ describe('weekly activity: daily counts from real records', () => {
   it('a week with no records: seven days of zeros, nothing invented', async () => {
     mockSummary([]);
     submissionsFor([]);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.body.weeklyActivity).toHaveLength(7);
     for (const d of res.body.weeklyActivity) expect(d).toMatchObject({ minutes: 0, steps: 0, submissions: 0, walkthroughs: 0 });
   });

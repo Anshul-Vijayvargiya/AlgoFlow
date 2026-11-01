@@ -1,4 +1,4 @@
-import { test, expect, account, registerViaApi, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, API_ORIGIN, api } from './fixtures';
 
 /**
  * The Playground running Python for real on this machine: the real API with EXECUTION_PROVIDER=local (development
@@ -62,10 +62,10 @@ test.describe('Real backend — local Python execution', () => {
 
   test('C++ is not offered, and a request for it is refused without being charged', async ({ page }, testInfo) => {
     await registerViaApi(page.request, account(testInfo, 'A'));
-    const refused = await page.request.post(`${API_ORIGIN}/api/run`, { data: { language: 'cpp', source: 'int main(){}', stdin: '' } });
+    const refused = await api(page).post(`${API_ORIGIN}/api/run`, { data: { language: 'cpp', source: 'int main(){}', stdin: '' } });
     expect(refused.status()).toBe(400);
     expect((await refused.json()).code).toBe('language_unavailable');
-    const languages = await (await page.request.get(`${API_ORIGIN}/api/run/languages`)).json();
+    const languages = await (await api(page).get(`${API_ORIGIN}/api/run/languages`)).json();
     expect(languages).toMatchObject({ provider: 'local', usedToday: 0, tracing: { mode: 'runtime' } });
     expect(languages.languages.map((l: { id: string }) => l.id)).toEqual(['python']);
   });

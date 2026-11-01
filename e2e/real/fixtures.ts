@@ -57,9 +57,49 @@ export async function signOutViaUi(page: Page) {
   await expect(page).toHaveURL(/\/auth/);
 }
 
-/** the signed-in user's progress records, read from the real API with the page's own session cookie */
+/** the front end's origin, which the API requires on POST /api/auth/refresh (server/e2e/startE2eApi.ts sets CLIENT_URL) */
+const FRONT_END_ORIGIN = process.env.E2E_CLIENT_URL ?? 'http://127.0.0.1:5198';
+
+type FetchOptions = NonNullable<Parameters<APIRequestContext['fetch']>[1]>;
+
+/**
+ * Direct API calls as a fresh tab of this browser would make them: first an access token from POST /api/auth/refresh
+ * with the context's refresh cookie (rotating it, as the app does), then the request with that token as a Bearer
+ * header. A context that has no session (never signed in, signed out, cookies cleared) gets no token, so the request
+ * goes out unauthenticated and the API answers 401, which is what those tests check.
+ */
+export function api(target: { request: APIRequestContext }) {
+  const request = target.request;
+  async function accessToken(): Promise<string | null> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await request.post(`${API_ORIGIN}/api/auth/refresh`, { headers: { Origin: FRONT_END_ORIGIN } });
+      if (res.status() === 200) return ((await res.json()) as { accessToken: string }).accessToken;
+      // another request of this browser rotated the cookie a moment ago: its new cookie is in the jar now
+      if (res.status() === 409) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        continue;
+      }
+      return null;
+    }
+    return null;
+  }
+  const send = async (method: string, url: string, options: FetchOptions = {}) => {
+    const token = await accessToken();
+    const headers = { ...(options.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    return request.fetch(url, { ...options, method, headers });
+  };
+  return {
+    get: (url: string, options?: FetchOptions) => send('GET', url, options),
+    post: (url: string, options?: FetchOptions) => send('POST', url, options),
+    put: (url: string, options?: FetchOptions) => send('PUT', url, options),
+    patch: (url: string, options?: FetchOptions) => send('PATCH', url, options),
+    delete: (url: string, options?: FetchOptions) => send('DELETE', url, options),
+  };
+}
+
+/** the signed-in user's progress records, read from the real API with the browser's own session */
 export async function tracksOf(page: Page) {
-  const res = await page.request.get(`${API_ORIGIN}/api/progress/algorithms`);
+  const res = await api(page).get(`${API_ORIGIN}/api/progress/algorithms`);
   expect(res.status()).toBe(200);
   return ((await res.json()) as { tracks: { algorithmId: string; status: string }[] }).tracks;
 }
