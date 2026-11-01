@@ -39,6 +39,15 @@ export function _resetRateLimitsForTesting(): void {
   tutorGlobal = { count: 0, resetTime: 0 };
 }
 
+/**
+ * Sends a 429 with the wait both as the standard Retry-After header (whole seconds, at least 1) and as
+ * retryAfterSeconds in the JSON body, which the app already reads.
+ */
+function tooManyRequests(res: Response, retryAfterSeconds: number, body: Record<string, unknown>): void {
+  res.setHeader('Retry-After', String(Math.max(1, retryAfterSeconds)));
+  res.status(429).json({ ...body, retryAfterSeconds });
+}
+
 export function authRateLimiter(req: Request, res: Response, next: NextFunction): void {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
@@ -53,10 +62,7 @@ export function authRateLimiter(req: Request, res: Response, next: NextFunction)
   }
 
   if (record.count >= maxAuth) {
-    res.status(429).json({
-      error: 'Too many authentication attempts. Please try again later.',
-      retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
-    });
+    tooManyRequests(res, Math.ceil((record.resetTime - now) / 1000), { error: 'Too many authentication attempts. Please try again later.' });
     return;
   }
 
@@ -78,10 +84,7 @@ export function apiRateLimiter(req: Request, res: Response, next: NextFunction):
   }
 
   if (record.count >= maxApi) {
-    res.status(429).json({
-      error: 'API rate limit exceeded. Please slow down your requests.',
-      retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
-    });
+    tooManyRequests(res, Math.ceil((record.resetTime - now) / 1000), { error: 'API rate limit exceeded. Please slow down your requests.' });
     return;
   }
 
@@ -99,10 +102,9 @@ export function executionRateLimiter(req: Request, res: Response, next: NextFunc
     executionHits.set(key, record);
   }
   if (record.count >= env.EXECUTION_RATE_LIMIT_PER_MINUTE) {
-    res.status(429).json({
+    tooManyRequests(res, Math.ceil((record.resetTime - now) / 1000), {
       error: 'Too many code runs. Please wait a moment and try again.',
       code: 'execution_rate_limited',
-      retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
     });
     return;
   }
@@ -144,10 +146,9 @@ export function tutorRateLimiter(req: Request, res: Response, next: NextFunction
   }
   if (record.count >= env.TUTOR_RATE_LIMIT_PER_MINUTE) {
     const retryAfterSeconds = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
-    res.status(429).json({
+    tooManyRequests(res, retryAfterSeconds, {
       error: `Too many questions. Please wait ${secondsText(retryAfterSeconds)} and try again.`,
       code: 'tutor_rate_limited',
-      retryAfterSeconds,
     });
     return;
   }

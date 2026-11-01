@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Play,
-  Code2,
   Sparkles,
   Brain,
   FileText,
@@ -10,7 +9,7 @@ import {
   Globe,
   ChevronDown,
   Bot,
-  Compass,
+  Library,
   Terminal,
   LogOut,
   Settings,
@@ -55,14 +54,14 @@ export const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Practice (/practice) and the Roadmap (/learning) are not in the header; their pages and routes stay
   const navItems = [
     { to: '/dashboard',  label: 'Dashboard',  icon: Sparkles   },
     { to: '/visualizer', label: 'Visualizer',  icon: Play       },
-    { to: '/practice',   label: 'Practice',    icon: Code2      },
     { to: '/playground', label: 'Playground',  icon: Terminal   },
-    { to: '/learning',   label: 'Roadmap',     icon: Compass    },
     { to: '/patterns',   label: 'Patterns',    icon: Brain      },
     { to: '/notes',      label: 'Notes',       icon: FileText   },
+    { to: '/resources',  label: 'Resources',   icon: Library    },
     { to: '/progress',   label: 'Progress',    icon: BarChart2  },
   ];
 

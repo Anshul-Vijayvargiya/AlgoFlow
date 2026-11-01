@@ -14,6 +14,8 @@ import {
   Info,
   Clock,
   Route,
+  ListChecks,
+  Timer,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -32,6 +34,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import type { AlgorithmId } from '../types/algorithm';
 import {
+  checklistSummary,
   continueLearning,
   dailyGoalSummary,
   difficultySummary,
@@ -40,15 +43,19 @@ import {
   recommendAlgorithms,
   streakView,
   submissionsText,
+  topicBreakdown,
   walkthroughsText,
   weeklySummary,
 } from './dashboard/dashboardData';
 import { DifficultyBadge } from './dashboard/DifficultyBadge';
 import { DailyChecklist } from './dashboard/DailyChecklist';
 import { RecentActivity } from './dashboard/RecentActivity';
+import { TopicProgress } from './dashboard/TopicProgress';
 
 const card = 'bg-surface border border-cyan-500/15 rounded-2xl shadow-xl';
 const sectionHeading = 'text-sm font-mono font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2';
+const statCard = `${card} p-4 flex flex-col gap-2 min-w-0`;
+const statIcon = 'w-10 h-10 rounded-xl border flex items-center justify-center shrink-0';
 
 /** A grey placeholder shape while data loads (no numbers are shown until they are real) */
 const Skeleton: React.FC<{ className: string }> = ({ className }) => (
@@ -65,6 +72,12 @@ const SummitArt: React.FC = () => (
   </svg>
 );
 
+/**
+ * The dashboard, in this order (one column on phones; two-thirds / one-third rows on desktop):
+ * welcome (greeting, streak, today's goals) · continue learning + today's goals · four progress cards · weekly
+ * activity + progress by topic · recent activity + recommended next. Every number comes from the signed-in user's own
+ * records (the progress API); learning time is not measured anywhere, so its card says so instead of guessing.
+ */
 export const Dashboard: React.FC = () => {
   const chart = useChartColors();
   const {
@@ -109,6 +122,8 @@ export const Dashboard: React.FC = () => {
   const difficulty = difficultySummary(progress?.difficultyDistribution);
   const streak = progress ? streakView(progress) : null;
   const practiceTime = progress ? dailyGoalSummary(progress.weeklyActivity, goalMinutes) : null;
+  const goals = today ? checklistSummary(today) : null;
+  const topics = topicBreakdown(progress?.topicCoverage, tracks);
   const firstName = userName?.trim().split(/\s+/)[0];
   const totals = progress?.algorithmTotals;
   const pathPercent = resume?.path && resume.path.available > 0 ? Math.round((resume.path.explored / resume.path.available) * 100) : 0;
@@ -117,19 +132,29 @@ export const Dashboard: React.FC = () => {
   const openAlgorithm = (id: AlgorithmId) => () => setAlgorithm(id);
 
   return (
-    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-6 space-y-5 max-w-7xl mx-auto">
-      {/* Welcome: a short greeting, the two ways to learn, and (in demo mode) where the data lives */}
-      <div className="relative rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-slate-900 border border-cyan-500/20 px-5 py-4 md:px-6 md:py-5 overflow-hidden shadow-xl">
+    <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-6 space-y-5 max-w-7xl mx-auto overflow-x-hidden">
+      {/* 1. Welcome: the greeting, today's streak and goals at a glance, and the two ways to learn */}
+      <div data-testid="dashboard-welcome" className="relative rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900 to-purple-950/30 border border-cyan-500/20 px-5 py-4 md:px-6 md:py-5 overflow-hidden shadow-xl">
         <SummitArt />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1 min-w-0">
+          <div className="space-y-2 min-w-0">
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-ink font-sans">
               {greeting(hour)}
               {firstName ? `, ${firstName}` : ''}
             </h1>
             <p className="text-sm text-slate-300">One step at a time: watch an algorithm run, then write it yourself.</p>
+            <ul className="flex flex-wrap gap-2 text-[11px] font-mono" aria-label="Today at a glance" data-testid="welcome-summary">
+              <li data-testid="welcome-streak" className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-orange-400/40 bg-orange-500/10 text-orange-300">
+                <Flame className="w-3.5 h-3.5" aria-hidden="true" />
+                {streak ? `${streak.value} streak` : status === 'error' ? 'Streak unavailable' : 'Loading streak…'}
+              </li>
+              <li data-testid="welcome-goals" className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 text-cyan-300">
+                <ListChecks className="w-3.5 h-3.5" aria-hidden="true" />
+                {goals ? `Today: ${goals.text}` : todayError ? "Today's goals unavailable" : "Loading today's goals…"}
+              </li>
+            </ul>
             {isMockApi && (
-              <p data-testid="demo-badge" className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 text-[11px] font-mono">
+              <p data-testid="demo-badge" className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-300 text-[11px] font-mono">
                 <Info className="w-3 h-3" aria-hidden="true" />
                 Demo mode: progress is kept in this browser, not on a server
               </p>
@@ -182,189 +207,201 @@ export const Dashboard: React.FC = () => {
         <div role="status" data-testid="dashboard-refresh-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
           <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span className="flex-1">Couldn&apos;t refresh your progress. Showing what was loaded earlier.</span>
-          <button type="button" onClick={() => fetchProgress()} className="font-mono font-bold underline underline-offset-2">
+          <button type="button" onClick={() => fetchProgress()} disabled={isLoading} className="font-mono font-bold underline underline-offset-2 disabled:opacity-50">
             Retry
           </button>
         </div>
       )}
 
-      {/* about 70% main content, 30% sidebar on desktop; one column (main first) on smaller screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] gap-5" data-testid="dashboard-columns">
-        <div className="space-y-5 min-w-0" data-testid="dashboard-main">
-          {/* Continue Learning: the most recent algorithm still in progress, from the progress tracks (hidden when the
-              tracks failed to load: "nothing in progress" would not be known to be true) */}
-          {status !== 'error' && (
-            <section aria-labelledby="continue-heading" data-testid="continue-learning" className={`${card} border-cyan-500/25 p-5 flex flex-col md:flex-row md:items-center gap-5`}>
-              <div className="hidden sm:flex w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 items-center justify-center shrink-0">
-                <Route className="w-7 h-7 text-cyan-300" aria-hidden="true" />
-              </div>
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <h2 id="continue-heading" className="inline-block text-[10px] font-mono text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                  Continue learning
-                </h2>
-                {status === 'loading' ? (
-                  <div className="space-y-2 pt-1">
-                    <Skeleton className="h-5 w-48" />
-                    <Skeleton className="h-3 w-64" />
-                  </div>
-                ) : resume ? (
-                  <>
-                    <p className="text-lg font-bold text-ink">{resume.name}</p>
-                    <p className="text-xs text-slate-400" data-testid="continue-meta">
-                      {resume.categoryLabel} · in progress · last active {lastActiveText(resume.lastActivityAt)}
-                    </p>
-                    {resume.path ? (
-                      <div className="space-y-1.5 pt-1" data-testid="continue-path">
-                        <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                          <span className="px-1.5 py-0.5 rounded border border-orange-400/40 bg-orange-500/10 text-orange-300 font-mono" data-testid="continue-level">
-                            {resume.path.level} path
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-slate-300" data-testid="continue-estimate">
-                            <Clock className="w-3 h-3" aria-hidden="true" />
-                            About {resume.path.estimatedMinutes} min (estimate)
-                          </span>
-                          <span className="text-slate-400 truncate">{resume.path.title}</span>
-                        </div>
-                        <div className="flex items-center gap-3 max-w-md">
-                          <div
-                            role="progressbar"
-                            aria-label="Learning path progress"
-                            aria-valuemin={0}
-                            aria-valuemax={resume.path.available}
-                            aria-valuenow={resume.path.explored}
-                            aria-valuetext={`${resume.path.explored} of ${resume.path.available} algorithms in this path explored`}
-                            className="flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800"
-                          >
-                            <div className="bg-gradient-to-r from-cyan-500 to-emerald-500 h-full" style={{ width: `${pathPercent}%` }} />
-                          </div>
-                          <span className="text-[11px] font-mono text-slate-300 shrink-0" data-testid="continue-path-progress">
-                            {resume.path.explored} of {resume.path.available} explored
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-slate-400">Not part of a learning path yet, so there is no path progress or time estimate.</p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-bold text-ink">Nothing in progress yet</p>
-                    <p className="text-xs text-slate-400">Open an algorithm in the visualizer to start; recommendations are listed on this page.</p>
-                  </>
-                )}
-              </div>
-              {resume && status !== 'loading' && (
-                <div className="flex flex-col items-start md:items-end gap-1 shrink-0">
-                  <Link
-                    to="/visualizer"
-                    onClick={openAlgorithm(resume.id)}
-                    data-testid="continue-resume"
-                    className="px-4 py-2.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 text-xs font-mono font-bold flex items-center gap-2 transition-colors"
-                  >
-                    Resume {resume.name}
-                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                  </Link>
-                  <span className="text-[10px] text-slate-400">Opens at the first step</span>
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Weekly Activity Chart */}
-          {status !== 'error' && (
-            <section aria-labelledby="weekly-heading" data-testid="weekly-activity" className={`${card} p-5 space-y-4`}>
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h2 id="weekly-heading" className={sectionHeading}>
-                    <TrendingUp className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                    Weekly activity
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Practice submissions and visualizer walkthroughs per day, last 7 days (UTC). A walkthrough is an
-                    algorithm you stepped through in the visualizer; each algorithm counts once a day.
-                  </p>
-                </div>
-                {status === 'ready' && (
-                  <span data-testid="weekly-active-days" className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded">
-                    Active on {weekly.activeDays} of 7 days
-                  </span>
-                )}
-              </div>
-
+      {/* sections in reading order, in three rows (one column on phones). Each row sizes its own cards, so a tall card
+          never stretches an unrelated one into empty space. */}
+      <div className="space-y-5" data-testid="dashboard-grid">
+        {/* top: continue learning with the four cards below it, and today's goals beside both (the second row takes any
+            height the goals need beyond continue learning, so neither card stretches). Halves on laptops, 3 : 2 on wide
+            screens: the goals' column is wide enough that its text does not wrap into a column far taller than the left */}
+        <div data-testid="dashboard-top" className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr] gap-5">
+        {/* 2. Continue Learning: the most recent algorithm still in progress, from the progress tracks (hidden when the
+            tracks failed to load: "nothing in progress" would not be known to be true) */}
+        {status !== 'error' && (
+          <section aria-labelledby="continue-heading" data-testid="continue-learning" className={`${card} border-cyan-500/25 p-5 flex flex-col md:flex-row md:items-start gap-4 md:gap-5 min-w-0 lg:col-start-1 lg:self-start`}>
+            <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 items-center justify-center shrink-0">
+              <Route className="w-6 h-6 text-cyan-300" aria-hidden="true" />
+            </div>
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <h2 id="continue-heading" className="inline-block text-[10px] font-mono text-cyan-400 uppercase tracking-widest bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                Continue learning
+              </h2>
               {status === 'loading' ? (
-                <Skeleton className="h-64 w-full" />
-              ) : weekly.hasActivity ? (
+                <div className="space-y-2 pt-1">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-3 w-64 max-w-full" />
+                </div>
+              ) : resume ? (
                 <>
-                  <p data-testid="weekly-totals" className="text-xs text-slate-300">
-                    This week: {submissionsText(weekly.totals.submissions)} · {walkthroughsText(weekly.totals.walkthroughs)}
+                  <p className="text-lg font-bold text-ink">{resume.name}</p>
+                  <p className="text-xs text-slate-400" data-testid="continue-meta">
+                    {resume.categoryLabel} · in progress · last active {lastActiveText(resume.lastActivityAt)}
                   </p>
-                  {/* the chart is drawn for sighted users; its data is in the text summary, so it is hidden and not focusable */}
-                  <figure aria-labelledby="weekly-heading" aria-describedby="weekly-summary" className="h-72 w-full pt-2 m-0">
-                    <p id="weekly-summary" className="sr-only">{weekly.description}</p>
-                    <div aria-hidden="true" className="h-full w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={weekly.days} accessibilityLayer={false} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                          <XAxis dataKey="label" stroke={chart.axis} fontSize={10} interval={0} tickMargin={4} />
-                          <YAxis stroke={chart.axis} fontSize={11} allowDecimals={false} width={40} />
-                          <Tooltip
-                            contentStyle={chart.tooltip}
-                            labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel ?? label}
-                          />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                          <Bar dataKey="submissions" name="Practice submissions" stackId="activity" fill={chart.primary} />
-                          <Bar dataKey="walkthroughs" name="Visualizer walkthroughs" stackId="activity" fill={chart.secondary} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                  {resume.path ? (
+                    <div className="space-y-1.5 pt-1" data-testid="continue-path">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <span className="px-1.5 py-0.5 rounded border border-orange-400/40 bg-orange-500/10 text-orange-300 font-mono" data-testid="continue-level">
+                          {resume.path.level} path
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-slate-300" data-testid="continue-estimate">
+                          <Clock className="w-3 h-3" aria-hidden="true" />
+                          About {resume.path.estimatedMinutes} min (estimate)
+                        </span>
+                        <span className="text-slate-400 truncate">{resume.path.title}</span>
+                      </div>
+                      <div className="flex items-center gap-3 max-w-md">
+                        <div
+                          role="progressbar"
+                          aria-label="Learning path progress"
+                          aria-valuemin={0}
+                          aria-valuemax={resume.path.available}
+                          aria-valuenow={resume.path.explored}
+                          aria-valuetext={`${resume.path.explored} of ${resume.path.available} algorithms in this path explored`}
+                          className="flex-1 bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800"
+                        >
+                          <div className="bg-gradient-to-r from-cyan-500 to-emerald-500 h-full" style={{ width: `${pathPercent}%` }} />
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-300 shrink-0" data-testid="continue-path-progress">
+                          {resume.path.explored} of {resume.path.available} explored
+                        </span>
+                      </div>
                     </div>
-                  </figure>
+                  ) : (
+                    <p className="text-[11px] text-slate-400">Not part of a learning path yet, so there is no path progress or time estimate.</p>
+                  )}
                 </>
               ) : (
-                <div data-testid="weekly-empty" className="h-56 flex flex-col items-center justify-center gap-2 text-center rounded-xl border border-dashed border-slate-700 px-6">
-                  <p className="text-sm font-semibold text-slate-300">No activity in the last 7 days</p>
-                  <p className="text-xs text-slate-400">
-                    Step through an algorithm in the{' '}
-                    <Link to="/visualizer" className="text-cyan-400 underline underline-offset-2">visualizer</Link> or submit a practice
-                    problem, and it will appear here.
-                  </p>
-                </div>
+                <>
+                  <p className="text-lg font-bold text-ink">Nothing in progress yet</p>
+                  <p className="text-xs text-slate-400">Open an algorithm in the visualizer to start; recommendations are listed on this page.</p>
+                </>
               )}
-            </section>
-          )}
+            </div>
+            {resume && status !== 'loading' && (
+              <div className="flex flex-col items-start md:items-end gap-1 shrink-0">
+                <Link
+                  to="/visualizer"
+                  onClick={openAlgorithm(resume.id)}
+                  data-testid="continue-resume"
+                  className="px-4 py-2.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 text-xs font-mono font-bold flex items-center gap-2 transition-colors"
+                >
+                  Resume Visualization
+                  <span className="sr-only">: {resume.name}</span>
+                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                </Link>
+                <span className="text-[10px] text-slate-400">Opens {resume.name} at the first step</span>
+              </div>
+            )}
+          </section>
+        )}
 
-          <RecentActivity
-            events={recent}
-            loaded={recentLoaded}
-            loading={recentLoading}
-            error={recentError}
-            onRetry={() => fetchRecent()}
-            onOpenAlgorithm={id => setAlgorithm(id)}
-            className={card}
-            headingClass={sectionHeading}
-          />
-        </div>
+        {/* 3. Today's goals: verified by recorded activity, plus the learner's own manual goal */}
+        <DailyChecklist
+          today={today}
+          loading={todayLoading}
+          error={todayError}
+          saving={goalSaving}
+          saveError={goalError}
+          onRetry={() => fetchToday()}
+          onToggle={(id, done) => setManualGoal(id, done)}
+          practiceTime={practiceTime}
+          className={`${card} min-w-0 ${status === 'error' ? 'lg:col-span-2' : 'lg:col-start-2 lg:row-start-1 lg:row-span-2'}`}
+          headingClass={sectionHeading}
+        />
 
-        <aside className="space-y-5 min-w-0" data-testid="dashboard-sidebar" aria-label="Your progress, today's goals and recommendations">
-          {/* Stats: the streak, solved problems (by difficulty) and algorithms explored, in one panel */}
-          {status !== 'error' && (
-            <section aria-labelledby="dashboard-stats-heading" className={`${card} p-5 space-y-4`}>
-              <h2 id="dashboard-stats-heading" className={sectionHeading}>
-                <Flame className="w-4 h-4 text-orange-400" aria-hidden="true" />
-                Your progress
-              </h2>
-              <div data-testid="dashboard-stats" aria-busy={status === 'loading'} className="space-y-4">
-                {status === 'loading' || !progress || !streak ? (
-                  <>
-                    <Skeleton className="h-14 w-full" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Skeleton className="h-12" />
-                      <Skeleton className="h-12" />
+        {/* 4. Four progress cards */}
+        {status !== 'error' && (
+          <section aria-labelledby="dashboard-stats-heading" className="lg:col-start-1 lg:row-start-2 lg:self-start min-w-0">
+            <h2 id="dashboard-stats-heading" className="sr-only">
+              Your numbers
+            </h2>
+            <div data-testid="dashboard-stats" aria-busy={status === 'loading'} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {status === 'loading' || !progress || !streak ? (
+                [0, 1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)
+              ) : (
+                <>
+                  <div data-stat="Problems Solved" className={statCard}>
+                    <div className="flex items-center gap-3">
+                      <div className={`${statIcon} border-emerald-400/30 bg-emerald-500/10`}>
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-2xl font-bold font-mono text-ink">{progress.solvedCount}</div>
+                        <div className="text-xs text-slate-300">Problems Solved</div>
+                        <div className="text-[11px] text-slate-400">Accepted at least once</div>
+                      </div>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    <div data-stat="Current Streak" className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl border border-orange-400/30 bg-orange-500/10 flex items-center justify-center shrink-0">
-                        <Flame className="w-6 h-6 text-orange-400" aria-hidden="true" />
+                    {/* solved problems by difficulty: distinct problems with an accepted submission (attempts are not counted) */}
+                    <div data-testid="difficulty-distribution" className="space-y-1.5">
+                      <h3 id="difficulty-heading" className="sr-only">Solved by difficulty</h3>
+                      {difficulty.hasSolved ? (
+                        <>
+                          <p id="difficulty-summary" className="sr-only">{difficulty.description}</p>
+                          <ul className="flex flex-wrap gap-1.5" aria-labelledby="difficulty-heading" aria-describedby="difficulty-summary">
+                            {difficulty.items.map(d => (
+                              <li key={d.name}>
+                                <DifficultyBadge level={d.name}>
+                                  <span className="text-ink">{d.value}</span>
+                                </DifficultyBadge>
+                              </li>
+                            ))}
+                          </ul>
+                          <NavLink to="/practice" className="text-[11px] font-mono font-bold text-cyan-400 underline underline-offset-2 inline-flex items-center gap-1">
+                            Practise another problem
+                            <ArrowRight className="w-3 h-3" aria-hidden="true" />
+                          </NavLink>
+                        </>
+                      ) : (
+                        <div data-testid="difficulty-empty" className="text-[11px] text-slate-400">
+                          No solved problems yet.{' '}
+                          <NavLink to="/practice" className="font-mono font-bold text-cyan-400 underline underline-offset-2">
+                            Solve your first
+                          </NavLink>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {totals ? (
+                    <div data-stat="Algorithms Explored" className={statCard}>
+                      <div className="flex items-center gap-3">
+                        <div className={`${statIcon} border-cyan-400/30 bg-cyan-500/10`}>
+                          <BookOpen className="w-5 h-5 text-cyan-400" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-2xl font-bold font-mono text-ink">
+                            {totals.practised} / {totals.implemented}
+                          </div>
+                          <div className="text-xs text-slate-300">Algorithms Explored</div>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        Stepped through in the visualizer · {totals.completed} completed
+                      </p>
+                    </div>
+                  ) : (
+                    <div data-stat="Algorithms Learned" className={statCard}>
+                      <div className="flex items-center gap-3">
+                        <div className={`${statIcon} border-cyan-400/30 bg-cyan-500/10`}>
+                          <BookOpen className="w-5 h-5 text-cyan-400" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-2xl font-bold font-mono text-ink">{progress.algorithmsLearned}</div>
+                          <div className="text-xs text-slate-300">Algorithms Learned</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div data-stat="Current Streak" className={statCard}>
+                    <div className="flex items-center gap-3">
+                      <div className={`${statIcon} border-orange-400/30 bg-orange-500/10`}>
+                        <Flame className="w-5 h-5 text-orange-400" aria-hidden="true" />
                       </div>
                       <div className="min-w-0">
                         <div className="text-2xl font-bold font-mono text-orange-300">{streak.value}</div>
@@ -372,132 +409,162 @@ export const Dashboard: React.FC = () => {
                           Current Streak
                           {streak.current > 0 && <span aria-hidden="true"> 🔥</span>}
                         </div>
-                        <div className="text-[11px] text-slate-400" data-testid="streak-note">{streak.note}</div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 border-t border-slate-800 pt-3">
-                      <div data-stat="Problems Solved" className="min-w-0">
-                        <div className="text-xl font-bold font-mono text-ink flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-                          {progress.solvedCount}
-                        </div>
-                        <div className="text-xs text-slate-300">Problems Solved</div>
-                        <div className="text-[11px] text-slate-400">Accepted at least once</div>
-                      </div>
-                      {totals ? (
-                        <div data-stat="Algorithms Explored" className="min-w-0">
-                          <div className="text-xl font-bold font-mono text-ink flex items-center gap-1.5">
-                            <BookOpen className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
-                            {totals.practised} / {totals.implemented}
-                          </div>
-                          <div className="text-xs text-slate-300">Algorithms Explored</div>
-                          <div className="text-[11px] text-slate-400">Stepped through</div>
-                        </div>
-                      ) : (
-                        <div data-stat="Algorithms Learned" className="min-w-0">
-                          <div className="text-xl font-bold font-mono text-ink flex items-center gap-1.5">
-                            <BookOpen className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
-                            {progress.algorithmsLearned}
-                          </div>
-                          <div className="text-xs text-slate-300">Algorithms Learned</div>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+                    <p className="text-[11px] text-slate-400" data-testid="streak-note">{streak.note}</p>
+                  </div>
 
-              {/* solved problems by difficulty: distinct problems with an accepted submission (attempts are not counted) */}
-              {status === 'ready' && (
-                <div data-testid="difficulty-distribution" className="border-t border-slate-800 pt-3 space-y-2">
-                  <h3 id="difficulty-heading" className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Solved by difficulty</h3>
-                  {difficulty.hasSolved ? (
-                    <>
-                      <p id="difficulty-summary" className="sr-only">{difficulty.description}</p>
-                      <ul className="flex flex-wrap gap-2" aria-labelledby="difficulty-heading" aria-describedby="difficulty-summary">
-                        {difficulty.items.map(d => (
-                          <li key={d.name}>
-                            <DifficultyBadge level={d.name}>
-                              <span className="text-ink">{d.value}</span>
-                            </DifficultyBadge>
-                          </li>
-                        ))}
-                      </ul>
-                      <NavLink to="/practice" className="text-xs font-mono font-bold text-cyan-400 underline underline-offset-2 inline-flex items-center gap-1">
-                        Practise another problem
-                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                      </NavLink>
-                    </>
-                  ) : (
-                    <div data-testid="difficulty-empty" className="text-xs text-slate-400 space-y-1">
-                      <p className="font-semibold text-slate-300">No solved problems yet</p>
-                      <NavLink to="/practice" className="font-mono font-bold text-cyan-400 underline underline-offset-2">
-                        Solve your first practice problem
-                      </NavLink>
+                  {/* time is not measured: the app records what was done (submissions, walkthroughs), not for how long */}
+                  <div data-stat="Learning Time" className={statCard}>
+                    <div className="flex items-center gap-3">
+                      <div className={`${statIcon} border-purple-400/30 bg-purple-500/10`}>
+                        <Timer className="w-5 h-5 text-purple-300" aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-lg font-bold font-mono text-slate-300" data-testid="learning-time-value">Not tracked</div>
+                        <div className="text-xs text-slate-300">Learning Time</div>
+                      </div>
                     </div>
-                  )}
-                  <p className="text-[10px] text-slate-400">A problem counts once a submission is accepted; other attempts are not counted.</p>
-                </div>
+                    <p className="text-[11px] text-slate-400" data-testid="learning-time-note">
+                      AlgoFlow records what you do, not how long it takes, so no time is shown rather than a guess.
+                    </p>
+                  </div>
+                </>
               )}
-            </section>
-          )}
-
-          <DailyChecklist
-            today={today}
-            loading={todayLoading}
-            error={todayError}
-            saving={goalSaving}
-            saveError={goalError}
-            onRetry={() => fetchToday()}
-            onToggle={(id, done) => setManualGoal(id, done)}
-            practiceTime={practiceTime}
-            className={card}
-            headingClass={sectionHeading}
-          />
-
-          {/* Recommended Algorithms: implemented, not yet completed, in the learning order of the algorithm list */}
-          <section aria-labelledby="recommended-heading" className={`${card} p-5 space-y-3`}>
-            <div className="space-y-1">
-              <h2 id="recommended-heading" className={sectionHeading}>
-                <Compass className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                Recommended algorithms
-              </h2>
-              <p className="text-[11px] text-slate-400" data-testid="recommendations-basis">
-                The next algorithms in the course order that you have not completed, skipping the one you are continuing.
-              </p>
             </div>
-            {status === 'loading' ? (
-              <div className="space-y-2">
-                {[0, 1, 2, 3].map(i => (
-                  <Skeleton key={i} className="h-11 w-full" />
-                ))}
+          </section>
+        )}
+
+        </div>
+
+        {/* middle: weekly activity and progress by topic, side by side at equal width */}
+        <div data-testid="dashboard-middle" className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* 5. Weekly activity: practice submissions and visualizer walkthroughs per day, as recorded */}
+        {status !== 'error' && (
+          <section aria-labelledby="weekly-heading" data-testid="weekly-activity" className={`${card} p-5 flex flex-col gap-4 min-w-0`}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 id="weekly-heading" className={sectionHeading}>
+                  <TrendingUp className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                  Weekly activity
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Practice submissions and visualizer walkthroughs per day, last 7 days (UTC). A walkthrough is an
+                  algorithm you stepped through in the visualizer; each algorithm counts once a day.
+                </p>
               </div>
-            ) : recommendations.length ? (
-              <ul className="space-y-2" data-testid="recommendations">
-                {recommendations.map(alg => (
-                  <li key={alg.id}>
-                    <Link
-                      to="/visualizer"
-                      onClick={openAlgorithm(alg.id)}
-                      data-algorithm={alg.id}
-                      className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/40 flex items-center justify-between text-xs transition-colors group"
-                    >
-                      <span>
-                        <span className="block font-bold text-slate-200 group-hover:text-cyan-300">{alg.name}</span>
-                        <span className="block text-[10px] text-slate-400 font-mono">
-                          {alg.categoryLabel} • {alg.complexity}
-                        </span>
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-300" aria-hidden="true" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              {status === 'ready' && (
+                <span data-testid="weekly-active-days" className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded">
+                  Active on {weekly.activeDays} of 7 days
+                </span>
+              )}
+            </div>
+
+            {status === 'loading' ? (
+              <Skeleton className="flex-1 min-h-64 w-full" />
+            ) : weekly.hasActivity ? (
+              <>
+                <p data-testid="weekly-totals" className="text-xs text-slate-300">
+                  This week: {submissionsText(weekly.totals.submissions)} · {walkthroughsText(weekly.totals.walkthroughs)}
+                </p>
+                {/* the chart is drawn for sighted users; its data is in the text summary, so it is hidden and not focusable */}
+                <figure aria-labelledby="weekly-heading" aria-describedby="weekly-summary" className="flex-1 min-h-72 w-full pt-2 m-0">
+                  <p id="weekly-summary" className="sr-only">{weekly.description}</p>
+                  <div aria-hidden="true" className="h-full w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={weekly.days} accessibilityLayer={false} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+                        <XAxis dataKey="label" stroke={chart.axis} fontSize={10} interval={0} tickMargin={4} />
+                        <YAxis stroke={chart.axis} fontSize={11} allowDecimals={false} width={40} />
+                        <Tooltip
+                          contentStyle={chart.tooltip}
+                          labelFormatter={(label, payload) => payload?.[0]?.payload?.fullLabel ?? label}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Bar dataKey="submissions" name="Practice submissions" stackId="activity" fill={chart.primary} />
+                        <Bar dataKey="walkthroughs" name="Visualizer walkthroughs" stackId="activity" fill={chart.secondary} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </figure>
+              </>
             ) : (
-              <p className="text-xs text-slate-400">You have completed every algorithm in the visualizer.</p>
+              <div data-testid="weekly-empty" className="flex-1 min-h-48 flex flex-col items-center justify-center gap-2 text-center rounded-xl border border-dashed border-slate-700 px-6">
+                <p className="text-sm font-semibold text-slate-300">No activity in the last 7 days</p>
+                <p className="text-xs text-slate-400">
+                  Step through an algorithm in the{' '}
+                  <Link to="/visualizer" className="text-cyan-400 underline underline-offset-2">visualizer</Link> or submit a practice
+                  problem, and it will appear here.
+                </p>
+              </div>
             )}
           </section>
-        </aside>
+        )}
+
+        {/* 6. Progress by algorithm topic, from the user's own tracks */}
+        {status !== 'error' && <TopicProgress status={status} topics={topics} className={`${card} min-w-0`} headingClass={sectionHeading} />}
+
+        </div>
+
+        {/* lower: recent activity and recommended next, side by side from xl (2 : 1); stacked below that, where recent
+            activity's table needs the whole width. (Downloadable notes are on the Notes page.) */}
+        <div data-testid="dashboard-lower" className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5">
+        {/* 7. Recent activity, with times and links back to each problem or algorithm */}
+        <RecentActivity
+          events={recent}
+          loaded={recentLoaded}
+          loading={recentLoading}
+          error={recentError}
+          onRetry={() => fetchRecent()}
+          onOpenAlgorithm={id => setAlgorithm(id)}
+          className={`${card} min-w-0 flex flex-col`}
+          headingClass={sectionHeading}
+        />
+
+        {/* 8. Recommended next: implemented, not yet completed, in the learning order of the algorithm list */}
+        <section aria-labelledby="recommended-heading" data-testid="recommended-next" className={`${card} p-5 space-y-3 min-w-0`}>
+          <div className="space-y-1">
+            <h2 id="recommended-heading" className={sectionHeading}>
+              <Compass className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+              Recommended next
+            </h2>
+            <p className="text-[11px] text-slate-400" data-testid="recommendations-basis">
+              The next algorithms in the course order that you have not completed, skipping the one you are continuing.
+            </p>
+          </div>
+          {status === 'loading' ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map(i => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : recommendations.length ? (
+            <ul className="space-y-2" data-testid="recommendations">
+              {recommendations.map(alg => (
+                <li key={alg.id} className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0">
+                    <span className="block font-bold text-slate-200 truncate">{alg.name}</span>
+                    <span className="block text-[10px] text-slate-400 font-mono truncate">
+                      {alg.categoryLabel} • {alg.complexity}
+                    </span>
+                  </span>
+                  <Link
+                    to="/visualizer"
+                    onClick={openAlgorithm(alg.id)}
+                    data-algorithm={alg.id}
+                    aria-label={`Start ${alg.name}`}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 font-mono font-bold inline-flex items-center gap-1 transition-colors"
+                  >
+                    Start
+                    <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-400">You have completed every algorithm in the visualizer.</p>
+          )}
+        </section>
+        </div>
       </div>
     </div>
   );

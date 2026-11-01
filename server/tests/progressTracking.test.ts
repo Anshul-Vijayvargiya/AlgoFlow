@@ -314,6 +314,23 @@ describe('GET /api/progress/summary — totals', () => {
     expect(res.body.topicProficiency.map((t: { topic: string }) => t.topic)).toEqual(IMPLEMENTED_TOPICS.map(t => t.topic));
   });
 
+  it("topic coverage is the session user's own: only their tracks are read, and the BST builds count under Trees", async () => {
+    mockSummary([
+      { algorithmId: 'build-bst', status: 'completed' },
+      { algorithmId: 'build-bst-recursive', status: 'in_progress' },
+      { algorithmId: 'tree-inorder', status: 'not_started' },
+    ]);
+    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    expect(res.status).toBe(200);
+    expect(mockProgressTrack.find).toHaveBeenCalledWith({ userId: expect.anything() });
+    for (const [filter] of mockProgressTrack.find.mock.calls) expect(String(filter.userId)).toBe(USER);
+    const trees = (res.body.topicCoverage as { topic: string; implemented: number; practised: number; completed: number }[]).find(t => t.topic === 'Trees');
+    expect(trees).toMatchObject({ implemented: IMPLEMENTED_TOPICS.find(t => t.topic === 'Trees')!.algorithmIds.length, practised: 2, completed: 1 });
+    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Trees')!.algorithmIds).toEqual(expect.arrayContaining(['build-bst', 'build-bst-recursive']));
+    // signed out: nothing at all
+    expect((await request(app).get('/api/progress/summary')).status).toBe(401);
+  });
+
   it('a new account: all zeros, nothing invented', async () => {
     mockSummary([]);
     const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());

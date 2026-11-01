@@ -11,8 +11,10 @@ import { test, expect } from '../fixtures';
  * scrollbar and evaluates them on the width without it, so at exactly 1024px it is still in the tablet tier. Where
  * there is no classic scrollbar (Chromium, Firefox, macOS Safari), the tiers must match the pixel widths exactly.
  */
-const NAV = ['Dashboard', 'Visualizer', 'Practice', 'Playground', 'Roadmap', 'Patterns', 'Notes', 'Progress'];
-const PAGES = ['/dashboard', '/visualizer', '/practice', '/patterns', '/notes'];
+const NAV = ['Dashboard', 'Visualizer', 'Playground', 'Patterns', 'Notes', 'Resources', 'Progress'];
+/** pages that keep their routes but have no header link */
+const NOT_IN_NAV = ['Practice', 'Roadmap'];
+const PAGES = ['/dashboard', '/visualizer', '/practice', '/patterns', '/notes', '/resources'];
 
 /** the header's boxes, read in one pass */
 function headerReport(page: Page) {
@@ -159,13 +161,16 @@ test.describe('phones', () => {
 // widths well inside each tier (1024 itself is covered above), so every browser is in the tier the test names
 test.describe('names and links are kept in the compact tiers', () => {
   for (const width of [1040, 1300, 1440]) {
-    test(`${width}px: all eight links, the brand and the profile keep their names and work`, async ({ app, page }) => {
+    test(`${width}px: all seven links, the brand and the profile keep their names and work`, async ({ app, page }) => {
       void app;
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/dashboard');
       const banner = page.getByRole('banner');
       const nav = banner.getByRole('navigation');
       for (const name of NAV) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+      // exactly those links, in that order: no Practice or Roadmap in the header
+      expect((await nav.getByRole('link').allTextContents()).map(t => t.trim())).toEqual(NAV);
+      for (const name of NOT_IN_NAV) await expect(banner.getByRole('link', { name, exact: true })).toHaveCount(0);
       await expect(banner.getByRole('link', { name: /AlgoFlow/ })).toBeVisible();
       await expect(banner.getByRole('button', { name: 'AI Tutor' })).toBeVisible();
       await expect(banner.getByRole('combobox', { name: 'Theme' })).toBeVisible();
@@ -182,6 +187,28 @@ test.describe('names and links are kept in the compact tiers', () => {
       await expect(page).toHaveURL(/\/dashboard$/);
     });
   }
+
+  test('every remaining link opens its page and marks itself active; Practice and the Roadmap still open by URL', async ({ app, page }) => {
+    void app;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/dashboard');
+    const nav = page.getByRole('banner').getByRole('navigation');
+    const PATHS: Record<string, RegExp> = {
+      Dashboard: /\/dashboard$/, Visualizer: /\/visualizer$/, Playground: /\/playground$/, Patterns: /\/patterns$/, Notes: /\/notes$/, Resources: /\/resources$/, Progress: /\/progress$/,
+    };
+    for (const name of NAV) {
+      await nav.getByRole('link', { name, exact: true }).click();
+      await expect(page).toHaveURL(PATHS[name]);
+      await expect(nav.getByRole('link', { name, exact: true })).toHaveClass(/text-cyan-300/);
+    }
+    for (const [path, heading] of [['/practice', /coding practice/i], ['/learning', /Mastery Roadmap/]] as const) {
+      await page.goto(path);
+      await expect(page).toHaveURL(new RegExp(`${path}$`));
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading);
+      // the header has no link for it, so none is marked active
+      await expect(nav.locator('a[aria-current="page"]')).toHaveCount(0);
+    }
+  });
 
   test('1040px: the profile shows its avatar only, with the name kept for screen readers; the menu still opens', async ({ app, page }) => {
     void app;

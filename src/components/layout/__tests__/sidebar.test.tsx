@@ -28,7 +28,8 @@ describe('sidebar search: filterByName over ALGORITHM_NAV', () => {
   });
 
   it('ignores surrounding spaces and runs of spaces', () => {
-    expect(names(filterByName(ALGORITHM_NAV, '  binary   search '))).toEqual(['Binary Search']);
+    // (the query is a substring of all three names)
+    expect(names(filterByName(ALGORITHM_NAV, '  binary   search '))).toEqual(['Binary Search', 'Build a Binary Search Tree', 'Build a Binary Search Tree (Recursive)']);
     expect(normalizeQuery('  Two   Sum ')).toBe('two sum');
   });
 

@@ -71,6 +71,8 @@ import { threeSumDefinition } from './algorithms/threeSum';
 import { fourSumDefinition } from './algorithms/fourSum';
 import { printAllPairsDefinition } from './algorithms/printAllPairs';
 import { printSubarraysDefinition } from './algorithms/printSubarrays';
+import { buildBstDefinition } from './algorithms/tree/buildBst';
+import { buildBstRecursiveDefinition } from './algorithms/tree/buildBstRecursive';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +135,8 @@ register(threeSumDefinition);
 register(fourSumDefinition);
 register(printAllPairsDefinition);
 register(printSubarraysDefinition);
+register(buildBstDefinition);
+register(buildBstRecursiveDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

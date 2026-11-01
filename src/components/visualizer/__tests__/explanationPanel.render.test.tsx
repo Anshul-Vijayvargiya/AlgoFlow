@@ -86,4 +86,15 @@ describe('Explanation panel summary rows: arrays unchanged; text and tree steps 
     expect([row(start, 'step-positions').value, row(start, 'step-state').value]).toEqual(['None', '[]']);
     expect(html).not.toContain('Array State:');
   });
+
+  it('a BST being built: the node being compared and the tree so far in level order (it has no output)', () => {
+    const steps = getAlgorithmDefinition('build-bst')!.generateSteps([50, 30, 70, 20, 40]);
+    // 40 compared with 30, on its way to 30's right
+    const compare = steps.map((s, i) => [s, i] as const).filter(([s]) => s.codeRef === 'compare' && s.tree!.build!.index === 4)[1][1];
+    const html = panel(steps, compare);
+    expect(row(html, 'step-positions')).toMatchObject({ label: 'Current node:', value: '30', kind: 'tree' });
+    expect(row(html, 'step-state')).toMatchObject({ label: 'Tree (level order):', value: '[50, 30, 70, 20]', kind: 'tree' });
+    expect(row(panel(steps, steps.length - 1), 'step-state').value).toBe('[50, 30, 70, 20, 40]');
+    expect(html).not.toContain('Output:');
+  });
 });

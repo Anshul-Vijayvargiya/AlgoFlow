@@ -417,6 +417,20 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'build-bst',
+    name: 'Build a Binary Search Tree',
+    category: 'TREES',
+    subtitle: 'Insert values in order: smaller goes left, larger goes right.',
+    implemented: true,
+  },
+  {
+    id: 'build-bst-recursive',
+    name: 'Build a Binary Search Tree (Recursive)',
+    category: 'TREES',
+    subtitle: 'insert(node, value) recurses left or right, then returns the subtree root.',
+    implemented: true,
+  },
+  {
     id: 'binary-tree',
     name: 'Binary Tree',
     category: 'TREES',

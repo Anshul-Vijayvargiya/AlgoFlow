@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { apiClient } from '../api';
 import type { UserProgressData, AlgorithmTrack, LegacyActivityReport, AlgorithmProgressReset, TodayProgress, RecentActivityEvent } from '../api';
 import { useAuthStore } from './useAuthStore';
+import { createDedupe, withRateLimitRetry } from '../api/rateLimit';
 
 interface ProgressState {
   progress: UserProgressData | null;
@@ -64,6 +65,14 @@ const INITIAL_DATA = {
 // bumped by reset(): a response to a request made for the previous user is dropped
 let generation = 0;
 
+/**
+ * The dashboard's reads: an identical request already in flight is shared (a remount, React StrictMode's second effect,
+ * the Dashboard and Progress pages loading together), and the API rate limiter's 429 is retried a bounded number of
+ * times (src/api/rateLimit.ts). Keyed by generation, so a request for the previous user is never shared with the next.
+ */
+const dedupe = createDedupe();
+const read = <T,>(name: string, fn: () => Promise<T>) => dedupe(`${generation}:${name}`, () => withRateLimitRetry(fn));
+
 export const useProgressStore = create<ProgressState>((set, get) => ({
   ...INITIAL_DATA,
 
@@ -72,8 +81,8 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const [prog, trk] = await Promise.all([
-        apiClient.progress.getUserProgress(),
-        apiClient.progress.getAlgorithmTracks(),
+        read('progress', () => apiClient.progress.getUserProgress()),
+        read('tracks', () => apiClient.progress.getAlgorithmTracks()),
       ]);
       if (requestGeneration !== generation) return;
 
@@ -96,7 +105,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     const requestGeneration = generation;
     set({ tracksLoading: true, tracksError: null });
     try {
-      const tracks = await apiClient.progress.getAlgorithmTracks();
+      const tracks = await read('tracks', () => apiClient.progress.getAlgorithmTracks());
       if (requestGeneration !== generation) return;
       set({ tracks, tracksLoaded: true, tracksLoading: false });
     } catch (err: any) {
@@ -109,7 +118,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     const requestGeneration = generation;
     set({ todayLoading: true, todayError: null });
     try {
-      const today = await apiClient.progress.getToday();
+      const today = await read('today', () => apiClient.progress.getToday());
       if (requestGeneration !== generation) return;
       set({ today, todayLoading: false });
     } catch (err: any) {
@@ -140,7 +149,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     const requestGeneration = generation;
     set({ recentLoading: true, recentError: null });
     try {
-      const recent = await apiClient.progress.getRecentActivity(8);
+      const recent = await read('recent', () => apiClient.progress.getRecentActivity(8));
       if (requestGeneration !== generation) return;
       set({ recent, recentLoaded: true, recentLoading: false });
     } catch (err: any) {

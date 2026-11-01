@@ -42,12 +42,30 @@ export class HttpError extends Error {
   status: number;
   /** the server's machine-readable reason, when it sends one (e.g. 'daily_quota_exceeded') */
   code?: string;
-  constructor(message: string, status: number, code?: string) {
+  /** a 429's wait before trying again, in ms (from Retry-After, else the body's retryAfterSeconds), when it says */
+  retryAfterMs?: number;
+  constructor(message: string, status: number, code?: string, retryAfterMs?: number) {
     super(message);
     this.name = 'HttpError';
     this.status = status;
     this.code = code;
+    if (retryAfterMs !== undefined) this.retryAfterMs = retryAfterMs;
   }
+}
+
+/**
+ * The wait a response asks for, in ms: the Retry-After header (delay-seconds or an HTTP date), else the JSON body's
+ * retryAfterSeconds; undefined when neither is usable.
+ */
+export function retryAfterMsOf(header: string | null, body: unknown, now = Date.now()): number | undefined {
+  if (header !== null && header.trim() !== '') {
+    const v = header.trim();
+    if (/^\d+$/.test(v)) return Number(v) * 1000;
+    const at = Date.parse(v);
+    if (!Number.isNaN(at)) return Math.max(0, at - now);
+  }
+  const seconds = (body as { retryAfterSeconds?: unknown } | null)?.retryAfterSeconds;
+  return typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : undefined;
 }
 
 function sanitizeUserProfile(raw: any): UserProfile {
@@ -125,7 +143,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
     }
 
     if (!response.ok) {
-      throw new HttpError(data.error || `HTTP ${response.status}`, response.status, typeof data.code === 'string' ? data.code : undefined);
+      const retryAfterMs = response.status === 429 ? retryAfterMsOf(response.headers.get('Retry-After'), data) : undefined;
+      throw new HttpError(data.error || `HTTP ${response.status}`, response.status, typeof data.code === 'string' ? data.code : undefined, retryAfterMs);
     }
 
     return data as T;

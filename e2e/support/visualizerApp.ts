@@ -200,8 +200,8 @@ export class VisualizerApp {
   async selectAlgorithm(id: AlgorithmId) {
     const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id] ?? NUMBER_ALGORITHMS[id] ?? TEXT_ALGORITHMS[id] ?? TREE_ALGORITHMS[id];
     // labels can hold regex characters ("Sqrt(x)"), so they are matched literally; "Valid Palindrome" must not also
-    // match "Valid Palindrome II"
-    const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])(?! [IVX]+\\b)`);
+    // match "Valid Palindrome II", nor "Build a Binary Search Tree" its "(Recursive)" variant
+    const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])(?! [IVX]+\\b)(?! \\()`);
     const drawerToggle = this.page.getByRole('button', { name: 'Open algorithm list' });
     if (await drawerToggle.isVisible()) {
       // narrow screens: the algorithm list is in a drawer

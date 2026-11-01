@@ -9,6 +9,7 @@ import { getAlgorithmDefinition } from '../../engine/AlgorithmRegistry';
 import { dailyGoalStatuses, type DailyGoalStatus } from '../../data/dailyGoals';
 import { verdictOf, type VerdictTone } from '../practice/verdicts';
 import { LEARNING_TRACKS, trackSummary, type LearningTrack } from '../learning/learningPaths';
+import { IMPLEMENTED_TOPICS } from '../../data/algorithmCatalog';
 
 const categoryLabel = (id: string) => ALGORITHM_CATEGORIES.find(c => c.id === id)?.label ?? id;
 
@@ -160,6 +161,44 @@ export function weeklySummary(weekly: UserProgressData['weeklyActivity'] | undef
         `In total: ${submissionsText(totals.submissions)} and ${walkthroughsText(totals.walkthroughs)}.`
       : 'No activity has been recorded.',
   };
+}
+
+export interface TopicProgressItem {
+  /** "Sorting", "Linked List", … (the app's categories) */
+  topic: string;
+  /** algorithms of the topic that can be stepped through in the visualizer */
+  implemented: number;
+  /** of those, stepped through at least once (in progress or completed) */
+  explored: number;
+  completed: number;
+  /** explored as a share of implemented, 0–100 */
+  percent: number;
+}
+
+/**
+ * Progress by algorithm topic: the server's per-topic coverage (computed from the user's own tracks), or, from an
+ * older server that does not send it, the same rule applied here to the tracks: an algorithm is explored once stepped
+ * through (in progress or completed). Only topics with an implemented algorithm are listed, in the app's order.
+ */
+export function topicBreakdown(coverage: UserProgressData['topicCoverage'] | undefined, tracks: readonly AlgorithmTrack[]): TopicProgressItem[] {
+  const rows =
+    coverage && coverage.length
+      ? coverage.map(c => ({ topic: c.topic, implemented: c.implemented, explored: c.practised, completed: c.completed }))
+      : IMPLEMENTED_TOPICS.map(({ topic, algorithmIds }) => {
+          const status = (id: string) => tracks.find(t => t.algorithmId === id)?.status;
+          return {
+            topic,
+            implemented: algorithmIds.length,
+            explored: algorithmIds.filter(id => status(id) === 'in_progress' || status(id) === 'completed').length,
+            completed: algorithmIds.filter(id => status(id) === 'completed').length,
+          };
+        });
+  return rows
+    .filter(r => r.implemented > 0)
+    .map(r => {
+      const explored = Math.min(Math.max(0, r.explored), r.implemented);
+      return { ...r, explored, completed: Math.min(Math.max(0, r.completed), explored), percent: Math.round((explored / r.implemented) * 100) };
+    });
 }
 
 export interface DifficultySummary {

@@ -4,6 +4,7 @@ import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { MessageSquare, ArrowRightLeft, Target, Layers, Variable, CheckCircle, XCircle } from 'lucide-react';
 import type { ExecutionStep, ListSnapshot } from '../../types/algorithm';
 import { indexFromHead, nodeById } from '../../engine/linkedList/listSnapshot';
+import { levelOrderText } from '../../engine/tree/binaryTree';
 import { listText } from './listVisuals';
 
 /** "4 (#0)", "9 (outside the list)" or "NULL": where a list pointer points, read from the snapshot. */
@@ -40,8 +41,8 @@ function summaryRows(step: ExecutionStep): { kind: 'array' | 'list' | 'text' | '
       kind: 'tree',
       positionsLabel: 'Current node:',
       positions: t.current ? String(value(t.current)) : 'None',
-      stateLabel: 'Output:',
-      state: `[${t.visited.map(value).join(', ')}]`,
+      // a BST being built has no output yet: the tree so far, in level order, is its state
+      ...(t.build ? { stateLabel: 'Tree (level order):', state: levelOrderText(t) } : { stateLabel: 'Output:', state: `[${t.visited.map(value).join(', ')}]` }),
     };
   }
   if (step.list) {

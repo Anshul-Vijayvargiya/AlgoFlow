@@ -231,13 +231,12 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Binary Search');
   });
 
-  test('phone width: one column, no horizontal scroll, every section reachable', async ({ app, page }) => {
+  test('phone width: one column, no horizontal scroll, every section reachable in reading order', async ({ app, page }) => {
     await app.next();
     await page.setViewportSize({ width: 375, height: 800 });
     await openDashboard(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
-    // the main column first, then the sidebar
-    const sections = ['continue-learning', 'weekly-activity', 'recent-activity', 'dashboard-stats', 'difficulty-distribution', 'daily-checklist', 'recommendations'];
+    const sections = ['dashboard-welcome', 'continue-learning', 'daily-checklist', 'dashboard-stats', 'weekly-activity', 'topic-progress', 'recent-activity', 'recommended-next'];
     const boxes = [];
     for (const id of sections) {
       const box = (await page.getByTestId(id).boundingBox())!;
@@ -249,20 +248,91 @@ test.describe('Dashboard', () => {
     for (let i = 1; i < boxes.length; i++) expect(boxes[i].y, sections[i]).toBeGreaterThan(boxes[i - 1].y);
   });
 
-  test('desktop: about 70% main column, 30% sidebar, side by side', async ({ app, page }) => {
+  // every section's box: inside the viewport, overlapping no other, and with little blank space below its content
+  const SECTIONS = ['dashboard-welcome', 'continue-learning', 'daily-checklist', 'dashboard-stats', 'weekly-activity', 'topic-progress', 'recent-activity', 'recommended-next'];
+  async function layout(page: Page) {
+    return page.evaluate(ids => {
+      const boxes = ids.map(id => {
+        const el = document.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
+        const r = el.getBoundingClientRect();
+        // the lowest point of its content: a card stretched past it shows blank space
+        const content = Math.max(r.top, ...[...el.children].map(c => c.getBoundingClientRect().bottom));
+        return { id, x: r.left, y: r.top + scrollY, w: r.width, h: r.height, blank: Math.round(r.bottom - content) };
+      });
+      return { boxes, overflow: document.documentElement.scrollWidth - innerWidth };
+    }, SECTIONS);
+  }
+  const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
+    a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
+
+  for (const width of [1440, 1024, 768, 390]) {
+    test(`${width}px: no overlap, no overflow, no card with excessive blank space`, async ({ app, page }) => {
+      void app;
+      await page.setViewportSize({ width, height: 900 });
+      await openDashboard(page);
+      const { boxes, overflow } = await layout(page);
+      expect(overflow).toBeLessThanOrEqual(0);
+      for (const b of boxes) {
+        expect(b.w, b.id).toBeGreaterThan(0);
+        expect(b.x, b.id).toBeGreaterThanOrEqual(0);
+        expect(b.x + b.w, b.id).toBeLessThanOrEqual(width);
+        // the cards' own padding (20px), plus at most a little where a card is stretched to level a row
+        expect(b.blank, `${b.id}: blank space below its content`).toBeLessThanOrEqual(48);
+      }
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i], boxes[j]), `${boxes[i].id} overlaps ${boxes[j].id}`).toBe(false);
+    });
+  }
+
+  test('desktop: continue learning compact with the four cards below it, today\'s goals beside both and level with them', async ({ app, page }) => {
     void app;
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize({ width: 1440, height: 900 });
     await openDashboard(page);
-    const main = (await page.getByTestId('dashboard-main').boundingBox())!;
-    const side = (await page.getByTestId('dashboard-sidebar').boundingBox())!;
-    expect(side.x).toBeGreaterThan(main.x + main.width);
-    expect(Math.abs(side.y - main.y)).toBeLessThan(2);
-    const share = main.width / (main.width + side.width);
-    expect(share).toBeGreaterThan(0.66);
-    expect(share).toBeLessThan(0.74);
-    // the sidebar holds progress, goals and recommendations; the main column the rest
-    for (const id of ['dashboard-stats', 'daily-checklist', 'recommendations']) await expect(page.getByTestId('dashboard-sidebar').getByTestId(id)).toHaveCount(1);
-    for (const id of ['continue-learning', 'weekly-activity', 'recent-activity']) await expect(page.getByTestId('dashboard-main').getByTestId(id)).toHaveCount(1);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280);
+    const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
+    const cont = await box('continue-learning');
+    const goals = await box('daily-checklist');
+    const stats = await box('dashboard-stats');
+    expect(cont.height).toBeLessThan(200);
+    expect(Math.abs(goals.y - cont.y)).toBeLessThan(2);
+    expect(goals.x).toBeGreaterThan(cont.x + cont.width);
+    // the cards directly below continue learning, in its column
+    expect(stats.y).toBeGreaterThan(cont.y + cont.height);
+    expect(stats.y - (cont.y + cont.height)).toBeLessThanOrEqual(24);
+    expect(Math.abs(stats.x - cont.x)).toBeLessThan(2);
+    // the two sides of the top block end within a card gap of each other
+    expect(Math.abs(goals.y + goals.height - (stats.y + stats.height))).toBeLessThanOrEqual(40);
+    // 2 x 2 cards
+    const cards = await Promise.all(['Problems Solved', 'Algorithms Explored', 'Current Streak', 'Learning Time'].map(async name => (await page.locator(`[data-stat="${name}"]`).boundingBox())!));
+    expect(Math.abs(cards[0].y - cards[1].y)).toBeLessThan(2);
+    expect(Math.abs(cards[2].y - cards[3].y)).toBeLessThan(2);
+    expect(cards[2].y).toBeGreaterThan(cards[0].y + cards[0].height);
+    // weekly activity and progress by topic: equal halves, level
+    const weekly = await box('weekly-activity');
+    const topics = await box('topic-progress');
+    expect(Math.abs(weekly.width - topics.width)).toBeLessThan(2);
+    expect(Math.abs(weekly.y - topics.y)).toBeLessThan(2);
+    // recent activity and recommended next: one row; the downloadable notes are on the Notes page, not here
+    const [recent, rec] = [await box('recent-activity'), await box('recommended-next')];
+    expect(Math.abs(rec.y - recent.y)).toBeLessThan(2);
+    expect(rec.x).toBeGreaterThan(recent.x + recent.width);
+    await expect(page.getByTestId('learning-resources')).toHaveCount(0);
+  });
+
+  test('Recommended next: each Start button opens its algorithm in the visualizer', async ({ app, page }) => {
+    void app;
+    await openDashboard(page);
+    const first = page.getByTestId('recommendations').getByRole('link').first();
+    const id = (await first.getAttribute('data-algorithm'))!;
+    await expect(first).toHaveText(/Start/);
+    await first.click();
+    await expect(page).toHaveURL(/\/visualizer$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(definition(id as Parameters<typeof definition>[0]).name);
+  });
+
+  test("Learning Time says it is not tracked, and progress by topic lists the app's topics", async ({ app, page }) => {
+    void app;
+    await openDashboard(page);
+    await expect(page.locator('[data-stat="Learning Time"]')).toContainText('Not tracked');
+    await expect(page.getByTestId('topic-progress').locator('[data-topic="Sorting"]')).toBeVisible();
+    await expect(page.getByTestId('topic-progress').locator('[data-topic="Trees"]')).toBeVisible();
   });
 });

@@ -672,6 +672,44 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     // nothing is returned: the void functions (and Python's def) end on their signature
     'fn-exit': /void printSubarrays\(|def print_subarrays\(/,
   },
+  'build-bst': {
+    'init-root': /\broot = (NULL|nullptr|null|None);?$/,
+    // C reads the next value in two statements (the loop header, then values[i]); the others loop over the values
+    'next-value': /for \(int i = 0; i < n; i\+\+\)|for \(int value : values\)|for value in values:/,
+    'init-search': /parent = (NULL|nullptr|null), \*?curr = root|parent, curr = None, root/,
+    'search-loop': /while \(?curr( != (NULL|nullptr|null))? (&&|and) curr(->|\.)val != value/,
+    'set-parent': /^\s*parent = curr;?$/,
+    compare: /value < curr(->|\.)val/,
+    'go-left': /curr = .*curr(->|\.)left/,
+    'go-right': /curr = .*curr(->|\.)right/,
+    'check-dup': /if \(?curr( != (NULL|nullptr|null))?\)?:?/,
+    'skip-dup': /\bcontinue;?$/,
+    'check-root': /if \(?parent (== (NULL|nullptr|null)|is None)/,
+    'insert-root': /\broot = (newNode|new TreeNode|TreeNode)\(value\)/,
+    'check-side': /(else if \(|elif )value < parent(->|\.)val/,
+    'insert-left': /parent(->|\.)left = (newNode|new TreeNode|TreeNode)\(value\)/,
+    'insert-right': /parent(->|\.)right = (newNode|new TreeNode|TreeNode)\(value\)/,
+    return: /^\s*return root;?$/,
+  },
+  'build-bst-recursive': {
+    // inside insert(node, value) — C also passes its allocation-failure flag (", failed")
+    'check-null': /if \(?node (== (NULL|nullptr|null)|is None)/,
+    'base-create': /return (newNode|createNode|new TreeNode|TreeNode)\(value(, failed)?\)/,
+    'check-less': /^\s*if \(?value < node(->|\.)val/,
+    // the call and the assignment of what it returns are one statement
+    'recurse-left': /node(->|\.)left = insert\(node(->|\.)left, value(, failed)?\)/,
+    'attach-left': /node(->|\.)left = insert\(node(->|\.)left, value(, failed)?\)/,
+    'check-greater': /(else if \(|elif )value > node(->|\.)val/,
+    'recurse-right': /node(->|\.)right = insert\(node(->|\.)right, value(, failed)?\)/,
+    'attach-right': /node(->|\.)right = insert\(node(->|\.)right, value(, failed)?\)/,
+    'return-node': /^\s*return node;?$/,
+    // in buildBST
+    'init-root': /\broot = (NULL|nullptr|null|None);?$/,
+    'next-value': /for \(int i = 0; i < n; i\+\+\)|for \(int value : values\)|for value in values:/,
+    'call-root': /root = insert\(root, (values\[i\]|value)(, failed)?\)/,
+    'assign-root': /root = insert\(root, (values\[i\]|value)(, failed)?\)/,
+    return: /^\s*return root;?$/,
+  },
 };
 
 /**

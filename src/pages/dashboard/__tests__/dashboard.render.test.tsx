@@ -167,7 +167,8 @@ describe('Dashboard — states', () => {
     // real progress only: the status and when; no step count (only milestone steps are recorded)
     expect(html).toMatch(/data-testid="continue-meta"[^>]*>SORTING · in progress · last active today</);
     expect(html).not.toMatch(/step viewed|Step \d+ of/);
-    const resumeLink = html.match(/<a [^>]*data-testid="continue-resume"[^>]*>Resume Heap Sort/)![0];
+    // the button says what it does; the algorithm is named for screen readers too (and shown beside it)
+    const resumeLink = html.match(/<a [^>]*data-testid="continue-resume"[^>]*>Resume Visualization<span class="sr-only">: Heap Sort/)![0];
     expect(resumeLink).toContain('href="/visualizer"');
     // the chart summaries are available as text
     expect(html).toContain('Friday 16 Oct: 2 practice submissions, 0 visualizer walkthroughs;');
@@ -220,7 +221,9 @@ describe('Dashboard — truthfulness and accessibility', () => {
     const html = render();
     const anchors = [...html.matchAll(/<a ([^>]*data-algorithm="[^"]*"[^>]*)>(.*?)<\/a>/g)];
     for (const [, attrs] of anchors) expect(attrs).toMatch(/href="\/visualizer"/);
-    const links = anchors.map(([, attrs, body]) => [attrs.match(/data-algorithm="([a-z-]+)"/)![1], body.match(/<span class="block font-bold[^"]*">([^<]+)</)![1]]);
+    // each item's Start button is named after its algorithm
+    for (const [, , body] of anchors) expect(body).toMatch(/^Start</);
+    const links = anchors.map(([, attrs]) => [attrs.match(/data-algorithm="([a-z-]+)"/)![1], attrs.match(/aria-label="Start ([^"]+)"/)![1]]);
     expect(links).toEqual([
       ['bubble-sort', 'Bubble Sort'],
       ['selection-sort', 'Selection Sort'],
@@ -233,9 +236,9 @@ describe('Dashboard — truthfulness and accessibility', () => {
     progressStore.progress = activeAccount;
     const html = render();
     expect(html.match(/<h1/g)).toHaveLength(1);
-    // the only sub-heading: "Solved by difficulty" inside the progress panel
+    // the only sub-heading: "Solved by difficulty" in the solved card
     expect(html.match(/<h3[^>]*>[^<]*<\/h3>/g)).toEqual([expect.stringContaining('>Solved by difficulty<')]);
-    for (const id of ['continue-heading', 'checklist-heading', 'weekly-heading', 'recent-heading', 'recommended-heading', 'dashboard-stats-heading']) {
+    for (const id of ['continue-heading', 'checklist-heading', 'weekly-heading', 'topics-heading', 'recent-heading', 'recommended-heading', 'dashboard-stats-heading']) {
       expect(html, id).toMatch(new RegExp(`<h2 id="${id}"`));
     }
     expect(html).toMatch(/<figure aria-labelledby="weekly-heading" aria-describedby="weekly-summary"/);
@@ -286,7 +289,6 @@ describe('Dashboard v2 — welcome and streak', () => {
     progressStore.progress = activeAccount;
     const html = render();
     expect(visibleText(html)).toMatch(/6\s+Problems Solved\s+Accepted at least once/);
-    expect(html).toContain('A problem counts once a submission is accepted; other attempts are not counted.');
     expect(html).toMatch(/<a [^>]*href="\/practice"[^>]*>Practise another problem/);
   });
 
@@ -406,22 +408,45 @@ describe('Dashboard v2 — recent activity', () => {
 });
 
 describe('Dashboard v2 — layout', () => {
-  it('about 70 / 30 from lg, one column below; main: continue, weekly, recent; sidebar: progress, goals, recommendations', () => {
-    progressStore.progress = activeAccount;
+  it('three rows in reading order: continue + cards beside goals, weekly + topics, recent + recommended', () => {
+    progressStore.progress = { ...activeAccount, algorithmTotals: { available: 50, implemented: 40, practised: 5, completed: 1 } };
     progressStore.today = todayData();
     progressStore.recentLoaded = true;
     const html = render();
-    expect(html).toMatch(/class="grid grid-cols-1 lg:grid-cols-\[minmax\(0,7fr\)_minmax\(0,3fr\)\] gap-5" data-testid="dashboard-columns"/);
-    const main = html.slice(html.indexOf('data-testid="dashboard-main"'), html.indexOf('data-testid="dashboard-sidebar"'));
-    const side = html.slice(html.indexOf('data-testid="dashboard-sidebar"'));
-    const inOrder = (part: string, ids: string[]) => {
-      const at = ids.map(id => part.indexOf(`data-testid="${id}"`));
-      return at.every((x, i) => x > 0 && (i === 0 || x > at[i - 1]));
+    const order = ['dashboard-welcome', 'continue-learning', 'daily-checklist', 'dashboard-stats', 'weekly-activity', 'topic-progress', 'recent-activity', 'recommended-next'];
+    const at = order.map(id => html.indexOf(`data-testid="${id}"`));
+    expect(at.every(x => x > 0), order.filter((_, i) => at[i] < 0).join(', ')).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    const tag = (id: string) => html.match(new RegExp(`<[^>]*data-testid="${id}"[^>]*>`))![0];
+    const within = (row: string, ids: string[]) => {
+      const from = html.indexOf(`data-testid="${row}"`);
+      const next = ['dashboard-top', 'dashboard-middle', 'dashboard-lower'].map(r => html.indexOf(`data-testid="${r}"`)).filter(x => x > from).sort((a, b) => a - b)[0] ?? html.length;
+      return ids.every(id => { const x = html.indexOf(`data-testid="${id}"`); return x > from && x < next; });
     };
-    expect(inOrder(main, ['continue-learning', 'weekly-activity', 'recent-activity'])).toBe(true);
-    expect(inOrder(side, ['dashboard-stats', 'difficulty-distribution', 'daily-checklist', 'recommendations'])).toBe(true);
-    expect(main).not.toContain('data-testid="daily-checklist"');
-    expect(html).toMatch(/<aside [^>]*data-testid="dashboard-sidebar" aria-label="[^"]+"/);
+    expect(within('dashboard-top', ['continue-learning', 'daily-checklist', 'dashboard-stats'])).toBe(true);
+    expect(within('dashboard-middle', ['weekly-activity', 'topic-progress'])).toBe(true);
+    expect(within('dashboard-lower', ['recent-activity', 'recommended-next'])).toBe(true);
+    // the downloadable notes live on the Notes page, not here
+    expect(html).not.toContain('data-testid="learning-resources"');
+    expect(html).not.toContain('sql-notes.pdf');
+
+    // top: halves on laptops, 3 : 2 on wide screens; continue learning (compact, top-aligned) with the cards below it,
+    // today's goals beside both
+    expect(tag('dashboard-top')).toContain('lg:grid-cols-2 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr]');
+    expect(tag('continue-learning')).toMatch(/md:items-start.*lg:col-start-1 lg:self-start/);
+    expect(tag('continue-learning')).not.toContain('items-center');
+    expect(tag('daily-checklist')).toContain('lg:col-start-2 lg:row-start-1 lg:row-span-2');
+    expect(html).toMatch(/<section aria-labelledby="dashboard-stats-heading" class="lg:col-start-1 lg:row-start-2 lg:self-start min-w-0">/);
+    expect(tag('dashboard-stats')).toContain('grid-cols-1 sm:grid-cols-2');
+    expect([...html.matchAll(/data-stat="([^"]+)"/g)].map(m => m[1])).toEqual(['Problems Solved', 'Algorithms Explored', 'Current Streak', 'Learning Time']);
+    // middle: two equal columns, the chart taking the height its row gives it
+    expect(tag('dashboard-middle')).toContain('lg:grid-cols-2');
+    expect(tag('weekly-activity')).toContain('flex flex-col');
+    // lower: stacked below xl (recent activity's table needs the width), 2 : 1 from xl
+    expect(tag('dashboard-lower')).toContain('grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]');
+    expect(tag('recent-activity')).not.toContain('col-span');
+    // nothing can push the page sideways: grid children may shrink
+    for (const id of order.slice(1)) if (id !== 'dashboard-stats') expect(tag(id), id).toContain('min-w-0');
   });
 
   it('a short hero: a decorative inline illustration (no image request) hidden from assistive technology', () => {
@@ -453,7 +478,7 @@ describe('Dashboard v2 — continue learning details', () => {
     expect(html).toMatch(/data-testid="continue-estimate"[^>]*>.*About 25 min \(estimate\)</);
     expect(html).toMatch(/data-testid="continue-path-progress"[^>]*>2 of 3 explored</);
     expect(html).toMatch(/role="progressbar" aria-label="Learning path progress" aria-valuemin="0" aria-valuemax="3" aria-valuenow="2"/);
-    const resume = html.match(/<a [^>]*data-testid="continue-resume"[^>]*>Resume Binary Search/)![0];
+    const resume = html.match(/<a [^>]*data-testid="continue-resume"[^>]*>Resume Visualization<span class="sr-only">: Binary Search/)![0];
     expect(resume).toContain('href="/visualizer"');
   });
 
@@ -463,5 +488,67 @@ describe('Dashboard v2 — continue learning details', () => {
     const html = render();
     expect(html).not.toContain('data-testid="continue-path"');
     expect(html).toContain('Not part of a learning path yet, so there is no path progress or time estimate.');
+  });
+});
+
+describe('Dashboard — welcome summary, learning time and progress by topic', () => {
+  it("the welcome shows the streak and today's goals from the user's data, and says when they are loading or unavailable", () => {
+    expect(render()).toMatch(/data-testid="welcome-streak"[^>]*>.*Loading streak…/);
+    progressStore.progress = { ...emptyAccount, streakDays: 3, longestStreakDays: 5 };
+    progressStore.today = todayData({ walkthroughs: 1, submissions: 0, accepted: 0 });
+    const html = render();
+    expect(visibleText(html)).toMatch(/3 Days streak/);
+    expect(html).toMatch(/data-testid="welcome-goals"[^>]*>.*Today: 1 of \d+ goals complete/);
+    progressStore.progress = null;
+    progressStore.error = 'Network error.';
+    progressStore.today = null;
+    progressStore.todayError = 'Network error.';
+    const failed = render();
+    expect(failed).toMatch(/data-testid="welcome-streak"[^>]*>.*Streak unavailable/);
+    expect(failed).toMatch(/data-testid="welcome-goals"[^>]*>.*Today&#x27;s goals unavailable/);
+  });
+
+  it('learning time is not measured, so its card says so instead of showing a number', () => {
+    progressStore.progress = emptyAccount;
+    const html = render();
+    const card = html.slice(html.lastIndexOf('<', html.indexOf('data-stat="Learning Time"')), html.indexOf('data-testid="weekly-activity"'));
+    expect(card).toContain('Not tracked');
+    expect(card).toContain('AlgoFlow records what you do, not how long it takes');
+    expect(visibleText(card)).not.toMatch(/\d+\s*(min|h|hours|minutes)\b/);
+  });
+
+  it("progress by topic: each topic's explored and completed counts, with a progressbar", () => {
+    progressStore.progress = {
+      ...emptyAccount,
+      topicCoverage: [
+        { topic: 'Sorting', implemented: 6, practised: 3, completed: 1 },
+        { topic: 'Trees', implemented: 6, practised: 0, completed: 0 },
+      ],
+    };
+    const html = render();
+    const section = html.slice(html.indexOf('data-testid="topic-progress"'), html.indexOf('data-testid="recent-activity"'));
+    expect([...section.matchAll(/data-topic="([^"]+)"/g)].map(m => m[1])).toEqual(['Sorting', 'Trees']);
+    expect(visibleText(section)).toMatch(/Sorting\s+3 \/ 6\s+· 1 completed/);
+    expect(section).toMatch(/role="progressbar" aria-label="Sorting explored" aria-valuemin="0" aria-valuemax="6" aria-valuenow="3" aria-valuetext="3 of 6 Sorting algorithms explored, 1 completed"/);
+    expect(section).not.toContain('data-testid="topic-empty"');
+  });
+
+  it('progress by topic, nothing explored yet: zero for every topic and a hint, never invented progress', () => {
+    progressStore.progress = emptyAccount;
+    const html = render();
+    const section = html.slice(html.indexOf('data-testid="topic-progress"'), html.indexOf('data-testid="recent-activity"'));
+    expect(section).toContain('data-testid="topic-empty"');
+    expect([...section.matchAll(/aria-valuenow="(\d+)"/g)].every(m => m[1] === '0')).toBe(true);
+  });
+
+  it('a failed load: no numbers, cards or topics it cannot vouch for; goals, recent activity and recommendations stay usable', () => {
+    progressStore.error = 'API rate limit exceeded. Please slow down your requests.';
+    progressStore.today = todayData();
+    progressStore.recentLoaded = true;
+    const html = render();
+    expect(html).toContain('data-testid="dashboard-error"');
+    expect(html).toContain('API rate limit exceeded. Please slow down your requests.');
+    for (const id of ['dashboard-stats', 'topic-progress', 'weekly-activity', 'continue-learning']) expect(html, id).not.toContain(`data-testid="${id}"`);
+    for (const id of ['daily-checklist', 'recent-activity', 'recommendations']) expect(html, id).toContain(`data-testid="${id}"`);
   });
 });

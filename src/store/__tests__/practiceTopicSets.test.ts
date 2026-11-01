@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from 'vitest';
 import { apiClient, type ProblemsListResponse, type SubmissionResult } from '../../api';
 import type { PracticeProblem } from '../../types/algorithm';
-import { usePracticeStore } from '../usePracticeStore';
+import { SEARCH_DEBOUNCE_MS, usePracticeStore } from '../usePracticeStore';
 
 // Topic learning sets and the topic filter in the Practice store, against a scripted API (no network, no server).
 const problem = (id: string, category: string, solved = false, difficulty: PracticeProblem['difficulty'] = 'Easy'): PracticeProblem => ({
@@ -72,7 +72,8 @@ describe('topic learning sets (store)', () => {
     await s().fetchTopicSets();
     const refreshed = deferred<ProblemsListResponse>();
     getProblems.mockReturnValueOnce(refreshed.promise);
-    const refreshing = s().fetchTopicSets();
+    // a refresh moments after a load is forced (a submission, or Retry); otherwise the fresh sets are reused
+    const refreshing = s().fetchTopicSets({ force: true });
     expect(s().topicSetsStatus).toBe('ready');
     refreshed.resolve(page([problem('p1', 'Arrays', true)]));
     await refreshing;
@@ -106,13 +107,14 @@ describe('topic learning sets (store)', () => {
     await s().fetchTopicSets();
     const loaded = s().topicSets;
 
+    // (refreshes moments after a load are forced, as a submission's or Retry's are)
     getProblems.mockRejectedValueOnce(new Error('Network error.'));
-    await s().fetchTopicSets();
+    await s().fetchTopicSets({ force: true });
     expect(s()).toMatchObject({ topicSetsStatus: 'error', topicSetsError: 'Network error.' });
     expect(s().topicSets).toEqual(loaded);
 
     getProblems.mockResolvedValueOnce(page([problem('p1', 'Arrays')], 1, 2, 2)).mockResolvedValueOnce(page([problem('p1', 'Arrays')], 1, 1, 1));
-    await s().fetchTopicSets();
+    await s().fetchTopicSets({ force: true });
     expect(s().topicSetsStatus).toBe('error');
     expect(s().topicSets).toEqual(loaded);
 
@@ -170,7 +172,17 @@ describe('topic selection with search, difficulty and pagination (store)', () =>
     s().setSelectedDifficulty('Easy');
     expect(getProblems).toHaveBeenLastCalledWith({ page: 1, limit: 12, difficulty: 'Easy', category: 'Stack', search: undefined });
     usePracticeStore.setState({ currentPage: 2, totalPages: 3 });
-    s().setSearchQuery('paren');
+    // the search is sent once typing pauses
+    vi.useFakeTimers();
+    try {
+      const before = getProblems.mock.calls.length;
+      s().setSearchQuery('paren');
+      expect(s()).toMatchObject({ searchQuery: 'paren', currentPage: 1 });
+      expect(getProblems).toHaveBeenCalledTimes(before);
+      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(getProblems).toHaveBeenLastCalledWith({ page: 1, limit: 12, difficulty: 'Easy', category: 'Stack', search: 'paren' });
     s().setSelectedTopic('All');
     expect(getProblems).toHaveBeenLastCalledWith({ page: 1, limit: 12, difficulty: 'Easy', category: undefined, search: 'paren' });

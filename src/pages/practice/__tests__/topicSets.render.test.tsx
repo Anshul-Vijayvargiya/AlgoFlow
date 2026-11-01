@@ -8,7 +8,7 @@ import type { TopicSet } from '../topicSets';
 const store = vi.hoisted(() => ({
   problems: [], total: 0, currentPage: 1, totalPages: 1, pageSize: 12, isLoading: false, error: null as string | null,
   topicSets: [] as TopicSet[], topicSetsStatus: 'idle' as 'idle' | 'loading' | 'ready' | 'error', topicSetsError: null as string | null,
-  topicSetsIncomplete: false,
+  topicSetsIncomplete: false, topicSetsRetryAt: null as number | null, problemsRetryAt: null as number | null,
   selectedLanguage: 'cpp', userCode: '', isSubmitting: false, submissionResult: null, submissionError: null, draftsNotSaved: false,
   submissions: [], selectedDifficulty: 'All', selectedTopic: 'All', searchQuery: '',
   fetchProblems: () => Promise.resolve(), fetchTopicSets: () => Promise.resolve(), selectProblem: () => {}, setLanguage: () => {},
@@ -24,7 +24,10 @@ const set = (topic: string, total: number, solved: number): TopicSet => ({ topic
 const LOADED = [set('Arrays', 2, 1), set('Trees', 1, 0)];
 
 beforeEach(() => {
-  Object.assign(store, { topicSets: [], topicSetsStatus: 'idle', topicSetsError: null, topicSetsIncomplete: false, selectedTopic: 'All' });
+  Object.assign(store, {
+    topicSets: [], topicSetsStatus: 'idle', topicSetsError: null, topicSetsIncomplete: false, selectedTopic: 'All',
+    topicSetsRetryAt: null, problemsRetryAt: null, problems: [], error: null, isLoading: false,
+  });
 });
 
 describe('Practice page — topic learning sets', () => {
@@ -65,6 +68,32 @@ describe('Practice page — topic learning sets', () => {
     const html = render();
     expect(html).toContain('The topic sets could not be refreshed; showing what was loaded earlier. Network error.');
     expect([...html.matchAll(/data-topic-set="([^"]+)"/g)].map(m => m[1])).toEqual(['All', 'Arrays', 'Trees']);
+  });
+
+  it("rate limited: the loaded sets stay, and Retry waits for the server's time (disabled, with the wait)", () => {
+    const message = 'API rate limit exceeded. Please slow down your requests.';
+    Object.assign(store, { topicSetsStatus: 'error', topicSetsError: message, topicSets: LOADED, topicSetsRetryAt: Date.now() + 125_000 });
+    const html = render();
+    expect(html).toContain(`The topic sets could not be refreshed; showing what was loaded earlier. ${message}`);
+    expect(html).toMatch(/You can retry in 2 min [56] s\./);
+    expect(html).toMatch(/<button type="button" disabled="" data-testid="topic-sets-retry"[^>]*>Retry in 2 min [56] s<\/button>/);
+    expect([...html.matchAll(/data-topic-set="([^"]+)"/g)].map(m => m[1])).toEqual(['All', 'Arrays', 'Trees']);
+    // once the time has passed: a plain, enabled Retry
+    store.topicSetsRetryAt = Date.now() - 1;
+    expect(render()).toMatch(/<button type="button" data-testid="topic-sets-retry"[^>]*>Retry<\/button>/);
+  });
+
+  it('rate limited problem list: the list loaded earlier stays, and its Retry waits too', () => {
+    Object.assign(store, {
+      problems: [{ id: 'p1', title: 'Two Sum', difficulty: 'Easy', category: 'Arrays', tags: [], solved: false, description: '', testCases: [], starterCode: {} }],
+      total: 1, error: 'API rate limit exceeded. Please slow down your requests.', problemsRetryAt: Date.now() + 45_000,
+      topicSetsStatus: 'ready', topicSets: LOADED,
+    });
+    const html = render();
+    expect(html).toContain('Couldn&#x27;t refresh the problems. Showing what was loaded earlier.');
+    expect(html).toMatch(/The server asked to slow down: you can retry in 4[45] s\./);
+    expect(html).toMatch(/<button type="button" disabled="" data-testid="practice-refresh-retry"[^>]*>Retry in 4[45] s<\/button>/);
+    expect(html).toContain('Two Sum');
   });
 
   it('no published problems: an empty state, not an error and not invented sets', () => {
