@@ -81,7 +81,9 @@ export type AlgorithmId =
   | 'three-sum'
   | 'four-sum'
   | 'print-all-pairs'
-  | 'print-subarrays';
+  | 'print-subarrays'
+  | 'build-bst'
+  | 'build-bst-recursive';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -361,6 +363,42 @@ export interface TreeView {
   readonly pointers?: readonly { readonly name: string; readonly node: string | null }[];
   /** the final answer, on the last step only */
   readonly result?: { readonly kind: 'answer'; readonly text: string };
+  /**
+   * Building a binary search tree only: the tree grows step by step (nodes holds the nodes inserted so far), and this
+   * says how the value being inserted finds its place. The traversals leave it out.
+   */
+  readonly build?: TreeBuildView;
+}
+
+export interface TreeBuildView {
+  /** the input values, in insertion order (the same array on every step) */
+  readonly values: readonly number[];
+  /** the input position this step works on; null before the first value and after the last */
+  readonly index: number | null;
+  /** the nodes the value has been compared with so far, root first */
+  readonly path: readonly string[];
+  /** the empty child the value goes into (found, not yet linked); parent null: the empty tree's root */
+  readonly slot?: { readonly parent: string | null; readonly side: 'left' | 'right' | 'root' };
+  /** the node this step created and linked into the tree */
+  readonly inserted?: string;
+  /** the node that already holds the value: a duplicate is skipped */
+  readonly duplicate?: string;
+  /** input positions skipped as duplicates so far */
+  readonly skipped: readonly number[];
+  /** Recursive build only: the insert(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls?: readonly TreeCallFrame[];
+  /** Recursive build only: the node the base case created and returned, not yet linked by its caller */
+  readonly created?: TreeNodeView;
+}
+
+/** One insert(node, value) call of the recursive build (the value is the one being inserted). */
+export interface TreeCallFrame {
+  /** the subtree this call works on: its root node, or null for an empty subtree (the base case) */
+  readonly node: string | null;
+  /** what the caller passed: buildBST's root, or the caller's node.left / node.right */
+  readonly via: 'root' | 'left' | 'right';
+  /** set once the call returns: the subtree root it hands back to its caller */
+  readonly returns?: string;
 }
 
 /** A container between two lines: its ends (indices), its water level (the shorter line's height) and its area. */

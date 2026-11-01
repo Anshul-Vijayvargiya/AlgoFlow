@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import type { AlgorithmDefinition, ExecutionStep, ProgrammingLanguage } from '../../types/algorithm';
 import { getAllAlgorithms, visualKindOf } from '../AlgorithmRegistry';
-import { defaultListIndex, validateAlgorithmInput } from '../inputParsing';
+import { defaultListIndex, takesTexts, validateAlgorithmInput } from '../inputParsing';
 
 export const LANGUAGES: ProgrammingLanguage[] = ['c', 'cpp', 'java', 'python'];
 
@@ -61,8 +61,9 @@ export const NUMBER_INPUTS: Record<string, number[][]> = {
   'arranging-coins': [[0], [1], [2], [3], [5], [6], [8], [10], [1000], [2147450880], [2147483647]],
 };
 
-/** Tree traversals: their input is one level-order string (params.texts), never an array. */
-export const treeAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'tree');
+/** Tree traversals: their input is one level-order string (params.texts), never an array. (Build a BST, drawn as a tree
+ *  but built from an array, is not one of them.) */
+export const treeAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(d) === 'tree' && takesTexts(d));
 
 /** representative trees for the traversals (one level-order string each) */
 export const TREE_TEST_INPUTS: string[][] = [
@@ -106,8 +107,9 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
 export const inputsWithNumbers = (d: AlgorithmDefinition, arrays: readonly number[][]): number[][] =>
   visualKindOf(d) === 'numbers'
     ? [d.defaultInput, ...(NUMBER_INPUTS[d.id] ?? [])]
-    : // a text or tree algorithm's input array is always empty; its strings come from params.texts (or its default example)
-      visualKindOf(d) === 'text' || visualKindOf(d) === 'tree'
+    : // a text algorithm or tree traversal takes no array; its strings come from params.texts (or its default example).
+      // (Build a BST draws a tree but takes an array, so it runs on the arrays.)
+      takesTexts(d)
       ? [d.defaultInput]
       : arrays.filter(input => hasDefaultRun(d, input));
 
@@ -120,8 +122,8 @@ export const inputsWithNumbers = (d: AlgorithmDefinition, arrays: readonly numbe
 export function hasDefaultRun(d: AlgorithmDefinition, input: readonly number[]): boolean {
   // number algorithms, and array algorithms with input rules (Container With Most Water: two or more heights, none
   // negative), run only on input the app would accept
-  // a text or tree algorithm takes no array: called without params it runs on its default example
-  if (visualKindOf(d) === 'text' || visualKindOf(d) === 'tree') return input.length === 0;
+  // a text algorithm or tree traversal takes no array: called without params it runs on its default example
+  if (takesTexts(d)) return input.length === 0;
   if (visualKindOf(d) === 'numbers' || d.inputSpec?.minLength !== undefined || d.inputSpec?.minValue !== undefined) {
     return validateAlgorithmInput(d, [...input], null).ok;
   }

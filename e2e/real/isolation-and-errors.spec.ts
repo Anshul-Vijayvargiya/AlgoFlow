@@ -115,7 +115,12 @@ test.describe('Real backend — errors', () => {
     // the ONLY non-real response in this suite: the first tracks request is aborted (a network failure)
     let failures = 1;
     await page.route(`${API_ORIGIN}/api/progress/algorithms`, route => (failures-- > 0 ? route.abort('connectionrefused') : route.continue()));
-    await page.getByRole('link', { name: /Roadmap/ }).first().click();
+    // to the roadmap without reloading (the header has no Roadmap link: the app's router follows the history change)
+    await page.evaluate(() => {
+      history.pushState(null, '', '/learning');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(page).toHaveURL(/\/learning$/);
     const alert = page.getByTestId('roadmap-error');
     await expect(alert).toBeVisible();
     await expect(page.locator('[data-status="not-started"], [data-status="explored"]')).toHaveCount(0);

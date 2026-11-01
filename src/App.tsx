@@ -10,6 +10,7 @@ import { PlaygroundPage } from './pages/PlaygroundPage';
 import { LearningPathsPage } from './pages/LearningPathsPage';
 import { PatternsPage } from './pages/PatternsPage';
 import { NotesPage } from './pages/NotesPage';
+import { ResourcesPage } from './pages/ResourcesPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { AdminPage } from './pages/AdminPage';
 import { PrivacyPage } from './pages/PrivacyPage';
@@ -68,6 +69,10 @@ export const App: React.FC = () => {
         <Route
           path="/notes"
           element={<ProtectedLayout><NotesPage /></ProtectedLayout>}
+        />
+        <Route
+          path="/resources"
+          element={<ProtectedLayout><ResourcesPage /></ProtectedLayout>}
         />
         <Route
           path="/progress"

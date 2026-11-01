@@ -4,6 +4,7 @@ import type { PracticeProblem, ProgrammingLanguage } from '../types/algorithm';
 import type { SubmissionRecord, SubmissionResult } from '../api';
 import { useAuthStore } from './useAuthStore';
 import { buildTopicSets, type TopicSet } from '../pages/practice/topicSets';
+import { RateLimitedError, createDedupe, withRateLimitRetry } from '../api/rateLimit';
 
 /** the server's (and the mock's) largest page; topic sets read every page of the published problems */
 const TOPIC_SETS_PAGE_SIZE = 50;
@@ -16,6 +17,28 @@ const TOPIC_SETS_MAX_PAGES = 50;
 let problemsRequest = 0;
 let topicSetsRequest = 0;
 let submissionsRequest = 0;
+
+// ── request volume (every /api request counts towards the server's rate limit) ──────────────────────────────────
+/** a list page or the topic sets loaded this recently are shown again on a revisit instead of being re-requested */
+export const PRACTICE_CACHE_TTL_MS = 60_000;
+/** the search waits for a pause in typing before asking the server */
+export const SEARCH_DEBOUNCE_MS = 300;
+const PROBLEMS_CACHE_SIZE = 20;
+type ProblemsQuery = { page: number; limit: number; difficulty?: string; category?: string; search?: string };
+type ProblemsPage = Awaited<ReturnType<typeof apiClient.practice.getProblems>>;
+/** identical requests in flight share one (a remount, React StrictMode's second effect, a double click) */
+const dedupe = createDedupe();
+/** successful list pages by query, with when they were loaded (dropped on a submission, sign-out or account switch) */
+const problemsCache = new Map<string, { at: number; res: ProblemsPage }>();
+let topicSetsLoadedAt: number | null = null;
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+/** bumped by a submission or reset: a request started before it (old solved flags) is never shared with one after */
+let generation = 0;
+/** what fetchProblems and fetchTopicSets call: rate-limit retries (bounded) around the real request */
+const getProblemsPage = (query: ProblemsQuery) =>
+  dedupe(`problems:${generation}:${JSON.stringify(query)}`, () => withRateLimitRetry(() => apiClient.practice.getProblems(query)));
+const rateLimitedUntil = (err: unknown) => (err instanceof RateLimitedError ? err.retryAt : null);
+const waiting = (retryAt: number | null) => retryAt !== null && retryAt > Date.now();
 
 /** one draft per problem and language, so switching either never loses or mixes code */
 const draftKey = (problemId: string, lang: ProgrammingLanguage) => `${problemId}::${lang}`;
@@ -93,9 +116,13 @@ interface PracticeState {
   topicSetsError: string | null;
   /** more problems exist than were read for the topic sets: their counts are a lower bound */
   topicSetsIncomplete: boolean;
+  /** rate limited: the time (epoch ms) before which the list / the topic sets are not requested again */
+  problemsRetryAt: number | null;
+  topicSetsRetryAt: number | null;
 
-  fetchProblems: (params?: { page?: number; difficulty?: string; category?: string; search?: string }) => Promise<void>;
-  fetchTopicSets: () => Promise<void>;
+  /** force: ask the server even if the same page was loaded moments ago (after a submission, or Retry) */
+  fetchProblems: (params?: { page?: number; difficulty?: string; category?: string; search?: string }, options?: { force?: boolean }) => Promise<void>;
+  fetchTopicSets: (options?: { force?: boolean }) => Promise<void>;
   setPage: (page: number) => void;
   selectProblem: (problem: PracticeProblem) => void;
   setLanguage: (lang: ProgrammingLanguage) => void;
@@ -135,49 +162,63 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   topicSetsStatus: 'idle',
   topicSetsError: null,
   topicSetsIncomplete: false,
+  problemsRetryAt: null,
+  topicSetsRetryAt: null,
 
-  fetchProblems: async (params) => {
+  fetchProblems: async (params, options) => {
+    const difficulty = params?.difficulty !== undefined ? params.difficulty : get().selectedDifficulty;
+    const category = params?.category !== undefined ? params.category : get().selectedTopic;
+    const search = params?.search !== undefined ? params.search : get().searchQuery;
+    const page = params?.page !== undefined ? params.page : get().currentPage;
+    const query: ProblemsQuery = {
+      page,
+      limit: get().pageSize,
+      difficulty: difficulty !== 'All' ? difficulty : undefined,
+      category: category !== 'All' ? category : undefined,
+      search: search || undefined,
+    };
+    const apply = (res: ProblemsPage) =>
+      set({ problems: res.problems, total: res.total, currentPage: res.page, totalPages: Math.max(1, res.totalPages), isLoading: false, error: null, problemsRetryAt: null });
+
     const request = ++problemsRequest;
+    const key = JSON.stringify(query);
+    const cached = problemsCache.get(key);
+    if (!options?.force && cached && Date.now() - cached.at < PRACTICE_CACHE_TTL_MS) {
+      apply(cached.res);
+      return;
+    }
+    // rate limited: nothing is sent before the server's time (the list loaded earlier stays, with the error)
+    if (waiting(get().problemsRetryAt)) {
+      set({ isLoading: false });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
-      const difficulty = params?.difficulty !== undefined ? params.difficulty : get().selectedDifficulty;
-      const category = params?.category !== undefined ? params.category : get().selectedTopic;
-      const search = params?.search !== undefined ? params.search : get().searchQuery;
-      const page = params?.page !== undefined ? params.page : get().currentPage;
-      const pageSize = get().pageSize;
-
-      const res = await apiClient.practice.getProblems({
-        page,
-        limit: pageSize,
-        difficulty: difficulty !== 'All' ? difficulty : undefined,
-        category: category !== 'All' ? category : undefined,
-        search: search || undefined,
-      });
+      const res = await getProblemsPage(query);
+      problemsCache.delete(key);
+      problemsCache.set(key, { at: Date.now(), res });
+      if (problemsCache.size > PROBLEMS_CACHE_SIZE) problemsCache.delete(problemsCache.keys().next().value!);
       if (request !== problemsRequest) return;
-
-      set({
-        problems: res.problems,
-        total: res.total,
-        currentPage: res.page,
-        totalPages: Math.max(1, res.totalPages),
-        isLoading: false,
-      });
+      apply(res);
     } catch (err: any) {
       if (request !== problemsRequest) return;
-      set({ isLoading: false, error: err?.message || 'The problems could not be loaded.' });
+      set({ isLoading: false, error: err?.message || 'The problems could not be loaded.', problemsRetryAt: rateLimitedUntil(err) });
     }
   },
 
-  fetchTopicSets: async () => {
+  fetchTopicSets: async (options) => {
+    const { topicSets, topicSetsStatus, topicSetsRetryAt } = get();
+    if (!options?.force && topicSetsStatus === 'ready' && topicSetsLoadedAt !== null && Date.now() - topicSetsLoadedAt < PRACTICE_CACHE_TTL_MS) return;
+    if (waiting(topicSetsRetryAt)) return;
     const request = ++topicSetsRequest;
     // keep showing the sets already loaded while they refresh (e.g. after a submission)
-    set({ topicSetsStatus: get().topicSets.length ? 'ready' : 'loading', topicSetsError: null });
+    set({ topicSetsStatus: topicSets.length ? 'ready' : 'loading', topicSetsError: null });
     try {
       const all: PracticeProblem[] = [];
       let page = 1;
       let totalPages = 1;
       do {
-        const res = await apiClient.practice.getProblems({ page, limit: TOPIC_SETS_PAGE_SIZE });
+        const res = await getProblemsPage({ page, limit: TOPIC_SETS_PAGE_SIZE });
         if (request !== topicSetsRequest) return;
         // a different page than asked (clamped: problems were removed while reading) means the pages already read no
         // longer line up: the counts would be wrong, so this is a failure, never partial results shown as complete
@@ -186,11 +227,12 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         totalPages = Math.max(1, res.totalPages);
         page += 1;
       } while (page <= totalPages && page <= TOPIC_SETS_MAX_PAGES);
-      set({ topicSets: buildTopicSets(all), topicSetsStatus: 'ready', topicSetsIncomplete: totalPages > TOPIC_SETS_MAX_PAGES });
+      topicSetsLoadedAt = Date.now();
+      set({ topicSets: buildTopicSets(all), topicSetsStatus: 'ready', topicSetsIncomplete: totalPages > TOPIC_SETS_MAX_PAGES, topicSetsRetryAt: null });
     } catch (err: any) {
       if (request !== topicSetsRequest) return;
       // the sets loaded earlier (if any) stay: the page shows them with the error, instead of nothing
-      set({ topicSetsStatus: 'error', topicSetsError: err?.message || 'The topic sets could not be loaded.' });
+      set({ topicSetsStatus: 'error', topicSetsError: err?.message || 'The topic sets could not be loaded.', topicSetsRetryAt: rateLimitedUntil(err) });
     }
   },
 
@@ -239,10 +281,13 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       const res = await apiClient.practice.submitSolution(prob.id, get().selectedLanguage, get().userCode);
       set({ isSubmitting: false, submissionResult: res });
 
-      // Refresh problem list, the topic sets' solved counts and user submissions for this problem
+      // Refresh problem list, the topic sets' solved counts and user submissions for this problem: what was cached
+      // has the old solved flags
+      problemsCache.clear();
+      generation += 1;
       await Promise.all([
-        get().fetchProblems(),
-        get().fetchTopicSets(),
+        get().fetchProblems(undefined, { force: true }),
+        get().fetchTopicSets({ force: true }),
         get().fetchSubmissions(prob.id),
       ]);
     } catch (err: any) {
@@ -281,8 +326,13 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   },
 
   setSearchQuery: (query) => {
+    // the field shows every keystroke at once; the list is asked for once typing pauses
     set({ searchQuery: query, currentPage: 1 });
-    get().fetchProblems({ page: 1, search: query });
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchTimer = null;
+      get().fetchProblems({ page: 1, search: query });
+    }, SEARCH_DEBOUNCE_MS);
   },
 
   reset: () => {
@@ -291,12 +341,18 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     problemsRequest += 1;
     topicSetsRequest += 1;
     submissionsRequest += 1;
+    problemsCache.clear();
+    topicSetsLoadedAt = null;
+    generation += 1;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = null;
     set({
       selectedProblem: null, userCode: '', drafts: {}, draftsNotSaved: false, submissionResult: null, submissionError: null,
       submissions: [], isLoadingSubmissions: false,
       // an ignored request never finishes loading, so loading is cleared here; the next visit loads page 1 again
       problems: [], total: 0, currentPage: 1, totalPages: 1, isLoading: false, error: null,
       topicSets: [], topicSetsStatus: 'idle', topicSetsError: null, topicSetsIncomplete: false,
+      problemsRetryAt: null, topicSetsRetryAt: null,
     });
   },
 }));

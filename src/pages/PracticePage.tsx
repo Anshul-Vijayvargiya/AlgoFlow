@@ -18,6 +18,7 @@ import { usePracticeStore } from '../store/usePracticeStore';
 import { apiClient } from '../api';
 import { TONE_PANEL, TONE_TEXT, verdictOf } from './practice/verdicts';
 import { solvedPercent } from './practice/topicSets';
+import { secondsUntil, useClockUntil, waitText } from './practice/retryWait';
 import type { PracticeProblem, ProgrammingLanguage } from '../types/algorithm';
 
 export const PracticePage: React.FC = () => {
@@ -33,6 +34,8 @@ export const PracticePage: React.FC = () => {
     topicSetsStatus,
     topicSetsError,
     topicSetsIncomplete,
+    topicSetsRetryAt,
+    problemsRetryAt,
     fetchTopicSets,
     selectedLanguage,
     userCode,
@@ -91,6 +94,13 @@ export const PracticePage: React.FC = () => {
   useEffect(() => {
     fetchTopicSets();
   }, [fetchTopicSets]);
+
+  // rate limited: Retry waits for the server's time, then asks once (never on its own, never in a loop)
+  const now = useClockUntil(topicSetsRetryAt, problemsRetryAt);
+  const topicSetsWait = secondsUntil(topicSetsRetryAt, now);
+  const problemsWait = secondsUntil(problemsRetryAt, now);
+  const retryTopicSets = () => fetchTopicSets({ force: true });
+  const retryProblems = () => fetchProblems(undefined, { force: true });
 
   const difficulties = ['All', 'Easy', 'Medium', 'Hard'];
   // the topics the published problems actually have (plus the selected one, so the filter never shows a wrong value)
@@ -157,13 +167,16 @@ export const PracticePage: React.FC = () => {
               {topicSets.length > 0
                 ? `The topic sets could not be refreshed; showing what was loaded earlier. ${topicSetsError}`
                 : `The topic sets could not be loaded: ${topicSetsError}`}
+              {topicSetsWait > 0 && ` You can retry in ${waitText(topicSetsWait)}.`}
             </span>
             <button
               type="button"
-              onClick={() => fetchTopicSets()}
-              className="font-mono font-bold underline underline-offset-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+              onClick={retryTopicSets}
+              disabled={topicSetsWait > 0}
+              data-testid="topic-sets-retry"
+              className="font-mono font-bold underline underline-offset-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:no-underline disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Retry
+              {topicSetsWait > 0 ? `Retry in ${waitText(topicSetsWait)}` : 'Retry'}
             </button>
           </div>
         )}
@@ -261,8 +274,19 @@ export const PracticePage: React.FC = () => {
       {error && problems.length > 0 && (
         <div role="status" data-testid="practice-refresh-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-300">
           <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="flex-1">Couldn&apos;t refresh the problems. Showing what was loaded earlier.</span>
-          <button type="button" onClick={() => fetchProblems()} className="font-mono font-bold underline underline-offset-2">Retry</button>
+          <span className="flex-1">
+            Couldn&apos;t refresh the problems. Showing what was loaded earlier.
+            {problemsWait > 0 && ` The server asked to slow down: you can retry in ${waitText(problemsWait)}.`}
+          </span>
+          <button
+            type="button"
+            onClick={retryProblems}
+            disabled={isLoading || problemsWait > 0}
+            data-testid="practice-refresh-retry"
+            className="font-mono font-bold underline underline-offset-2 disabled:no-underline disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {problemsWait > 0 ? `Retry in ${waitText(problemsWait)}` : 'Retry'}
+          </button>
         </div>
       )}
 
@@ -271,16 +295,19 @@ export const PracticePage: React.FC = () => {
           <AlertTriangle className="w-6 h-6 text-rose-400 shrink-0" aria-hidden="true" />
           <div className="flex-1 space-y-1">
             <h2 className="text-base font-bold text-ink">The problems could not be loaded</h2>
-            <p className="text-sm text-slate-400">{error}</p>
+            <p className="text-sm text-slate-400">
+              {error}
+              {problemsWait > 0 && ` You can retry in ${waitText(problemsWait)}.`}
+            </p>
           </div>
           <button
             type="button"
-            onClick={() => fetchProblems()}
-            disabled={isLoading}
+            onClick={retryProblems}
+            disabled={isLoading || problemsWait > 0}
             className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-sm font-mono font-bold flex items-center gap-2 hover:border-cyan-500/50 disabled:opacity-50"
           >
             <RotateCcw className="w-4 h-4" aria-hidden="true" />
-            {isLoading ? 'Retrying…' : 'Retry'}
+            {isLoading ? 'Retrying…' : problemsWait > 0 ? `Retry in ${waitText(problemsWait)}` : 'Retry'}
           </button>
         </div>
       ) : isLoading && problems.length === 0 ? (

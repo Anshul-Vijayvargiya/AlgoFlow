@@ -290,6 +290,7 @@ describe('Auth API Routes - Integration & Security Tests', () => {
     expect(blockedRes.status).toBe(429);
     expect(blockedRes.body.error).toMatch(/Too many authentication attempts/i);
     expect(blockedRes.body.retryAfterSeconds).toBeGreaterThan(0);
+    expect(blockedRes.headers['retry-after']).toBe(String(blockedRes.body.retryAfterSeconds));
   });
 });
 

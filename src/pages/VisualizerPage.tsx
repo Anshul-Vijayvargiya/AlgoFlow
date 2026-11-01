@@ -20,6 +20,7 @@ import { TreeVisualizer } from '../components/visualizer/TreeVisualizer';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
+import { takesTexts } from '../engine/inputParsing';
 import { Play, Code2, Menu, X, Sparkles } from 'lucide-react';
 
 export const VisualizerPage: React.FC = () => {
@@ -242,7 +243,8 @@ export const VisualizerPage: React.FC = () => {
                   </div>
 
                   {/* Array / target input, the linked-list form, a number algorithm's values, or the strings of a text or tree algorithm */}
-                  {visual === 'array' ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : visual === 'numbers' ? <NumberInputPanel /> : <TextInputPanel />}
+                  {/* arrays, and a tree built from an array (Build a BST), take the array form; the traversals take their tree as text */}
+                  {visual === 'array' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : visual === 'numbers' ? <NumberInputPanel /> : <TextInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

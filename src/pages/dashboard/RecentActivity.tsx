@@ -44,7 +44,7 @@ export const RecentActivity: React.FC<Props> = ({ events, loaded, loading, error
           ))}
         </div>
       ) : views.length === 0 ? (
-        <div data-testid="recent-empty" className="flex flex-col items-center justify-center gap-2 text-center rounded-xl border border-dashed border-slate-700 px-6 py-8">
+        <div data-testid="recent-empty" className="flex-1 flex flex-col items-center justify-center gap-2 text-center rounded-xl border border-dashed border-slate-700 px-6 py-8">
           <p className="text-sm font-semibold text-slate-300">No activity yet</p>
           <p className="text-xs text-slate-400">
             Submit a solution in{' '}

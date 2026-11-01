@@ -93,8 +93,13 @@ expect(ids).toEqual([
         return original.call(this, key);
       };
     });
-    // client-side navigation keeps the patched storage
-    await page.getByRole('link', { name: /Roadmap/ }).first().click();
+    // client-side navigation keeps the patched storage (the header has no Roadmap link: the app's router follows the
+    // history change as it would a link, without reloading the page)
+    await page.evaluate(() => {
+      history.pushState(null, '', '/learning');
+      dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(page).toHaveURL(/\/learning$/);
     const alert = page.getByTestId('roadmap-error');
     await expect(alert).toContainText('Your progress could not be loaded');
     await expect(page.locator('[data-status="not-started"], [data-status="explored"]')).toHaveCount(0);

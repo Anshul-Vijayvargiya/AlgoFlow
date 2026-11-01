@@ -63,7 +63,8 @@ test.describe('sidebar search', () => {
 
   test('clicking a result selects it and opens its visualizer, as the full list does', async ({ app }) => {
     await search(app.page).fill('binary');
-    await algorithmButtons(app.sidebar).getByText('Binary Search').click();
+    // exact: "Build a Binary Search Tree" matches the query too
+    await algorithmButtons(app.sidebar).getByText('Binary Search', { exact: true }).click();
     await expect(app.heading).toHaveText('Binary Search');
     await expect(app.targetInput).toBeVisible();
     await expect(app.stepCounter).toHaveAttribute('data-step', '1');
