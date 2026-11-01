@@ -31,6 +31,7 @@ export const ALGORITHMS: Record<string, { id: AlgorithmId; label: string; headin
   'maximum-subarray': { id: 'maximum-subarray', label: 'Maximum Subarray', heading: 'Maximum Subarray' },
   'three-sum': { id: 'three-sum', label: '3Sum', heading: '3Sum' },
   'four-sum': { id: 'four-sum', label: '4Sum', heading: '4Sum' },
+  'print-all-pairs': { id: 'print-all-pairs', label: 'Print All Pairs in an Array', heading: 'Print All Pairs in an Array' },
 };
 
 /** Linked-list operations: drawn as nodes, with their own input form (kept apart from ALGORITHMS, whose specs expect bars). */

@@ -315,8 +315,8 @@ describe('Merge Sort buffers are represented structurally, not by unrelated bars
     }
   });
 
-  it('only the merge algorithms, 3Sum and 4Sum carry buffers (Merge Sort: left / right; Merge Sorted Array: nums2; 3Sum / 4Sum: the triplets / quadruplets found)', () => {
-    for (const d of ALL.filter(a => !['merge-sort', 'merge-sorted-array', 'three-sum', 'four-sum'].includes(a.id))) {
+  it('only the merge algorithms, 3Sum, 4Sum and Print All Pairs carry buffers (Merge Sort: left / right; Merge Sorted Array: nums2; 3Sum / 4Sum: the triplets / quadruplets found; Print All Pairs: the pairs printed)', () => {
+    for (const d of ALL.filter(a => !['merge-sort', 'merge-sorted-array', 'three-sum', 'four-sum', 'print-all-pairs'].includes(a.id))) {
       expect(d.generateSteps([...d.defaultInput]).some(s => s.buffers), d.id).toBe(false);
     }
   });

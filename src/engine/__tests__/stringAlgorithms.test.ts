@@ -17,7 +17,12 @@ const answer = (id: string, ...texts: string[]) => last(run(id, ...texts)).varia
 const ROMAN_PARTS: [number, string][] = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
 function toRoman(n: number): string {
   let out = '';
-  for (const [v, sym] of ROMAN_PARTS) while (n >= v) (out += sym), (n -= v);
+  for (const [v, sym] of ROMAN_PARTS) {
+    while (n >= v) {
+      out += sym;
+      n -= v;
+    }
+  }
   return out;
 }
 function lcpRef(words: string[]): string {
@@ -27,7 +32,10 @@ function lcpRef(words: string[]): string {
 }
 function validRef(s: string): boolean {
   let prev = '';
-  while (s !== prev) (prev = s), (s = s.replace(/\(\)|\[\]|\{\}/g, ''));
+  while (s !== prev) {
+    prev = s;
+    s = s.replace(/\(\)|\[\]|\{\}/g, '');
+  }
   return s === '';
 }
 const palindromeRef = (s: string) => {
@@ -377,7 +385,10 @@ describe('#680 Valid Palindrome II', () => {
       // the first mismatch, found independently
       let l = 0;
       let r = s.length - 1;
-      while (l < r && s[l] === s[r]) (l++, r--);
+      while (l < r && s[l] === s[r]) {
+        l++;
+        r--;
+      }
       const mismatch = l < r;
       const calls = steps.filter(st => st.codeRef === 'try-skip-left' || st.codeRef === 'try-skip-right');
       if (!mismatch) {
