@@ -26,10 +26,13 @@
 
 ## 2. Cookies, CORS and the origin check
 
-- [ ] The auth cookie is `HttpOnly; Secure; SameSite=Lax; Path=/`, with a 7-day lifetime. *(Rehearsed locally.)* `Secure` means staging **must be served over https**.
+- [ ] The only auth cookie is the refresh cookie `algoflow_refresh`: `HttpOnly; Secure; SameSite=Lax; Path=/api/auth`, no `Domain`, expiring after `REFRESH_TOKEN_TTL` (default 7 days). The access token is never a cookie. *(Rehearsed locally.)* `Secure` means staging **must be served over https**. See `docs/authentication.md`.
+- [ ] `ACCESS_TOKEN_TTL` and `REFRESH_TOKEN_TTL` are unset (15m / 7d) or set deliberately. Staging and production refuse an access lifetime over 1h or a refresh lifetime over 30d.
 - [ ] CORS allows only `CLIENT_URL`, with credentials. *(Rehearsed locally: a foreign origin is only ever told the configured origin, which browsers reject.)*
 - [ ] Writes from a foreign `Origin` get 403. *(Rehearsed locally.)*
-- [ ] In staging: sign up, reload (the session is restored), sign out, then confirm the old cookie is refused. These are the same checks as `e2e/real/auth.spec.ts`.
+- [ ] `POST /api/auth/refresh` from a foreign `Origin`, without `Origin`, or with `Sec-Fetch-Site: cross-site` gets 403. *(Rehearsed locally.)*
+- [ ] In staging: sign up, reload (the session is restored through `/api/auth/refresh`), sign out, then confirm the old refresh cookie is refused. These are the same checks as `e2e/real/auth.spec.ts`.
+- [ ] In the deployed browser, check that the refresh cookie is actually sent to `/api/auth/refresh` (DevTools → Network → the request's cookies). If it is not, the front end and the API are not same-site (see `docs/authentication.md`, "Hosting").
 
 ## 3. Secrets and environment
 

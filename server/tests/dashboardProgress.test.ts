@@ -37,7 +37,7 @@ const queryOf = (result: unknown) => {
 
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const cookie = (id = USER) => [`algoflow_token=${tokenFor(id, 'USER')}`];
+const bearer = (id = USER) => `Bearer ${tokenFor(id, 'USER')}`;
 const NOW = new Date('2026-10-21T13:45:00.000Z');
 
 beforeEach(() => {
@@ -66,7 +66,7 @@ describe('GET /api/progress/today', () => {
     mockActivityLog.countDocuments.mockResolvedValue(2);
     mockSubmission.countDocuments.mockImplementation(async (q: { status: unknown }) => (q.status === 'ACCEPTED' ? 1 : 3));
     mockDailyGoalLog.findOne.mockReturnValue(queryOf({ completed: ['review'] }));
-    const res = await request(app).get('/api/progress/today').set('Cookie', cookie(OTHER));
+    const res = await request(app).get('/api/progress/today').set('Authorization', bearer(OTHER));
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       date: '2026-10-21',
@@ -83,13 +83,13 @@ describe('GET /api/progress/today', () => {
 
   it('a stored tick that is not a manual goal (e.g. a verified goal written by an old client) is never reported as done', async () => {
     mockDailyGoalLog.findOne.mockReturnValue(queryOf({ completed: ['submit', 'review', 'review', 'bogus'] }));
-    const res = await request(app).get('/api/progress/today').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/today').set('Authorization', bearer());
     expect(res.body.manualCompleted).toEqual(['review']);
   });
 
   it('a new UTC day starts empty; the previous day is looked up by nothing (its record is kept, not deleted)', async () => {
     vi.setSystemTime(new Date('2026-10-22T00:00:01.000Z'));
-    const res = await request(app).get('/api/progress/today').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/today').set('Authorization', bearer());
     expect(res.body).toMatchObject({ date: '2026-10-22', resetsAt: '2026-10-23T00:00:00.000Z', manualCompleted: [] });
     expect(mockDailyGoalLog.findOne).toHaveBeenCalledWith({ userId: USER, date: '2026-10-22' });
     expect(mockDailyGoalLog.updateOne).not.toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe('GET /api/progress/today', () => {
 });
 
 describe('PUT /api/progress/today/goals/:goalId', () => {
-  const put = (goalId: string, body: unknown, id = USER) => request(app).put(`/api/progress/today/goals/${goalId}`).set('Cookie', cookie(id)).send(body as object);
+  const put = (goalId: string, body: unknown, id = USER) => request(app).put(`/api/progress/today/goals/${goalId}`).set('Authorization', bearer(id)).send(body as object);
 
   it('requires a signed-in user', async () => {
     const res = await request(app).put('/api/progress/today/goals/review').send({ done: true });
@@ -175,7 +175,7 @@ describe('GET /api/progress/recent', () => {
   });
 
   it('nothing recorded: an empty list (no example events)', async () => {
-    const res = await request(app).get('/api/progress/recent').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/recent').set('Authorization', bearer());
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ events: [] });
   });
@@ -186,7 +186,7 @@ describe('GET /api/progress/recent', () => {
     mockActivityLog.find.mockReturnValue(queryOf([walk('a1', 'binary-search', '2026-10-21', 6, '2026-10-21T10:00:00Z'), walk('a2', 'retired-algo', '2026-10-21', 3, '2026-10-21T11:00:00Z')]));
     mockProblem.find.mockReturnValue(queryOf([{ problemId: 'two-sum', title: 'Two Sum' }]));
 
-    const res = await request(app).get('/api/progress/recent?limit=5').set('Cookie', cookie(OTHER));
+    const res = await request(app).get('/api/progress/recent?limit=5').set('Authorization', bearer(OTHER));
     expect(res.status).toBe(200);
     expect(res.body.events).toEqual([
       { id: 'walkthrough:a1', kind: 'walkthrough', targetId: 'binary-search', title: 'Binary Search', date: '2026-10-21', stepsViewed: 6, at: '2026-10-21T10:00:00.000Z' },
@@ -203,10 +203,10 @@ describe('GET /api/progress/recent', () => {
   it('the limit is validated (1 to 20, default 8) and caps the merged list', async () => {
     mockSubmission.find.mockReturnValue(queryOf([sub('s1', 'p', 'ACCEPTED', '2026-10-21T09:00:00Z'), sub('s2', 'p', 'ACCEPTED', '2026-10-21T08:00:00Z')]));
     mockActivityLog.find.mockReturnValue(queryOf([walk('a1', 'binary-search', '2026-10-21', 2, '2026-10-21T10:00:00Z')]));
-    const one = await request(app).get('/api/progress/recent?limit=1').set('Cookie', cookie());
+    const one = await request(app).get('/api/progress/recent?limit=1').set('Authorization', bearer());
     expect(one.body.events.map((e: { id: string }) => e.id)).toEqual(['walkthrough:a1']);
-    for (const bad of ['0', '21', 'abc', '2.5']) expect((await request(app).get(`/api/progress/recent?limit=${bad}`).set('Cookie', cookie())).status, bad).toBe(400);
-    await request(app).get('/api/progress/recent').set('Cookie', cookie());
+    for (const bad of ['0', '21', 'abc', '2.5']) expect((await request(app).get(`/api/progress/recent?limit=${bad}`).set('Authorization', bearer())).status, bad).toBe(400);
+    await request(app).get('/api/progress/recent').set('Authorization', bearer());
     expect(mockSubmission.find.mock.results.at(-1)!.value.limit).toHaveBeenCalledWith(8);
   });
 });
@@ -223,7 +223,7 @@ describe('GET /api/progress/summary — streaks', () => {
 
   it('the current streak (UTC days ending today or yesterday) and the longest one, from the activity log', async () => {
     mockActivityLog.distinct.mockResolvedValue(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-19', '2026-10-20']);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ streakDays: 2, longestStreakDays: 4 });
     expect(mockActivityLog.distinct).toHaveBeenCalledWith('date', { userId: USER });
@@ -231,14 +231,14 @@ describe('GET /api/progress/summary — streaks', () => {
 
   it('a missed day: the current streak is 0 and the longest is kept', async () => {
     mockActivityLog.distinct.mockResolvedValue(['2026-10-17', '2026-10-18', '2026-10-19']);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.body).toMatchObject({ streakDays: 0, longestStreakDays: 3 });
   });
 
   it('solved problems are distinct problems with a passed (accepted) submission; attempts are not counted', async () => {
     mockActivityLog.distinct.mockResolvedValue([]);
     mockSubmission.distinct.mockResolvedValue(['two-sum', 'valid-parens']);
-    const res = await request(app).get('/api/progress/summary').set('Cookie', cookie());
+    const res = await request(app).get('/api/progress/summary').set('Authorization', bearer());
     expect(res.body.solvedCount).toBe(2);
     expect(mockSubmission.distinct).toHaveBeenCalledWith('problemId', { userId: USER, passed: true });
   });

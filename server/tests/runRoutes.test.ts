@@ -19,8 +19,8 @@ vi.mock('../services/sessionService', () => import('./helpers/sessionStub'));
 
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const cookie = (id = USER) => [`algoflow_token=${tokenFor(id, 'USER')}`];
-const post = (body: unknown, id = USER) => request(app).post('/api/run').set('Cookie', cookie(id)).send(body as object);
+const bearer = (id = USER) => `Bearer ${tokenFor(id, 'USER')}`;
+const post = (body: unknown, id = USER) => request(app).post('/api/run').set('Authorization', bearer(id)).send(body as object);
 const valid = { language: 'cpp', source: 'int main(){}', stdin: '1 2 3' };
 
 const ok: ExecutionResult = { status: 'success', stdout: 'out\n', stderr: '', compileOutput: '', exitCode: 0, exitSignal: null, timeMs: 12, memoryKb: 2048 };
@@ -198,7 +198,7 @@ describe('GET /api/run/languages', () => {
   });
 
   it("lists the provider's languages with real versions, the limits and today's usage", async () => {
-    const res = await request(app).get('/api/run/languages').set('Cookie', cookie());
+    const res = await request(app).get('/api/run/languages').set('Authorization', bearer());
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       available: true,
@@ -212,7 +212,7 @@ describe('GET /api/run/languages', () => {
 
   it('disabled: available false and no languages', async () => {
     state.provider = null;
-    const res = await request(app).get('/api/run/languages').set('Cookie', cookie());
+    const res = await request(app).get('/api/run/languages').set('Authorization', bearer());
     expect(res.body).toMatchObject({ available: false, provider: null, languages: [] });
   });
 });

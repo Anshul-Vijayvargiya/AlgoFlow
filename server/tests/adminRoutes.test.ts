@@ -87,7 +87,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should reject regular USER accessing admin route with 403', async () => {
       const res = await request(app)
         .get('/api/admin/metrics')
-        .set('Cookie', [`algoflow_token=${userToken}`]);
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(403);
       expect(res.body.error).toMatch(/Access denied/i);
@@ -96,7 +96,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should allow ADMIN accessing metrics', async () => {
       const res = await request(app)
         .get('/api/admin/metrics')
-        .set('Cookie', [`algoflow_token=${adminToken}`]);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.metrics.totalUsers).toBe(10);
@@ -106,7 +106,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should allow SUPER_ADMIN accessing metrics', async () => {
       const res = await request(app)
         .get('/api/admin/metrics')
-        .set('Cookie', [`algoflow_token=${superAdminToken}`]);
+        .set('Authorization', `Bearer ${superAdminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.metrics).toBeDefined();
@@ -134,7 +134,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .get('/api/admin/users?search=learner')
-        .set('Cookie', [`algoflow_token=${adminToken}`]);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.users).toHaveLength(1);
@@ -144,7 +144,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should reject admin attempting to modify own account status (400)', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${adminId}/status`)
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: 'suspended' });
 
       expect(res.status).toBe(400);
@@ -163,7 +163,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .patch(`/api/admin/users/${targetAdminId}/status`)
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: 'suspended' });
 
       expect(res.status).toBe(403);
@@ -187,7 +187,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .patch(`/api/admin/users/${targetAdminId}/status`)
-        .set('Cookie', [`algoflow_token=${superAdminToken}`])
+        .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ status: 'suspended' });
 
       expect(res.status).toBe(200);
@@ -206,7 +206,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should reject an invalid status with its custom message (400)', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${regularUserId}/status`)
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: 'banned' });
 
       expect(res.status).toBe(400);
@@ -216,7 +216,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should reject an invalid role with its custom message (400)', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${regularUserId}/role`)
-        .set('Cookie', [`algoflow_token=${superAdminToken}`])
+        .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ role: 'OWNER' });
 
       expect(res.status).toBe(400);
@@ -226,7 +226,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     it('should forbid standard ADMIN from changing user roles (403)', async () => {
       const res = await request(app)
         .patch(`/api/admin/users/${regularUserId}/role`)
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({ role: 'ADMIN' });
 
       expect(res.status).toBe(403);
@@ -250,7 +250,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .patch(`/api/admin/users/${regularUserId}/role`)
-        .set('Cookie', [`algoflow_token=${superAdminToken}`])
+        .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ role: 'ADMIN' });
 
       expect(res.status).toBe(200);
@@ -279,7 +279,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .post('/api/admin/problems')
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           problemId: 'lru-cache',
           title: 'LRU Cache Design',
@@ -305,7 +305,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
     ])('should reject unknown fields inside %s on create (400)', async (_label, nested) => {
       const res = await request(app)
         .post('/api/admin/problems')
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           problemId: 'lru-cache',
           title: 'LRU Cache Design',
@@ -331,7 +331,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
         testCases: [{ input: 'get(1)', expected: '-1' }],
       };
       const postProblem = (body: object) =>
-        request(app).post('/api/admin/problems').set('Cookie', [`algoflow_token=${adminToken}`]).send(body);
+        request(app).post('/api/admin/problems').set('Authorization', `Bearer ${adminToken}`).send(body);
 
       beforeEach(() => {
         mockProblem.findOne.mockResolvedValue(null);
@@ -448,7 +448,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .delete('/api/admin/problems/lru-cache')
-        .set('Cookie', [`algoflow_token=${adminToken}`]);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.message).toMatch(/archived successfully/i);
@@ -465,7 +465,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
       const putProblem = (body: unknown) =>
         request(app)
           .put('/api/admin/problems/lru-cache')
-          .set('Cookie', [`algoflow_token=${adminToken}`])
+          .set('Authorization', `Bearer ${adminToken}`)
           .send(body as object);
 
       beforeEach(() => {
@@ -614,7 +614,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
       it('forbids regular users (403)', async () => {
         const res = await request(app)
           .put('/api/admin/problems/lru-cache')
-          .set('Cookie', [`algoflow_token=${userToken}`])
+          .set('Authorization', `Bearer ${userToken}`)
           .send({ title: 'LRU Cache v2' });
 
         expect(res.status).toBe(403);
@@ -639,7 +639,7 @@ describe('Phase 3 Admin Routes - RBAC, Audit Logging & Hierarchy', () => {
 
       const res = await request(app)
         .get('/api/admin/audit-logs')
-        .set('Cookie', [`algoflow_token=${adminToken}`]);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.logs).toHaveLength(1);

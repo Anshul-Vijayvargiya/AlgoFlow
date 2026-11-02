@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { VisualizerApp } from '../support/visualizerApp';
-import { test, expect, account, registerViaApi, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, API_ORIGIN, api } from './fixtures';
 
 /**
  * The Dashboard against the real API and database (no mock): the daily checklist, the streak and recent activity,
@@ -46,15 +46,15 @@ test.describe('Real backend — dashboard', () => {
     await expect(page.getByTestId('checklist-count')).toHaveText('2 of 4 goals complete');
 
     // read back from the server, and after a reload
-    const today = await (await page.request.get(`${API_ORIGIN}/api/progress/today`)).json();
+    const today = await (await api(page).get(`${API_ORIGIN}/api/progress/today`)).json();
     expect(today).toMatchObject({ date: new Date().toISOString().slice(0, 10), manualCompleted: ['review'], verified: { walkthroughs: 1 } });
     await page.reload();
     await expect(page.getByTestId('checklist-count')).toHaveText('2 of 4 goals complete');
 
     // ticking again is idempotent; a verified goal cannot be ticked
-    const again = await page.request.put(`${API_ORIGIN}/api/progress/today/goals/review`, { data: { done: true } });
+    const again = await api(page).put(`${API_ORIGIN}/api/progress/today/goals/review`, { data: { done: true } });
     expect((await again.json()).manualCompleted).toEqual(['review']);
-    expect((await page.request.put(`${API_ORIGIN}/api/progress/today/goals/submit`, { data: { done: true } })).status()).toBe(400);
+    expect((await api(page).put(`${API_ORIGIN}/api/progress/today/goals/submit`, { data: { done: true } })).status()).toBe(400);
   });
 
   test("one account's ticks and activity are not another's", async ({ browser }, testInfo) => {
@@ -64,10 +64,10 @@ test.describe('Real backend — dashboard', () => {
     const pb = await b.newPage();
     await registerViaApi(pa.request, account(testInfo, 'A'));
     await registerViaApi(pb.request, account(testInfo, 'B'));
-    expect((await pa.request.put(`${API_ORIGIN}/api/progress/today/goals/review`, { data: { done: true } })).status()).toBe(200);
-    const other = await (await pb.request.get(`${API_ORIGIN}/api/progress/today`)).json();
+    expect((await api(pa).put(`${API_ORIGIN}/api/progress/today/goals/review`, { data: { done: true } })).status()).toBe(200);
+    const other = await (await api(pb).get(`${API_ORIGIN}/api/progress/today`)).json();
     expect(other.manualCompleted).toEqual([]);
-    expect(await (await pb.request.get(`${API_ORIGIN}/api/progress/recent`)).json()).toEqual({ events: [] });
+    expect(await (await api(pb).get(`${API_ORIGIN}/api/progress/recent`)).json()).toEqual({ events: [] });
     await a.close();
     await b.close();
   });

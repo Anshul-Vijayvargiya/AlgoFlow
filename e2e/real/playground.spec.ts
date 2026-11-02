@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, account, registerViaApi, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, API_ORIGIN, api } from './fixtures';
 
 /**
  * The Playground against the real API, real authentication and the real MongoDB quota store. The API runs with
@@ -9,8 +9,8 @@ import { test, expect, account, registerViaApi, API_ORIGIN } from './fixtures';
 
 /** the harness's per-user daily limit (server/e2e/startE2eApi.ts) */
 const LIMIT = 12;
-const runApi = (page: Page, data: object) => page.request.post(`${API_ORIGIN}/api/run`, { data });
-const usage = async (page: Page) => (await (await page.request.get(`${API_ORIGIN}/api/run/languages`)).json()).usedToday as number;
+const runApi = (page: Page, data: object) => api(page).post(`${API_ORIGIN}/api/run`, { data });
+const usage = async (page: Page) => (await (await api(page).get(`${API_ORIGIN}/api/run/languages`)).json()).usedToday as number;
 
 test.describe('Real backend — Playground', () => {
   test('a run goes through the real API, which counts it in the database', async ({ page }, testInfo) => {
@@ -50,7 +50,7 @@ test.describe('Real backend — Playground', () => {
     // another user's allowance is untouched
     const other = await browser.newContext();
     await registerViaApi(other.request, account(testInfo, 'B'));
-    expect((await other.request.post(`${API_ORIGIN}/api/run`, { data: { language: 'c', source: 'int main(){}', stdin: '' } })).status()).toBe(200);
+    expect((await api(other).post(`${API_ORIGIN}/api/run`, { data: { language: 'c', source: 'int main(){}', stdin: '' } })).status()).toBe(200);
     await other.close();
   });
 
@@ -76,7 +76,7 @@ test.describe('Real backend — Playground', () => {
 
   test('signed out: refused; invalid requests: refused before any quota is used', async ({ page }, testInfo) => {
     expect((await runApi(page, { language: 'cpp', source: 'int main(){}', stdin: '' })).status()).toBe(401);
-    expect((await page.request.get(`${API_ORIGIN}/api/run/languages`)).status()).toBe(401);
+    expect((await api(page).get(`${API_ORIGIN}/api/run/languages`)).status()).toBe(401);
 
     await registerViaApi(page.request, account(testInfo, 'A'));
     for (const data of [

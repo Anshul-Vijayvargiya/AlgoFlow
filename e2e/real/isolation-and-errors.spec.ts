@@ -1,4 +1,4 @@
-import { test, expect, account, registerViaApi, signInViaUi, tracksOf, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, signInViaUi, tracksOf, API_ORIGIN, api } from './fixtures';
 import { isImplementedAlgorithm } from '../../src/data/algorithmCatalog';
 import { LEARNING_TRACKS } from '../../src/pages/learning/learningPaths';
 
@@ -34,13 +34,13 @@ test.describe('Real backend — ownership', () => {
     await expect.poll(async () => (await tracksOf(pageA)).length).toBe(1);
 
     // B, through the API with B's own session
-    const list = await (await ctxB.request.get(`${API_ORIGIN}/api/notes`)).json();
+    const list = await (await api(ctxB).get(`${API_ORIGIN}/api/notes`)).json();
     expect(list.notes).toEqual([]);
-    expect((await ctxB.request.get(`${API_ORIGIN}/api/notes/${noteId}`)).status()).toBe(404);
-    expect((await ctxB.request.put(`${API_ORIGIN}/api/notes/${noteId}`, { data: { title: 'hijacked', content: 'x' } })).status()).toBe(404);
-    expect((await ctxB.request.delete(`${API_ORIGIN}/api/notes/${noteId}`)).status()).toBe(404);
-    expect((await (await ctxB.request.get(`${API_ORIGIN}/api/progress/algorithms`)).json()).tracks).toEqual([]);
-    expect((await (await ctxB.request.get(`${API_ORIGIN}/api/progress/summary`)).json()).algorithmTotals.practised).toBe(0);
+    expect((await api(ctxB).get(`${API_ORIGIN}/api/notes/${noteId}`)).status()).toBe(404);
+    expect((await api(ctxB).put(`${API_ORIGIN}/api/notes/${noteId}`, { data: { title: 'hijacked', content: 'x' } })).status()).toBe(404);
+    expect((await api(ctxB).delete(`${API_ORIGIN}/api/notes/${noteId}`)).status()).toBe(404);
+    expect((await (await api(ctxB).get(`${API_ORIGIN}/api/progress/algorithms`)).json()).tracks).toEqual([]);
+    expect((await (await api(ctxB).get(`${API_ORIGIN}/api/progress/summary`)).json()).algorithmTotals.practised).toBe(0);
 
     // and through B's UI
     const pageB = await ctxB.newPage();
@@ -48,7 +48,7 @@ test.describe('Real backend — ownership', () => {
     await expect(pageB.locator('main')).not.toContainText('Private note of A');
 
     // A's note is untouched
-    const own = await (await ctxA.request.get(`${API_ORIGIN}/api/notes/${noteId}`)).json();
+    const own = await (await api(ctxA).get(`${API_ORIGIN}/api/notes/${noteId}`)).json();
     expect(own).toMatchObject({ title: 'Private note of A', content: 'Only A may read this.' });
     await ctxA.close();
     await ctxB.close();
@@ -65,7 +65,7 @@ test.describe('Real backend — errors', () => {
     await signInViaUi(page, { ...user, password: 'Wrong-Passw0rd!' });
     await expect(page.locator('form').locator('..').getByRole('alert').first()).toBeVisible();
     await expect(page).toHaveURL(/\/auth/);
-    expect((await page.request.get(`${API_ORIGIN}/api/auth/me`)).status()).toBe(401);
+    expect((await api(page).get(`${API_ORIGIN}/api/auth/me`)).status()).toBe(401);
 
     await page.goto('/auth?mode=register');
     await page.getByLabel('Full Name').fill(user.name);
@@ -80,19 +80,19 @@ test.describe('Real backend — errors', () => {
 
   test('the server rejects invalid and forged progress requests', async ({ page }, testInfo) => {
     await registerViaApi(page.request, account(testInfo, 'A'));
-    const post = (path: string, data: object) => page.request.post(`${API_ORIGIN}/api/progress${path}`, { data });
+    const post = (path: string, data: object) => api(page).post(`${API_ORIGIN}/api/progress${path}`, { data });
     expect((await post('/visualizer-activity', { algorithmId: 'no-such-algo', stepIndex: 1 })).status()).toBe(400);
     expect((await post('/visualizer-activity', { algorithmId: 'bfs', stepIndex: 1 })).status()).toBe(400);
     expect((await post('/visualizer-activity', { algorithmId: 'bubble-sort', stepIndex: 0 })).status()).toBe(400);
     expect((await post('/activity', { algorithmId: 'bubble-sort', steps: 5, activityType: 'algorithm_completed' })).status()).toBe(400);
-    expect((await page.request.put(`${API_ORIGIN}/api/progress/algorithms/bubble-sort`, { data: { status: 'completed' } })).status()).toBe(400);
-    expect((await page.request.put(`${API_ORIGIN}/api/progress/algorithms/bubble-sort`, { data: { status: 'not_started' } })).status()).toBe(404);
+    expect((await api(page).put(`${API_ORIGIN}/api/progress/algorithms/bubble-sort`, { data: { status: 'completed' } })).status()).toBe(400);
+    expect((await api(page).put(`${API_ORIGIN}/api/progress/algorithms/bubble-sort`, { data: { status: 'not_started' } })).status()).toBe(404);
     expect(await tracksOf(page)).toEqual([]);
   });
 
   test('a browser cross-origin request is refused by the origin check', async ({ page }, testInfo) => {
     await registerViaApi(page.request, account(testInfo, 'A'));
-    const res = await page.request.post(`${API_ORIGIN}/api/progress/visualizer-activity`, {
+    const res = await api(page).post(`${API_ORIGIN}/api/progress/visualizer-activity`, {
       data: { algorithmId: 'bubble-sort', stepIndex: 1 },
       headers: { Origin: 'https://evil.example' },
     });
@@ -132,12 +132,13 @@ test.describe('Real backend — errors', () => {
   });
   });
 
-  test('when the session is revoked elsewhere, the next request signs the tab out', async ({ page, browser }, testInfo) => {
+  test('signing out elsewhere ends only that device; "log out everywhere" signs this tab out on its next request', async ({ page, browser }, testInfo) => {
     const user = account(testInfo, 'A');
     await registerViaApi(page.request, user);
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-stats')).toHaveAttribute('aria-busy', 'false');
-    // sign out from another browser with the same account: the server revokes every session of the user
+
+    // another browser signs in and out with the same account: only its own session ends
     const other = await browser.newContext();
     const otherPage = await other.newPage();
     await signInViaUi(otherPage, user);
@@ -145,9 +146,16 @@ test.describe('Real backend — errors', () => {
     await otherPage.locator('#header-profile-btn').click();
     await otherPage.getByRole('button', { name: 'Sign Out' }).click();
     await expect(otherPage).toHaveURL(/\/auth/);
+    await page.getByRole('link', { name: /Progress/ }).first().click();
+    await expect(page).toHaveURL(/\/progress$/);
+
+    // it signs in again and logs out of every device: the server revokes every session of the user
+    await signInViaUi(otherPage, user);
+    await expect(otherPage).toHaveURL(/\/dashboard$/);
+    expect((await api(other).post(`${API_ORIGIN}/api/auth/logout-all`)).status()).toBe(200);
     await other.close();
 
-    await page.getByRole('link', { name: /Progress/ }).first().click();
+    await page.getByRole('link', { name: /Dashboard/ }).first().click();
     await expect(page).toHaveURL(/\/auth/);
   });
 });

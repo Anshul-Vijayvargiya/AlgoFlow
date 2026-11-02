@@ -14,7 +14,8 @@ code, and a plain-language explanation of what just happened.
   Code, bars and explanations come from one execution trace, so they always agree.
 - **Learning**: learning paths, algorithm patterns, a practice problem set with stored submissions, a code playground,
   personal notes and a progress dashboard.
-- **Accounts and administration**: registration and login with HttpOnly cookie sessions; roles `USER`, `ADMIN` and
+- **Accounts and administration**: registration and login with short-lived access tokens (in memory) and rotating
+  refresh tokens (HttpOnly cookie), per-device logout and logout everywhere (see `docs/authentication.md`); roles `USER`, `ADMIN` and
   `SUPER_ADMIN`; an admin console for users, problems and an audit log.
 - **Accessibility**: keyboard operable, with screen-reader labels and announcements, covered by axe-core and keyboard
   E2E tests (see `docs/manual-accessibility-checklist.md` for the manual checks still to run).
@@ -94,7 +95,8 @@ than a developer machine. Both:
 - never seed accounts, and refuse to start while development seed accounts exist.
 
 Sessions are checked against the database on every request, so logout, suspension and role changes take effect
-immediately.
+immediately. Token lifetimes: `ACCESS_TOKEN_TTL` (default `15m`) and `REFRESH_TOKEN_TTL` (default `7d`). The session
+design, cookies and hosting requirements are in `docs/authentication.md`.
 
 **First administrator**:
 1. Register and log in normally.
@@ -108,8 +110,9 @@ promoting, later runs are refused. To recover, confirm no SUPER_ADMIN exists, th
 
 **Front end**: Vite reads env files from `frontend-env/` only. Every deployable build needs `VITE_API_BASE_URL`, either:
 - `/api`, behind a same-origin reverse proxy; or
-- `https://api.example.com/api`, for an API host that is same-site with the front end (the auth cookie is
-  `SameSite=Lax`).
+- `https://api.example.com/api`, for an API host that is same-site with the front end (the refresh cookie is
+  `SameSite=Lax`). Unrelated hosting domains, such as `*.vercel.app` with `*.onrender.com`, are cross-site: sign-in
+  would not survive a reload. See `docs/authentication.md`.
 
 The build fails with `VITE_USE_MOCK_API=true` (allowed only in `--mode e2e`, whose output must go to `dist-e2e/`) or
 with a development `NODE_ENV`. Every build writes `build-info.json`; run `npm run verify:artifact -- <dir>` on the

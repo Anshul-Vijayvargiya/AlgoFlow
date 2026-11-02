@@ -11,7 +11,7 @@ vi.mock('../services/sessionService', () => import('./helpers/sessionStub'));
 
 const USER = '507f1f77bcf86cd799439011';
 const OTHER = '507f1f77bcf86cd799439022';
-const patch = (body: object, id = USER) => request(app).patch('/api/users/profile').set('Cookie', [`algoflow_token=${tokenFor(id, 'USER')}`]).send(body);
+const patch = (body: object, id = USER) => request(app).patch('/api/users/profile').set('Authorization', `Bearer ${tokenFor(id, 'USER')}`).send(body);
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -25,18 +25,39 @@ import type {
   RecentActivityEvent,
 } from './client';
 import { normalizeRole } from './client';
+import {
+  clearSession,
+  configureAuthSession,
+  endSessionForLogout,
+  getAccessToken,
+  hasSession,
+  notifySessionEndedIfGone,
+  pendingRefresh,
+  refreshAccessToken,
+  resumeSession,
+  startSession,
+} from './authSession';
 import { resolveApiRuntime } from '../config/deployment';
 import type { PracticeProblem } from '../types/algorithm';
 
 // '/api' in development (Vite proxy) and tests; deployed builds must set VITE_API_BASE_URL (see src/config/deployment.ts)
 const API_BASE = resolveApiRuntime(import.meta.env).baseUrl;
 
-export type UnauthorizedHandler = () => void;
-let onUnauthorizedHandler: UnauthorizedHandler | null = null;
+configureAuthSession({ apiBase: API_BASE });
 
+export type UnauthorizedHandler = () => void;
+
+/** called once the session has really ended (the server refused the refresh cookie, or revoked the session) */
 export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
-  onUnauthorizedHandler = handler;
+  configureAuthSession({ onSessionEnded: handler });
 }
+
+/** endpoints that never carry or renew the access token: sign-in, the refresh itself, and logout */
+const SESSION_ENDPOINTS = new Set(['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout']);
+/** 401 codes that a refresh can fix: the access token expired, is missing, or is no longer readable */
+const RENEWABLE_401_CODES = new Set(['ACCESS_TOKEN_EXPIRED', 'AUTH_REQUIRED', 'SESSION_INVALID']);
+/** 401 codes that mean the session itself is over: no refresh can bring it back */
+const TERMINAL_401_CODES = new Set(['SESSION_REVOKED', 'ACCOUNT_SUSPENDED']);
 
 export class HttpError extends Error {
   status: number;
@@ -103,7 +124,18 @@ function sanitizeNote(raw: any): NoteRecord {
   };
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 10_000): Promise<T> {
+/**
+ * One API request. The access token (memory only) goes in the Authorization header. On a 401 that a refresh can fix,
+ * it refreshes (one refresh shared by every request that needs it) and retries the request ONCE; a second 401 is
+ * returned to the caller as an error, never refreshed again. A 401 does not by itself mean "signed out": that is
+ * decided by the refresh (its 401) or by a code saying the session was revoked or the account suspended.
+ */
+async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 10_000, isRetry = false): Promise<T> {
+  const sessionEndpoint = SESSION_ENDPOINTS.has(endpoint.split('?')[0]);
+  // a refresh is running: wait for its token instead of sending the one it replaces
+  if (!sessionEndpoint) await pendingRefresh();
+  const sentToken = sessionEndpoint ? null : getAccessToken();
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs); // network timeout
 
@@ -113,6 +145,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
     signal: options.signal || controller.signal,
     headers: {
       'Content-Type': 'application/json',
+      ...(sentToken ? { Authorization: `Bearer ${sentToken}` } : {}),
       ...options.headers,
     },
   };
@@ -120,14 +153,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, config);
     clearTimeout(timeoutId);
-
-    // If 401 Unauthorized on protected endpoint (NOT login or register)
-    if (response.status === 401) {
-      const isPublicAuthEndpoint = endpoint === '/auth/login' || endpoint === '/auth/register';
-      if (!isPublicAuthEndpoint && onUnauthorizedHandler) {
-        onUnauthorizedHandler();
-      }
-    }
 
     let data: any = {};
     const text = await response.text();
@@ -142,9 +167,27 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
       }
     }
 
+    const code = typeof data.code === 'string' ? data.code : undefined;
+    if (response.status === 401 && !sessionEndpoint) {
+      if (code && TERMINAL_401_CODES.has(code)) {
+        clearSession();
+        notifySessionEndedIfGone();
+      } else if (!isRetry && hasSession() && (!code || RENEWABLE_401_CODES.has(code))) {
+        // another request already renewed the token while this one was out: just retry with it
+        const current = getAccessToken();
+        if (current && current !== sentToken) return request<T>(endpoint, options, timeoutMs, true);
+        const outcome = await refreshAccessToken();
+        if (outcome === 'refreshed' || (getAccessToken() && getAccessToken() !== sentToken)) {
+          return request<T>(endpoint, options, timeoutMs, true);
+        }
+        if (outcome === 'ended') notifySessionEndedIfGone();
+        // 'unavailable': the session may be fine; report this request's error without signing anyone out
+      }
+    }
+
     if (!response.ok) {
       const retryAfterMs = response.status === 429 ? retryAfterMsOf(response.headers.get('Retry-After'), data) : undefined;
-      throw new HttpError(data.error || `HTTP ${response.status}`, response.status, typeof data.code === 'string' ? data.code : undefined, retryAfterMs);
+      throw new HttpError(data.error || `HTTP ${response.status}`, response.status, code, retryAfterMs);
     }
 
     return data as T;
@@ -157,36 +200,60 @@ async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs
   }
 }
 
+interface SignInResponse {
+  user?: UserProfile;
+  accessToken?: string;
+  accessTokenExpiresAt?: string;
+}
+
+/** login / register: keep the access token in memory (the refresh token arrived as an HttpOnly cookie) */
+function acceptSignIn(res: SignInResponse): UserProfile {
+  if (!res?.user || typeof res.accessToken !== 'string') {
+    throw new Error('Invalid response from authentication server.');
+  }
+  startSession(res.accessToken, String(res.accessTokenExpiresAt ?? ''));
+  return sanitizeUserProfile(res.user);
+}
+
 export class HttpApiClient implements ApiClient {
   auth = {
     async login(email: string, pass: string): Promise<UserProfile> {
-      const res = await request<{ user: UserProfile }>('/auth/login', {
+      const res = await request<SignInResponse>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password: pass }),
       });
-      if (!res?.user) {
-        throw new Error('Invalid response from authentication server.');
-      }
-      return sanitizeUserProfile(res.user);
+      return acceptSignIn(res);
     },
 
     async register(name: string, email: string, pass: string): Promise<UserProfile> {
-      const res = await request<{ user: UserProfile }>('/auth/register', {
+      const res = await request<SignInResponse>('/auth/register', {
         method: 'POST',
         body: JSON.stringify({ name, email, password: pass }),
       });
-      if (!res?.user) {
-        throw new Error('Invalid response from authentication server.');
-      }
-      return sanitizeUserProfile(res.user);
+      return acceptSignIn(res);
     },
 
+    /** ends this device's session. Local state is cleared first and whatever the server answers. */
     async logout(): Promise<void> {
-      await request('/auth/logout', { method: 'POST' });
+      const token = await endSessionForLogout();
+      await request('/auth/logout', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {} });
     },
 
+    /** ends every session of the account, on every device */
+    async logoutAll(): Promise<void> {
+      try {
+        await request('/auth/logout-all', { method: 'POST' });
+      } finally {
+        const token = await endSessionForLogout();
+        // in case logout-all could not be reached: at least this device's session ends
+        if (token) await request('/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => undefined);
+      }
+    },
+
+    /** the signed-in user; on page load (no access token in memory yet) the session is resumed with the refresh cookie */
     async getCurrentUser(): Promise<UserProfile | null> {
       try {
+        if (!getAccessToken() && !(await resumeSession())) return null;
         const res = await request<{ user: UserProfile }>('/auth/me');
         return res.user ? sanitizeUserProfile(res.user) : null;
       } catch {

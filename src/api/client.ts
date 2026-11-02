@@ -35,7 +35,10 @@ export interface UserProfile {
 export interface AuthApi {
   login(email: string, pass: string): Promise<UserProfile>;
   register(name: string, email: string, pass: string): Promise<UserProfile>;
+  /** ends this device's session */
   logout(): Promise<void>;
+  /** ends every session of the account, on every device */
+  logoutAll(): Promise<void>;
   getCurrentUser(): Promise<UserProfile | null>;
 }
 

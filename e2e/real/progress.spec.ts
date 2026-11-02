@@ -3,7 +3,7 @@ import { VisualizerApp } from '../support/visualizerApp';
 import { ALGORITHM_NAV } from '../../src/data/algorithmMetadata';
 import { isImplementedAlgorithm } from '../../src/data/algorithmCatalog';
 import { LEARNING_TRACKS } from '../../src/pages/learning/learningPaths';
-import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, tracksOf, waitForDashboard, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, tracksOf, waitForDashboard, API_ORIGIN, api } from './fixtures';
 
 /**
  * Visualizer activity, Learning Paths and Progress against the real API and database (no mock). Persistence is
@@ -51,7 +51,7 @@ test.describe('Real backend — progress', () => {
 
     await stepBubbleSort(page);
     expect(await tracksOf(page)).toEqual([expect.objectContaining({ algorithmId: 'bubble-sort', status: 'in_progress', topic: 'Sorting' })]);
-    const summary = await (await page.request.get(`${API_ORIGIN}/api/progress/summary`)).json();
+    const summary = await (await api(page).get(`${API_ORIGIN}/api/progress/summary`)).json();
     expect(summary.algorithmTotals).toMatchObject({ practised: 1, completed: 0 });
     expect(summary.weeklyActivity.at(-1).steps).toBe(2);
     // one algorithm stepped through today: one walkthrough, dated today (UTC)
@@ -68,10 +68,10 @@ test.describe('Real backend — progress', () => {
     await app.expectStep(1);
     await app.next();
     // the reload starts a new walkthrough, so the step is sent again; the server keeps the maximum
-    await expect.poll(async () => (await (await page.request.get(`${API_ORIGIN}/api/progress/summary`)).json()).weeklyActivity.at(-1).steps).toBe(2);
+    await expect.poll(async () => (await (await api(page).get(`${API_ORIGIN}/api/progress/summary`)).json()).weeklyActivity.at(-1).steps).toBe(2);
     expect(await tracksOf(page)).toHaveLength(1);
     // the same algorithm again, even after a reload, is still one walkthrough today
-    expect((await (await page.request.get(`${API_ORIGIN}/api/progress/summary`)).json()).weeklyActivity.at(-1).walkthroughs).toBe(1);
+    expect((await (await api(page).get(`${API_ORIGIN}/api/progress/summary`)).json()).weeklyActivity.at(-1).walkthroughs).toBe(1);
   });
 
   test('Learning Paths shows the server status, and it persists after a reload, a sign-out/in and in a fresh browser', async ({ page, browser }, testInfo) => {

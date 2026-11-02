@@ -32,7 +32,7 @@ describe.skipIf(!TEST_URI)('Admin problem writes (real MongoDB)', () => {
   const putProblem = (id: string, body: unknown) =>
     request(app)
       .put(`/api/admin/problems/${id}`)
-      .set('Cookie', [`algoflow_token=${adminToken}`])
+      .set('Authorization', `Bearer ${adminToken}`)
       .send(body as object);
 
   const seedProblem = (problemId: string, overrides: Record<string, unknown> = {}) =>
@@ -116,7 +116,7 @@ describe.skipIf(!TEST_URI)('Admin problem writes (real MongoDB)', () => {
     it('creates a problem with empty example and test case values (finding #3, POST path)', async () => {
       const res = await request(app)
         .post('/api/admin/problems')
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           problemId: 'hello-world',
           title: 'Hello World',
@@ -141,7 +141,7 @@ describe.skipIf(!TEST_URI)('Admin problem writes (real MongoDB)', () => {
     ])('rejects unknown fields inside %s with 400 and stores nothing', async (_label, nested) => {
       const res = await request(app)
         .post('/api/admin/problems')
-        .set('Cookie', [`algoflow_token=${adminToken}`])
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           problemId: 'hello-world',
           title: 'Hello World',
@@ -167,7 +167,7 @@ describe.skipIf(!TEST_URI)('Admin problem writes (real MongoDB)', () => {
       testCases: [{ input: '', expected: 'Hello World' }],
     };
     const postProblem = (body: object) =>
-      request(app).post('/api/admin/problems').set('Cookie', [`algoflow_token=${adminToken}`]).send(body);
+      request(app).post('/api/admin/problems').set('Authorization', `Bearer ${adminToken}`).send(body);
 
     it('stores a create that uses every documented field', async () => {
       const res = await postProblem({
@@ -351,7 +351,7 @@ describe.skipIf(!TEST_URI)('Admin problem writes (real MongoDB)', () => {
         testCases: [{ input: '', expected: 'Hello World' }],
       };
       const postProblem = () =>
-        request(app).post('/api/admin/problems').set('Cookie', [`algoflow_token=${adminToken}`]).send(createBody);
+        request(app).post('/api/admin/problems').set('Authorization', `Bearer ${adminToken}`).send(createBody);
       const failRouteCreateWith = (error: unknown) =>
         vi.spyOn(Problem, 'create').mockRejectedValueOnce(error as Error);
 

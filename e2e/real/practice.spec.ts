@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, waitForDashboard, API_ORIGIN } from './fixtures';
+import { test, expect, account, registerViaApi, signInViaUi, signOutViaUi, waitForDashboard, API_ORIGIN, api } from './fixtures';
 
 /**
  * Practice judging against the real API, real MongoDB and the real judge, with EXECUTION_PROVIDER=fake (it echoes
@@ -19,14 +19,14 @@ const submitAndWait = async (page: Page, problemId: string) => {
   await page.locator('#practice-submit-btn').click();
   return response;
 };
-const usage = async (page: Page) => (await (await page.request.get(`${API_ORIGIN}/api/run/languages`)).json()).usedToday as number;
+const usage = async (page: Page) => (await (await api(page).get(`${API_ORIGIN}/api/run/languages`)).json()).usedToday as number;
 
 test.describe('Real backend — Practice judging', () => {
   test('the problem list and statements come from the server, with no hidden test anywhere in the responses', async ({ page }, testInfo) => {
     await registerViaApi(page.request, account(testInfo, 'A'));
-    const list = await (await page.request.get(`${API_ORIGIN}/api/problems?limit=50`)).json();
+    const list = await (await api(page).get(`${API_ORIGIN}/api/problems?limit=50`)).json();
     expect(list.problems.map((p: { id: string }) => p.id)).toEqual(expect.arrayContaining(['p1', 'p2', 'p3', 'p4', 'p5', 'e2e-echo', 'e2e-hidden', 'e2e-legacy']));
-    const detail = await (await page.request.get(`${API_ORIGIN}/api/problems/e2e-hidden`)).text();
+    const detail = await (await api(page).get(`${API_ORIGIN}/api/problems/e2e-hidden`)).text();
     expect(JSON.stringify(list) + detail).not.toMatch(/E2E_SECRET|E2E_HIDDEN_ECHO/);
     expect(JSON.parse(detail).testCases).toHaveLength(2);
 
@@ -47,7 +47,7 @@ test.describe('Real backend — Practice judging', () => {
 
     await page.reload();
     await expect(page.locator('[data-problem="e2e-echo"]')).toContainText('Solved');
-    const summary = await (await page.request.get(`${API_ORIGIN}/api/progress/summary`)).json();
+    const summary = await (await api(page).get(`${API_ORIGIN}/api/progress/summary`)).json();
     expect(summary.solvedCount).toBe(1);
     expect(await usage(page)).toBe(2);
   });
@@ -62,7 +62,7 @@ test.describe('Real backend — Practice judging', () => {
     await expect(page.getByTestId('submission-verdict')).toHaveText('Wrong Answer');
     await expect(page.getByTestId('failed-hidden-test')).toHaveText("Hidden test 3 failed. Hidden tests' inputs are not shown.");
     await expect(page.locator('main')).not.toContainText('E2E_SECRET');
-    const history = await (await page.request.get(`${API_ORIGIN}/api/problems/e2e-hidden/submissions`)).text();
+    const history = await (await api(page).get(`${API_ORIGIN}/api/problems/e2e-hidden/submissions`)).text();
     expect(history).not.toMatch(/E2E_SECRET/);
   });
 
@@ -92,10 +92,10 @@ test.describe('Real backend — Practice judging', () => {
     expect(judging).toMatchObject({ status: 'JUDGING_ERROR', passed: false, errorCode: 'provider_unavailable' });
     await expect(page.getByTestId('submission-verdict')).toHaveText('Judging Error');
     expect(await usage(page)).toBe(1);
-    const history = await (await page.request.get(`${API_ORIGIN}/api/problems/p4/submissions`)).json();
+    const history = await (await api(page).get(`${API_ORIGIN}/api/problems/p4/submissions`)).json();
     expect(history.submissions.map((s: { status: string; passed: boolean }) => [s.status, s.passed])).toEqual([['JUDGING_ERROR', false], ['COMPILATION_ERROR', false]]);
     // today's activity: the compile error is practice (1 submission, 5 estimated minutes); the judging error earns nothing
-    const today = (await (await page.request.get(`${API_ORIGIN}/api/progress/summary`)).json()).weeklyActivity.at(-1);
+    const today = (await (await api(page).get(`${API_ORIGIN}/api/progress/summary`)).json()).weeklyActivity.at(-1);
     expect(today).toMatchObject({ submissions: 1, minutes: 5 });
   });
 
@@ -112,14 +112,14 @@ test.describe('Real backend — Practice judging', () => {
     await registerViaApi(page.request, account(testInfo, 'A'));
     // use 7 of the 12 runs in the Playground; Two Sum needs 6
     for (let i = 0; i < 7; i++) {
-      expect((await page.request.post(`${API_ORIGIN}/api/run`, { data: { language: 'c', source: 'x', stdin: '' } })).status()).toBe(200);
+      expect((await api(page).post(`${API_ORIGIN}/api/run`, { data: { language: 'c', source: 'x', stdin: '' } })).status()).toBe(200);
     }
     await openProblem(page, 'p1');
     const res = await submitAndWait(page, 'p1');
     expect(res.status()).toBe(429);
     await expect(page.getByTestId('submission-error')).toContainText('Not submitted: Judging this problem needs 6 code runs');
     expect(await usage(page)).toBe(7);
-    expect((await (await page.request.get(`${API_ORIGIN}/api/problems/p1/submissions`)).json()).submissions).toEqual([]);
+    expect((await (await api(page).get(`${API_ORIGIN}/api/problems/p1/submissions`)).json()).submissions).toEqual([]);
   });
 
   test("drafts survive a reload, stay with their account, and are never sent to the server", async ({ page, browser }, testInfo) => {
@@ -157,18 +157,18 @@ test.describe('Real backend — Practice judging', () => {
   });
 
   test("authentication and ownership: signed out is refused; another user never sees someone's submissions", async ({ page, browser }, testInfo) => {
-    expect((await page.request.post(`${API_ORIGIN}/api/problems/e2e-echo/submit`, { data: { language: 'python', code: 'x' } })).status()).toBe(401);
-    expect((await page.request.get(`${API_ORIGIN}/api/problems/e2e-echo/submissions`)).status()).toBe(401);
+    expect((await api(page).post(`${API_ORIGIN}/api/problems/e2e-echo/submit`, { data: { language: 'python', code: 'x' } })).status()).toBe(401);
+    expect((await api(page).get(`${API_ORIGIN}/api/problems/e2e-echo/submissions`)).status()).toBe(401);
 
     await registerViaApi(page.request, account(testInfo, 'A'));
-    expect((await page.request.post(`${API_ORIGIN}/api/problems/e2e-echo/submit`, { data: { language: 'python', code: 'x' } })).status()).toBe(201);
+    expect((await api(page).post(`${API_ORIGIN}/api/problems/e2e-echo/submit`, { data: { language: 'python', code: 'x' } })).status()).toBe(201);
     // a client cannot claim a verdict
-    expect((await page.request.post(`${API_ORIGIN}/api/problems/e2e-echo/submit`, { data: { language: 'python', code: 'x', passed: true, status: 'ACCEPTED' } })).status()).toBe(400);
+    expect((await api(page).post(`${API_ORIGIN}/api/problems/e2e-echo/submit`, { data: { language: 'python', code: 'x', passed: true, status: 'ACCEPTED' } })).status()).toBe(400);
 
     const other = await browser.newContext();
     await registerViaApi(other.request, account(testInfo, 'B'));
-    expect((await (await other.request.get(`${API_ORIGIN}/api/problems/e2e-echo/submissions`)).json()).submissions).toEqual([]);
-    const otherList = await (await other.request.get(`${API_ORIGIN}/api/problems?limit=50`)).json();
+    expect((await (await api(other).get(`${API_ORIGIN}/api/problems/e2e-echo/submissions`)).json()).submissions).toEqual([]);
+    const otherList = await (await api(other).get(`${API_ORIGIN}/api/problems?limit=50`)).json();
     expect(otherList.problems.find((p: { id: string }) => p.id === 'e2e-echo').solved).toBe(false);
     await other.close();
   });

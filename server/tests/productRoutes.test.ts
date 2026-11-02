@@ -112,7 +112,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .get('/api/notes')
-        .set('Cookie', [`algoflow_token=${userToken}`]);
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.notes).toHaveLength(1);
@@ -128,7 +128,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .get('/api/notes?search=Binary+Search')
-        .set('Cookie', [`algoflow_token=${userToken}`]);
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
       expect(mockNote.find).toHaveBeenCalledWith(
@@ -142,7 +142,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
     it('should reject note creation with invalid payload (missing content)', async () => {
       const res = await request(app)
         .post('/api/notes')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({ title: 'A title without content' });
 
       expect(res.status).toBe(400);
@@ -153,7 +153,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
     it('should report a missing note title with its custom message', async () => {
       const res = await request(app)
         .post('/api/notes')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({ content: 'Contents without a title' });
 
       expect(res.status).toBe(400);
@@ -172,7 +172,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .post('/api/notes')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({
           title: 'New Note',
           content: 'Note contents',
@@ -193,7 +193,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .get(`/api/notes/${validNoteId}`)
-        .set('Cookie', [`algoflow_token=${otherUserToken}`]);
+        .set('Authorization', `Bearer ${otherUserToken}`);
 
       expect(res.status).toBe(404);
       expect(mockNote.findOne).toHaveBeenCalledWith(
@@ -209,7 +209,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .delete(`/api/notes/${validNoteId}`)
-        .set('Cookie', [`algoflow_token=${otherUserToken}`]);
+        .set('Authorization', `Bearer ${otherUserToken}`);
 
       expect(res.status).toBe(404);
       expect(res.body.error).toMatch(/Note not found/i);
@@ -239,7 +239,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .get('/api/progress/summary')
-        .set('Cookie', [`algoflow_token=${userToken}`]);
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.streakDays).toBe(2);
@@ -259,7 +259,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .get('/api/progress/summary')
-        .set('Cookie', [`algoflow_token=${userToken}`]);
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.streakDays).toBe(0);
@@ -272,7 +272,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .post('/api/progress/activity')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({
           minutes: 30,
           steps: 50,
@@ -342,7 +342,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .post('/api/problems/two-sum/submit')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({
           language: 'cpp',
           code: 'int main() { return 0; }',
@@ -368,7 +368,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
     ])('should reject a submission with %s using its custom message', async (_label, body, field, message) => {
       const res = await request(app)
         .post('/api/problems/two-sum/submit')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send(body);
 
       expect(res.status).toBe(400);
@@ -392,7 +392,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .get('/api/problems/two-sum/submissions')
-        .set('Cookie', [`algoflow_token=${userToken}`]);
+        .set('Authorization', `Bearer ${userToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.submissions).toHaveLength(1);
@@ -423,7 +423,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .patch('/api/users/profile')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({
           name: 'Updated Name',
           preferences: {
@@ -448,7 +448,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .patch('/api/users/profile')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({
           name: 'Hacker',
           role: 'ADMIN', // Tamper attempt
@@ -478,7 +478,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       const res = await request(app)
         .patch('/api/users/profile')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({ preferences: { theme } });
 
       expect(res.status).toBe(200);
@@ -492,7 +492,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
       async (_label, theme) => {
         const res = await request(app)
           .patch('/api/users/profile')
-          .set('Cookie', [`algoflow_token=${userToken}`])
+          .set('Authorization', `Bearer ${userToken}`)
           .send({ preferences: { theme } });
 
         expect(res.status).toBe(400);
@@ -507,7 +507,7 @@ describe('Phase 3 Product APIs - Notes, Progress, Practice & Settings', () => {
 
       await request(app)
         .patch('/api/users/profile')
-        .set('Cookie', [`algoflow_token=${userToken}`])
+        .set('Authorization', `Bearer ${userToken}`)
         .send({ preferences: { theme: 'light' } });
 
       const updateFields = mockUser.findByIdAndUpdate.mock.calls[0][1].$set;

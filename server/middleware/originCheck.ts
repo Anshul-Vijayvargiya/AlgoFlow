@@ -74,3 +74,34 @@ export function validateOrigin(req: Request, res: Response, next: NextFunction):
   // do not send Origin headers. Allow them to proceed.
   next();
 }
+
+/**
+ * Stricter, for endpoints that spend a cookie credential (POST /api/auth/refresh): the request must declare the
+ * front end's exact Origin (browsers always send Origin on a POST), and Fetch Metadata, when sent, must say the
+ * request came from the same origin or site. A request without Origin is refused here (unlike validateOrigin, which
+ * lets non-browser clients through), so a cookie can only be exchanged for an access token by the front end itself.
+ */
+export function requireFrontendOrigin(req: Request, res: Response, next: NextFunction): void {
+  let allowedOrigin: string;
+  try {
+    allowedOrigin = new URL(env.CLIENT_URL).origin.toLowerCase();
+  } catch {
+    allowedOrigin = env.CLIENT_URL.toLowerCase();
+  }
+  const secFetchSite = req.headers['sec-fetch-site'];
+  if (secFetchSite !== undefined && secFetchSite !== 'same-origin' && secFetchSite !== 'same-site') {
+    res.status(403).json({ error: 'Cross-origin request rejected.' });
+    return;
+  }
+  let origin: string | null = null;
+  try {
+    origin = req.headers.origin ? new URL(req.headers.origin).origin.toLowerCase() : null;
+  } catch {
+    origin = null;
+  }
+  if (origin !== allowedOrigin) {
+    res.status(403).json({ error: 'This request must come from the AlgoFlow front end.' });
+    return;
+  }
+  next();
+}

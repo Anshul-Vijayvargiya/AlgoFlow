@@ -103,7 +103,7 @@ describe('GET /api/problems — solved status (what topic progress counts)', () 
     m.Problem.find.mockReturnValue(q);
     m.Problem.countDocuments.mockResolvedValue(2);
     m.Submission.distinct.mockResolvedValue(['p4']);
-    const res = await request(app).get('/api/problems').set('Cookie', [`algoflow_token=${tokenFor(USER, 'USER')}`]);
+    const res = await request(app).get('/api/problems').set('Authorization', `Bearer ${tokenFor(USER, 'USER')}`);
     expect(m.Submission.distinct).toHaveBeenCalledWith('problemId', { userId: USER, passed: true });
     expect(res.body.problems.map((p: { id: string; solved: boolean }) => [p.id, p.solved])).toEqual([['p1', false], ['p4', true]]);
   });

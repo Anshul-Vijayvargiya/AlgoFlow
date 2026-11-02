@@ -4,9 +4,9 @@ import mongoose from 'mongoose';
 import { Problem } from '../models/Problem';
 import { Submission, type ISubmission } from '../models/Submission';
 import { ActivityLog } from '../models/ActivityLog';
-import { requireAuth, extractToken, AuthRequest } from '../middleware/auth';
+import { requireAuth, extractAccessToken, AuthRequest } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
-import { verifyToken } from '../services/authService';
+import { verifyAccessToken } from '../services/authService';
 import { resolveSession } from '../services/sessionService';
 import { env } from '../config/env';
 import { executionRateLimiter } from '../middleware/rateLimiter';
@@ -31,11 +31,11 @@ const submitSchema = z.strictObject({
 // Helper: Optional authentication resolver (doesn't reject if unauthenticated). Uses the same database-backed session
 // check as requireAuth, so a revoked or suspended session is simply treated as anonymous.
 async function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction): Promise<void> {
-  const token = extractToken(req);
-  const claims = token ? verifyToken(token) : null;
-  if (claims) {
+  const token = extractAccessToken(req);
+  const verified = token ? verifyAccessToken(token) : null;
+  if (verified?.ok) {
     try {
-      const session = await resolveSession(claims);
+      const session = await resolveSession(verified.claims);
       if (session.ok) {
         req.user = session.principal;
       }
