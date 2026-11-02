@@ -10,6 +10,14 @@ import { test, expect } from '../fixtures';
  * what was and was not checked manually.
  */
 async function violations(page: Page) {
+  // Scan what the user ends up seeing, not a frame of an entrance animation: e.g. the step-result badge fades in from
+  // opacity 0 over 120 ms, and axe measured its semi-transparent text as a contrast failure (seen in CI on WebKit).
+  await page.waitForFunction(() => {
+    // finite animations only: an endless one (a pulse, a spinner) never finishes and is not an entrance
+    const running = document.getAnimations().some(a => a.playState === 'running' && a.effect?.getTiming().iterations !== Infinity);
+    const fading = [...document.querySelectorAll<HTMLElement>('[data-testid="step-result"]')].some(el => getComputedStyle(el).opacity !== '1');
+    return !running && !fading;
+  });
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   return result.violations.map(v => ({
     rule: v.id,
