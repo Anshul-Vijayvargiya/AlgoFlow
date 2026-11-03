@@ -33,11 +33,12 @@ export function validateOrigin(req: Request, res: Response, next: NextFunction):
     allowedOrigin = env.CLIENT_URL.toLowerCase();
   }
 
-  // 1. Browser-declared cross-site request (Sec-Fetch-Site metadata)
-  if (secFetchSite === 'cross-site') {
-    res.status(403).json({ error: 'Cross-origin mutation request rejected.' });
-    return;
-  }
+ // 1. Reject cross-site browser requests that do not declare an Origin.
+// The exact Origin allowlist check below validates trusted frontends.
+if (secFetchSite === 'cross-site' && !originHeader) {
+  res.status(403).json({ error: 'Cross-origin mutation request rejected.' });
+  return;
+}
 
   // 2. Origin header verification
   if (originHeader) {
