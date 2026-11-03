@@ -4,6 +4,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://algoflow-u598.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
