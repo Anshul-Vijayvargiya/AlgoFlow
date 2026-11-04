@@ -287,18 +287,17 @@ describe('Strict-mode runtime behaviour (staging)', () => {
       expect(User.create).not.toHaveBeenCalled();
     });
 
-    it('seeds only the non-privileged demo user in development by default', async () => {
+    it('seeds no account in development by default (there is no demo user)', async () => {
       const { seedDevelopmentData } = await loadSeed({ NODE_ENV: 'development', isStrict: false, SEED_DEV_ADMINS: 'false' });
       await seedDevelopmentData();
-      const roles = User.create.mock.calls.map(c => c[0].role);
-      expect(roles).toEqual(['USER']);
+      expect(User.create).not.toHaveBeenCalled();
     });
 
     it('seeds the fixed-password admin accounts only with SEED_DEV_ADMINS=true in development', async () => {
       const { seedDevelopmentData } = await loadSeed({ NODE_ENV: 'development', isStrict: false, SEED_DEV_ADMINS: 'true' });
       await seedDevelopmentData();
       const roles = User.create.mock.calls.map(c => c[0].role);
-      expect(roles).toEqual(['USER', 'ADMIN', 'SUPER_ADMIN']);
+      expect(roles).toEqual(['ADMIN', 'SUPER_ADMIN']);
     });
 
     it('refuses to start a strict environment while seed accounts exist', async () => {

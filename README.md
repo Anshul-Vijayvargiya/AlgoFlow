@@ -59,7 +59,7 @@ npm run dev                   # front end on http://localhost:5173 (proxies /api
 ```
 
 - In development the API listens on `127.0.0.1` only. Set `HOST=0.0.0.0` in `.env` if another device must reach it.
-- Development seeds a demo user (`demo@algoflow.io`) and sample problems. Set `SEED_DEV_ADMINS=true` to also seed
+- Development seeds sample problems; register an account to sign in. Set `SEED_DEV_ADMINS=true` to also seed
   fixed-password admin accounts; that works locally only, and nothing is seeded in any other mode.
 - No backend handy? `VITE_USE_MOCK_API=true npm run dev` runs the front end on its in-browser mock API.
 

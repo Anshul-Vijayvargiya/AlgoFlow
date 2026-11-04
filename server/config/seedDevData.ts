@@ -4,7 +4,10 @@ import { hashPassword } from '../services/authService';
 import { env } from './env';
 import { SEEDED_PRACTICE_PROBLEMS } from './practiceProblemTests';
 
-/** Accounts with passwords committed in this file. They must never exist in a staging or production database. */
+/**
+ * Accounts whose passwords are (or were) committed to this repository. They must never exist in a staging or
+ * production database. demo@algoflow.io is no longer seeded but stays listed: older development databases may hold it.
+ */
 export const DEV_SEED_ACCOUNT_EMAILS = ['demo@algoflow.io', 'admin@algoflow.io', 'superadmin@algoflow.io'] as const;
 
 /**
@@ -15,24 +18,9 @@ export async function seedDevelopmentData(): Promise<void> {
   if (env.NODE_ENV !== 'development') return;
 
   try {
-    // 1. Seed a demo user for local development sign-in (development builds only)
-    const demoUser = await User.findOne({ email: 'demo@algoflow.io' });
-    if (!demoUser) {
-      await User.create({
-        name: 'Demo Engineer',
-        email: 'demo@algoflow.io',
-        passwordHash: await hashPassword('Demo1234!'),
-        role: 'USER',
-        accountStatus: 'active',
-        streakDays: 14,
-        solvedCount: 42,
-        algorithmsLearned: 18,
-      });
-      console.log('🌱 Seeded development demo user: demo@algoflow.io');
-    }
-
+    // No demo user is seeded: register an account locally to sign in.
     if (env.SEED_DEV_ADMINS === 'true') {
-      // 2. Seed admin user
+      // 1. Seed admin user
       const adminUser = await User.findOne({ email: 'admin@algoflow.io' });
       if (!adminUser) {
         await User.create({
@@ -48,7 +36,7 @@ export async function seedDevelopmentData(): Promise<void> {
         console.log('🌱 Seeded development admin user: admin@algoflow.io');
       }
 
-      // 3. Seed super admin user
+      // 2. Seed super admin user
       const superAdmin = await User.findOne({ email: 'superadmin@algoflow.io' });
       if (!superAdmin) {
         await User.create({
@@ -65,7 +53,7 @@ export async function seedDevelopmentData(): Promise<void> {
       }
     }
 
-    // 4. Seed practice problems if collection is empty (an existing database keeps its problems: see
+    // 3. Seed practice problems if collection is empty (an existing database keeps its problems: see
     //    server/scripts/migratePracticeProblems.ts to convert the earlier seeded versions)
     const problemCount = await Problem.countDocuments();
     if (problemCount === 0) {
