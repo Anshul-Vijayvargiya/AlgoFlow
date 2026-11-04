@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { getAlgorithmDefinition } from '../../engine/AlgorithmRegistry';
 import { Code2, Terminal, AlertTriangle } from 'lucide-react';
+import { highlightLines } from './syntaxHighlight';
 
 const LANGUAGE_LABELS: Record<string, string> = {
   cpp: 'C++',
@@ -30,6 +31,8 @@ export const CodePanel: React.FC = () => {
   // Source code for the selected language — may be null if not implemented
   const sourceCode: string | null = def ? (def.code[selectedLanguage] ?? null) : null;
   const codeLines: string[] = sourceCode ? sourceCode.split('\n') : [];
+  // syntax tokens per line, display only: each line's tokens join back to exactly its text (memoized by the React Compiler)
+  const highlighted = sourceCode ? highlightLines(sourceCode, selectedLanguage) : [];
 
   // Scroll active line into view whenever it changes
   useEffect(() => {
@@ -138,7 +141,16 @@ export const CodePanel: React.FC = () => {
                     {lineNum}
                   </span>
                   <pre className="flex-1 font-mono whitespace-pre text-slate-300 leading-relaxed">
-                    {lineText}
+                    {/* flat tokens rendered as React text (escaped, never parsed as HTML); token colours only, see index.css */}
+                    {(highlighted[idx] ?? [{ kind: 'plain', text: lineText }]).map((token, t) =>
+                      token.kind === 'plain' ? (
+                        token.text
+                      ) : (
+                        <span key={t} className={`tok-${token.kind}`}>
+                          {token.text}
+                        </span>
+                      )
+                    )}
                   </pre>
                   {isActive && (
                     <span className="shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-950/90 border border-slate-700 tracking-wider text-cyan-400 self-center">

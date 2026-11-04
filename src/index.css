@@ -385,3 +385,21 @@
   background: rgba(245, 158, 11, 0.18) !important;
   border-left: 4px solid #F59E0B !important;
 }
+
+/*
+ * LIVE CODE syntax colours (tokens from src/components/visualizer/syntaxHighlight.ts). Text colour only: the editor,
+ * active-line and line-number styles are untouched. Dark themes only (Midnight Neon, Purple Galaxy): these are colours
+ * for a dark editor, and the light themes keep their plain code text.
+ */
+:root:not([data-theme='light']) {
+  .tok-keyword { color: #c678dd; }
+  .tok-function { color: #e5c07b; } /* a function's name where it is declared */
+  .tok-call { color: #98c379; } /* a function's name where it is called */
+  .tok-variable,
+  .tok-type { color: #56b6c2; } /* identifiers, including type names */
+  .tok-number { color: #d19a66; } /* numbers and constants (true, null, None) */
+  .tok-operator { color: #61afef; }
+  .tok-string { color: #98c379; }
+  .tok-comment { color: #7f848e; }
+  .tok-punctuation { color: #dcdcdc; } /* normal code text */
+}
