@@ -157,7 +157,7 @@ export const PlaygroundPage: React.FC = () => {
             disabled={!canTrace}
             aria-busy={traceState.kind === 'tracing'}
             aria-describedby={tracing && !traceable ? 'trace-language-note' : undefined}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 font-mono text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 font-mono text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Footprints className="w-4 h-4" aria-hidden="true" />
             <span>{traceState.kind === 'tracing' ? 'Tracing...' : 'Visualize'}</span>
@@ -167,7 +167,7 @@ export const PlaygroundPage: React.FC = () => {
             onClick={handleRun}
             disabled={!canRun}
             aria-busy={run.kind === 'running'}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play className="w-4 h-4 fill-white" aria-hidden="true" />
             <span>{run.kind === 'running' ? 'Running...' : 'Run Code'}</span>
