@@ -16,6 +16,7 @@ export const CodePanel: React.FC = () => {
     useVisualizerStore();
 
   const activeLineRef = useRef<HTMLDivElement>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
 
   const def = getAlgorithmDefinition(selectedAlgorithm);
   const currentStep = steps[currentStepIndex];
@@ -34,9 +35,18 @@ export const CodePanel: React.FC = () => {
   // syntax tokens per line, display only: each line's tokens join back to exactly its text (memoized by the React Compiler)
   const highlighted = sourceCode ? highlightLines(sourceCode, selectedLanguage) : [];
 
-  // Scroll active line into view whenever it changes
+  // Scroll the active line into view inside the code viewer only. scrollIntoView would also scroll every ancestor,
+  // dragging the whole workspace (and whatever the user is reading or about to click) to the code line.
   useEffect(() => {
-    activeLineRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const line = activeLineRef.current;
+    const viewer = viewerRef.current;
+    if (!line || !viewer) return;
+    // the viewer is the lines' offsetParent (absolutely positioned), so offsetTop is within its scroll content
+    const top = line.offsetTop;
+    const bottom = top + line.offsetHeight;
+    if (top < viewer.scrollTop) viewer.scrollTo({ top, behavior: 'smooth' });
+    else if (bottom > viewer.scrollTop + viewer.clientHeight)
+      viewer.scrollTo({ top: bottom - viewer.clientHeight, behavior: 'smooth' });
   }, [activeCodeLine]);
 
   // Surface mapping defects loudly in development only (no stack traces for end users).
@@ -117,7 +127,7 @@ export const CodePanel: React.FC = () => {
           </div>
         ) : (
           /* ─── Code viewer ─────────────────────────────────────── */
-          <div tabIndex={0} role="region" aria-label="Source code" className="absolute inset-0 overflow-y-auto font-mono text-xs p-3 space-y-0.5 bg-surface custom-scrollbar">
+          <div ref={viewerRef} tabIndex={0} role="region" aria-label="Source code" className="absolute inset-0 overflow-y-auto font-mono text-xs p-3 space-y-0.5 bg-surface custom-scrollbar">
             {codeLines.map((lineText, idx) => {
               const lineNum = idx + 1;
               const isActive = activeCodeLine !== null && lineNum === activeCodeLine;

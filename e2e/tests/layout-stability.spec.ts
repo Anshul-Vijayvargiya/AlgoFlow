@@ -76,3 +76,37 @@ for (const viewport of [{ name: 'desktop', width: 1500, height: 1000 }, { name: 
     }
   });
 }
+
+test.describe('the code panel follows its line without scrolling the page', () => {
+  // The code panel used scrollIntoView, which also scrolls every ancestor: stepping with the input panel in view
+  // smooth-scrolled the whole workspace to the code line, moving buttons under the pointer (a click on "Restore my
+  // arrays" during that scroll landed beside it). Only the code viewer may scroll.
+  test('stepping with the input panel in view leaves the workspace where the user put it', async ({ app, page }) => {
+    await page.setViewportSize({ width: 1500, height: 1000 });
+    await app.selectAlgorithm('merge-sorted-array');
+    const workspace = page.getByRole('region', { name: 'Visualizer workspace' });
+    const viewer = page.getByRole('region', { name: 'Source code' });
+    // scrolled to the input panel: the top of the code panel (where the last step's line is) is above the viewport
+    const before = await workspace.evaluate(el => {
+      el.scrollTop = el.scrollHeight;
+      return el.scrollTop;
+    });
+    expect(before, 'the workspace can scroll at this size').toBeGreaterThan(0);
+    await app.goToLastStep();
+    const active = viewer.locator('[aria-current="step"]');
+    await expect(active).toHaveCount(1);
+    // give a smooth scroll time to start and run (it begins within a frame or two of the step's commit)
+    await page.evaluate(() => new Promise<void>(r => { let n = 30; const f = () => (--n ? requestAnimationFrame(f) : r()); requestAnimationFrame(f); }));
+    expect(await workspace.evaluate(el => el.scrollTop), 'workspace scrollTop').toBe(before);
+    // and the code viewer still shows the active line inside its own box
+    await expect
+      .poll(() =>
+        active.evaluate(line => {
+          const v = line.closest<HTMLElement>('[aria-label="Source code"]')!.getBoundingClientRect();
+          const l = line.getBoundingClientRect();
+          return l.top >= v.top - 1 && l.bottom <= v.bottom + 1;
+        })
+      )
+      .toBe(true);
+  });
+});
