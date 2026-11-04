@@ -13,20 +13,44 @@ interface Props {
   error: string | null;
   onRetry: () => void;
   onOpenAlgorithm: (id: AlgorithmId) => void;
+  /** rows shown while collapsed */
+  pageSize: number;
+  /** every loaded event is listed ("View all" was chosen) */
+  expanded: boolean;
+  /** "View all" (load the most the server returns) or "Show less" */
+  onToggleAll: () => void;
   className: string;
   headingClass: string;
 }
 
 /** The latest practice submissions and visualizer walkthroughs the server recorded, newest first. */
-export const RecentActivity: React.FC<Props> = ({ events, loaded, loading, error, onRetry, onOpenAlgorithm, className, headingClass }) => {
-  const views = events.map(e => recentEventView(e));
+export const RecentActivity: React.FC<Props> = ({ events, loaded, loading, error, onRetry, onOpenAlgorithm, pageSize, expanded, onToggleAll, className, headingClass }) => {
+  const views = (expanded ? events : events.slice(0, pageSize)).map(e => recentEventView(e));
+  // fewer events than a page: there is nothing more to view
+  const canToggle = loaded && (expanded || events.length >= pageSize);
 
   return (
     <section aria-labelledby="recent-heading" data-testid="recent-activity" className={`${className} p-5 space-y-3`}>
-      <h2 id="recent-heading" className={headingClass}>
-        <History className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-        Recent activity
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="recent-heading" className={headingClass}>
+          <History className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+          Recent activity
+        </h2>
+        {canToggle && (
+          <button
+            type="button"
+            onClick={onToggleAll}
+            disabled={loading}
+            aria-expanded={expanded}
+            aria-controls="recent-list"
+            data-testid="recent-view-all"
+            className="text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1 rounded px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:opacity-50"
+          >
+            {loading && !expanded ? 'Loading…' : expanded ? 'Show less' : 'View all'}
+            {!expanded && <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />}
+          </button>
+        )}
+      </div>
 
       {error && !loaded ? (
         <div role="alert" data-testid="recent-error" className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -54,7 +78,7 @@ export const RecentActivity: React.FC<Props> = ({ events, loaded, loading, error
         </div>
       ) : (
         <div className="-mx-1 overflow-x-auto">
-          <table className="w-full table-fixed text-left text-xs" data-testid="recent-list">
+          <table id="recent-list" className="w-full table-fixed text-left text-xs" data-testid="recent-list">
             <caption className="sr-only">Your latest practice submissions and visualizer walkthroughs, newest first</caption>
             <thead>
               <tr className="text-[10px] font-mono uppercase tracking-wider text-slate-400 border-b border-slate-800">
@@ -102,6 +126,12 @@ export const RecentActivity: React.FC<Props> = ({ events, loaded, loading, error
             </tbody>
           </table>
         </div>
+      )}
+      {/* loading more (or a refresh) failed: what was loaded stays listed */}
+      {error && loaded && (
+        <p role="status" data-testid="recent-more-error" className="text-xs text-amber-300">
+          More activity could not be loaded. {error}
+        </p>
       )}
     </section>
   );

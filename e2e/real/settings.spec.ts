@@ -17,19 +17,17 @@ test.describe('Real backend — Settings', () => {
   test('preferred language and daily goal: saved, kept after a reload, and applied', async ({ page }, testInfo) => {
     await registerViaApi(page.request, account(testInfo, 'A'));
     await page.goto('/dashboard');
-    await expect(page.getByTestId('daily-goal-text')).toHaveText('0 of 30 min today');
 
     await openSettings(page);
+    await expect(page.getByLabel(/Daily Learning Goal/)).toHaveValue('30');
     await languageButton(page, 'PYTHON').click();
     await expect(languageButton(page, 'PYTHON')).toHaveAttribute('aria-pressed', 'true');
     await page.getByLabel(/Daily Learning Goal/).fill('45');
     const saved = page.waitForResponse(r => r.url() === `${API_ORIGIN}/api/users/profile` && r.request().method() === 'PATCH');
     await page.getByRole('button', { name: /Save/ }).click();
     expect((await saved).status()).toBe(200);
-    await expect(page.getByTestId('daily-goal-text')).toHaveText('0 of 45 min today');
 
     await page.reload();
-    await expect(page.getByTestId('daily-goal-text')).toHaveText('0 of 45 min today');
     // the code panel, Playground and Practice start in the preferred language
     await expect(page.getByRole('banner').getByRole('combobox', { name: 'Programming language' })).toHaveValue('python');
     await page.goto('/playground');
@@ -57,16 +55,15 @@ test.describe('Real backend — Settings', () => {
     await setup.close();
 
     await page.goto('/dashboard');
-    await expect(page.getByTestId('daily-goal-text')).toHaveText('0 of 90 min today');
     await openSettings(page);
     await expect(languageButton(page, 'JAVA')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByLabel(/Daily Learning Goal/)).toHaveValue('90');
     // a fresh page load closes the dialog
     await page.goto('/dashboard');
     await signOutViaUi(page);
 
     await signInViaUi(page, b);
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByTestId('daily-goal-text')).toHaveText('0 of 30 min today');
     await expect(page.getByRole('banner').getByRole('combobox', { name: 'Programming language' })).toHaveValue('cpp');
     await openSettings(page);
     await expect(languageButton(page, 'CPP')).toHaveAttribute('aria-pressed', 'true');

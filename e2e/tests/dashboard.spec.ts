@@ -1,8 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
-import { definition, engineSteps } from '../support/engineTrace';
-import { ALGORITHM_NAV } from '../../src/data/algorithmMetadata';
+import { definition } from '../support/engineTrace';
 import { PRACTICE_PROBLEMS } from '../../src/data/practiceProblems';
 
 /**
@@ -48,38 +47,11 @@ test.describe('Dashboard', () => {
     await expect(page.getByTestId('demo-badge')).toHaveText('Demo mode: progress is kept in this browser, not on a server');
     await expect(page.getByTestId('difficulty-empty')).toContainText('No solved problems yet');
     await expect(page.getByTestId('recent-empty')).toContainText('No activity yet');
-    // a fresh browser has done nothing yet: no activity, an honest empty chart
-    await expect(page.getByTestId('weekly-active-days')).toHaveText('Active on 0 of 7 days');
-    await expect(page.getByTestId('weekly-empty')).toContainText('No activity in the last 7 days');
+    await expect(page.getByTestId('recent-view-all')).toHaveCount(0);
+    await expect(page.getByTestId('welcome-explored')).toHaveText('0 algorithms explored');
     // no tracks in progress: an honest empty state, no resume link
     await expect(page.getByTestId('continue-learning')).toContainText('Nothing in progress yet');
     await expect(page.getByTestId('continue-learning').getByRole('link')).toHaveCount(0);
-  });
-
-  test('weekly activity counts what was done today: a visualizer walkthrough and a practice submission, each once', async ({ app, page }) => {
-    // stepping through one algorithm, back and forth, is one walkthrough
-    await app.next();
-    await app.previous();
-    await app.next();
-    await openDashboard(page);
-    const today = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date());
-    await expect(page.getByTestId('weekly-active-days')).toHaveText('Active on 1 of 7 days');
-    await expect(page.getByTestId('weekly-totals')).toHaveText('This week: 0 practice submissions · 1 visualizer walkthrough');
-    await expect(page.getByRole('figure', { name: 'Weekly activity' })).toHaveAccessibleDescription(
-      new RegExp(`${today}: 0 practice submissions, 1 visualizer walkthrough\\.`)
-    );
-
-    // one practice submission (a wrong answer is still practice)
-    await page.goto('/practice');
-    await page.locator('[data-problem="p4"]').getByRole('button', { name: 'Practice Now' }).click();
-    await page.locator('#practice-submit-btn').click();
-    await expect(page.getByTestId('submission-verdict')).toHaveText('Wrong Answer');
-    await openDashboard(page);
-    await expect(page.getByTestId('weekly-totals')).toHaveText('This week: 1 practice submission · 1 visualizer walkthrough');
-    await expect(page.getByRole('figure', { name: 'Weekly activity' })).toHaveAccessibleDescription(
-      new RegExp(`${today}: 1 practice submission, 1 visualizer walkthrough\\.`)
-    );
-    await expect(page.getByTestId('weekly-active-days')).toHaveText('Active on 1 of 7 days');
   });
 
   test('difficulty badges: one per level, distinct styles, each labelled in text', async ({ app, page }) => {
@@ -90,24 +62,6 @@ test.describe('Dashboard', () => {
     await expect(badges).toHaveText(['Easy1', 'Medium0', 'Hard0']);
     const colours = await badges.evaluateAll(els => els.map(e => getComputedStyle(e).color));
     expect(new Set(colours).size).toBe(3);
-  });
-
-  test('every recommendation opens its own algorithm in the visualizer', async ({ app, page }) => {
-    void app;
-    await openDashboard(page);
-    const links = page.getByTestId('recommendations').getByRole('link');
-    const ids = await links.evaluateAll(els => els.map(e => (e as HTMLElement).dataset.algorithm!));
-    expect(ids).toEqual(ALGORITHM_NAV.filter(a => a.implemented).slice(0, 4).map(a => a.id));
-    for (const id of ids) {
-      await openDashboard(page);
-      await page.locator(`[data-algorithm="${id}"]`).click();
-      await expect(page).toHaveURL(/\/visualizer$/);
-      const def = definition(id as never);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(def.name);
-      // the visualizer really runs that algorithm: its first step is the engine's first step for the default input
-      const first = engineSteps(id as never, def.defaultInput, def.inputSpec?.target?.defaultValue ?? null)[0];
-      await expect(page.getByTestId('current-action')).toHaveText(first.message);
-    }
   });
 
   for (const theme of ['dark', 'galaxy', 'light', 'sunset'] as const) {
@@ -121,15 +75,19 @@ test.describe('Dashboard', () => {
     });
   }
 
-  test('headings and chart summaries are exposed to assistive technology', async ({ app, page }) => {
-    // one walkthrough, so the weekly chart is drawn
-    await app.next();
+  test('headings: one h1, and an h2 for each section', async ({ app, page }) => {
+    void app;
     await openDashboard(page);
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-    await expect(page.getByRole('heading', { level: 2, name: 'Weekly activity' })).toBeVisible();
-    await expect(page.getByRole('figure', { name: 'Weekly activity' })).toHaveAccessibleDescription(
-      /^Activity per day \(UTC\): .+ In total: 0 practice submissions and 1 visualizer walkthrough\.$/
-    );
+    for (const name of ['Continue learning', "Today's goals", 'Recent activity']) await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
+  });
+
+  test('only the approved sections: no weekly chart, topic progress, recommendations, quick actions or learning time', async ({ app, page }) => {
+    await app.next();
+    await openDashboard(page);
+    for (const id of ['weekly-activity', 'topic-progress', 'recommended-next', 'quick-actions']) await expect(page.getByTestId(id)).toHaveCount(0);
+    await expect(page.locator('[data-stat]')).toHaveCount(3);
+    for (const text of ['Weekly activity', 'Progress by topic', 'Recommended next', 'Quick Actions', 'Learning Time']) await expect(page.locator('main')).not.toContainText(text);
   });
 
   test('reduced motion: the hero button does not zoom on hover', async ({ app, page }) => {
@@ -144,7 +102,7 @@ test.describe('Dashboard', () => {
   test('daily checklist: a walkthrough checks its verified goal; the manual goal is ticked by keyboard and survives a reload', async ({ app, page }) => {
     await openDashboard(page);
     await expect(page.getByTestId('checklist-count')).toHaveText('0 of 4 goals complete');
-    await expect(page.getByTestId('checklist-reset')).toContainText('Resets at 00:00 UTC');
+    await expect(page.getByTestId('checklist-reset')).toHaveCount(0);
     // verified goals are not controls
     await expect(page.getByTestId('daily-checklist').getByRole('checkbox')).toHaveCount(1);
 
@@ -213,7 +171,7 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Bubble Sort');
   });
 
-  test('Continue learning: the last algorithm stepped through, with when, and Resume opens it', async ({ app, page }) => {
+  test('Continue learning: the last algorithm stepped through, its topic, complexity and when, and Continue opens it', async ({ app, page }) => {
     await app.selectAlgorithm('binary-search');
     await app.next();
     // the walkthrough has been recorded before the Dashboard is opened
@@ -223,7 +181,10 @@ test.describe('Dashboard', () => {
     await openDashboard(page);
     const card = page.getByTestId('continue-learning');
     await expect(card).toContainText('Binary Search');
-    await expect(page.getByTestId('continue-meta')).toHaveText('SEARCHING · in progress · last active today');
+    await expect(page.getByTestId('continue-topic')).toHaveText('Searching');
+    await expect(page.getByTestId('continue-complexity')).toHaveText(`Average time complexity: ${definition('binary-search').complexity.average}`);
+    await expect(page.getByTestId('continue-meta')).toHaveText('Last active today');
+    await expect(page.getByTestId('continue-resume')).toHaveAccessibleName('Continue: Binary Search');
     // never a hardcoded algorithm
     await expect(card).not.toContainText('Bubble Sort');
     await page.getByTestId('continue-resume').click();
@@ -236,7 +197,7 @@ test.describe('Dashboard', () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await openDashboard(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
-    const sections = ['dashboard-welcome', 'continue-learning', 'daily-checklist', 'dashboard-stats', 'weekly-activity', 'topic-progress', 'recent-activity', 'recommended-next'];
+    const sections = ['dashboard-welcome', 'continue-learning', 'dashboard-stats', 'daily-checklist', 'recent-activity'];
     const boxes = [];
     for (const id of sections) {
       const box = (await page.getByTestId(id).boundingBox())!;
@@ -249,7 +210,7 @@ test.describe('Dashboard', () => {
   });
 
   // every section's box: inside the viewport, overlapping no other, and with little blank space below its content
-  const SECTIONS = ['dashboard-welcome', 'continue-learning', 'daily-checklist', 'dashboard-stats', 'weekly-activity', 'topic-progress', 'recent-activity', 'recommended-next'];
+  const SECTIONS = ['dashboard-welcome', 'continue-learning', 'dashboard-stats', 'daily-checklist', 'recent-activity'];
   async function layout(page: Page) {
     return page.evaluate(ids => {
       const boxes = ids.map(id => {
@@ -283,56 +244,77 @@ test.describe('Dashboard', () => {
     });
   }
 
-  test('desktop: continue learning compact with the four cards below it, today\'s goals beside both and level with them', async ({ app, page }) => {
+  // widths well inside the desktop tier: at exactly 1024px WebKit evaluates media queries without its scrollbar, so it is
+  // still in the one-column tier there (see header-layout.spec.ts)
+  for (const width of [1440, 1100]) {
+    test(`desktop ${width}px: continue learning and the three cards on the left, today's goals on the right, recent activity across the width`, async ({ app, page }) => {
+      void app;
+      await page.setViewportSize({ width, height: 900 });
+      await openDashboard(page);
+      const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
+      const [welcome, cont, stats, goals, recent] = await Promise.all(['dashboard-welcome', 'continue-learning', 'dashboard-stats', 'daily-checklist', 'recent-activity'].map(box));
+      // the two columns start level, below the welcome; goals to the right of the wider left column
+      expect(Math.abs(goals.y - cont.y)).toBeLessThan(2);
+      expect(cont.y).toBeGreaterThan(welcome.y + welcome.height);
+      expect(goals.x).toBeGreaterThan(cont.x + cont.width);
+      expect(cont.width).toBeGreaterThan(goals.width);
+      // the cards directly below continue learning, in its column
+      expect(Math.abs(stats.x - cont.x)).toBeLessThan(2);
+      expect(stats.y).toBeGreaterThan(cont.y + cont.height);
+      expect(stats.y - (cont.y + cont.height)).toBeLessThanOrEqual(24);
+      // three cards in one row
+      const cards = await Promise.all(['Problems Solved', 'Algorithms Explored', 'Current Streak'].map(async name => (await page.locator(`[data-stat="${name}"]`).boundingBox())!));
+      for (const c of cards.slice(1)) expect(Math.abs(c.y - cards[0].y)).toBeLessThan(2);
+      expect(cards[1].x).toBeGreaterThan(cards[0].x + cards[0].width);
+      expect(cards[2].x).toBeGreaterThan(cards[1].x + cards[1].width);
+      // recent activity: below both columns, as wide as the welcome
+      expect(recent.y).toBeGreaterThan(Math.max(stats.y + stats.height, goals.y + goals.height));
+      expect(Math.abs(recent.x - welcome.x)).toBeLessThan(2);
+      expect(Math.abs(recent.width - welcome.width)).toBeLessThan(2);
+      await expect(page.getByTestId('learning-resources')).toHaveCount(0);
+    });
+  }
+
+  test('tablet 768px: one column in reading order, the three cards side by side', async ({ app, page }) => {
     void app;
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.setViewportSize({ width: 768, height: 1000 });
     await openDashboard(page);
-    const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
-    const cont = await box('continue-learning');
-    const goals = await box('daily-checklist');
-    const stats = await box('dashboard-stats');
-    expect(cont.height).toBeLessThan(200);
-    expect(Math.abs(goals.y - cont.y)).toBeLessThan(2);
-    expect(goals.x).toBeGreaterThan(cont.x + cont.width);
-    // the cards directly below continue learning, in its column
-    expect(stats.y).toBeGreaterThan(cont.y + cont.height);
-    expect(stats.y - (cont.y + cont.height)).toBeLessThanOrEqual(24);
-    expect(Math.abs(stats.x - cont.x)).toBeLessThan(2);
-    // the two sides of the top block end within a card gap of each other
-    expect(Math.abs(goals.y + goals.height - (stats.y + stats.height))).toBeLessThanOrEqual(40);
-    // 2 x 2 cards
-    const cards = await Promise.all(['Problems Solved', 'Algorithms Explored', 'Current Streak', 'Learning Time'].map(async name => (await page.locator(`[data-stat="${name}"]`).boundingBox())!));
-    expect(Math.abs(cards[0].y - cards[1].y)).toBeLessThan(2);
-    expect(Math.abs(cards[2].y - cards[3].y)).toBeLessThan(2);
-    expect(cards[2].y).toBeGreaterThan(cards[0].y + cards[0].height);
-    // weekly activity and progress by topic: equal halves, level
-    const weekly = await box('weekly-activity');
-    const topics = await box('topic-progress');
-    expect(Math.abs(weekly.width - topics.width)).toBeLessThan(2);
-    expect(Math.abs(weekly.y - topics.y)).toBeLessThan(2);
-    // recent activity and recommended next: one row; the downloadable notes are on the Notes page, not here
-    const [recent, rec] = [await box('recent-activity'), await box('recommended-next')];
-    expect(Math.abs(rec.y - recent.y)).toBeLessThan(2);
-    expect(rec.x).toBeGreaterThan(recent.x + recent.width);
-    await expect(page.getByTestId('learning-resources')).toHaveCount(0);
+    const [cont, stats, goals, recent] = await Promise.all(['continue-learning', 'dashboard-stats', 'daily-checklist', 'recent-activity'].map(async id => (await page.getByTestId(id).boundingBox())!));
+    for (const b of [stats, goals, recent]) expect(Math.abs(b.width - cont.width)).toBeLessThan(2);
+    expect(stats.y).toBeGreaterThan(cont.y);
+    expect(goals.y).toBeGreaterThan(stats.y + stats.height);
+    expect(recent.y).toBeGreaterThan(goals.y + goals.height);
+    const cards = await Promise.all(['Problems Solved', 'Algorithms Explored', 'Current Streak'].map(async name => (await page.locator(`[data-stat="${name}"]`).boundingBox())!));
+    for (const c of cards.slice(1)) expect(Math.abs(c.y - cards[0].y)).toBeLessThan(2);
   });
 
-  test('Recommended next: each Start button opens its algorithm in the visualizer', async ({ app, page }) => {
+  test('Recent activity: "View all" lists up to 20 events, "Show less" the first 8 again', async ({ app, page }) => {
     void app;
+    // 12 practice submissions recorded in this browser (the mock API's records)
+    const problem = PRACTICE_PROBLEMS[0];
+    await page.evaluate(
+      ({ id }) => {
+        const state = JSON.parse(localStorage.getItem('algoflow_practice_state') ?? '{"submissions":{}}');
+        state.submissions[id] = Array.from({ length: 12 }, (_, i) => ({
+          id: `e2e-${i}`, problemId: id, language: 'python', code: '', status: 'WRONG_ANSWER', passed: false, runtimeMs: 1, memoryMb: 1,
+          createdAt: new Date(Date.now() - i * 60_000).toISOString(),
+        }));
+        localStorage.setItem('algoflow_practice_state', JSON.stringify(state));
+      },
+      { id: problem.problemId }
+    );
     await openDashboard(page);
-    const first = page.getByTestId('recommendations').getByRole('link').first();
-    const id = (await first.getAttribute('data-algorithm'))!;
-    await expect(first).toHaveText(/Start/);
-    await first.click();
-    await expect(page).toHaveURL(/\/visualizer$/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(definition(id as Parameters<typeof definition>[0]).name);
-  });
-
-  test("Learning Time says it is not tracked, and progress by topic lists the app's topics", async ({ app, page }) => {
-    void app;
-    await openDashboard(page);
-    await expect(page.locator('[data-stat="Learning Time"]')).toContainText('Not tracked');
-    await expect(page.getByTestId('topic-progress').locator('[data-topic="Sorting"]')).toBeVisible();
-    await expect(page.getByTestId('topic-progress').locator('[data-topic="Trees"]')).toBeVisible();
+    const rows = page.getByTestId('recent-list').locator('tbody tr');
+    const viewAll = page.getByTestId('recent-view-all');
+    await expect(rows).toHaveCount(8);
+    await expect(viewAll).toHaveText('View all');
+    await expect(viewAll).toHaveAttribute('aria-expanded', 'false');
+    await viewAll.click();
+    await expect(rows).toHaveCount(12);
+    await expect(viewAll).toHaveText('Show less');
+    await expect(viewAll).toHaveAttribute('aria-expanded', 'true');
+    await viewAll.click();
+    await expect(rows).toHaveCount(8);
+    await expect(viewAll).toHaveText('View all');
   });
 });

@@ -3,6 +3,7 @@ import { apiClient } from '../api';
 import type { UserProgressData, AlgorithmTrack, LegacyActivityReport, AlgorithmProgressReset, TodayProgress, RecentActivityEvent } from '../api';
 import { useAuthStore } from './useAuthStore';
 import { createDedupe, withRateLimitRetry } from '../api/rateLimit';
+import { RECENT_ACTIVITY_LIMIT } from '../progress/recentActivityLimits';
 
 interface ProgressState {
   progress: UserProgressData | null;
@@ -37,7 +38,11 @@ interface ProgressState {
   fetchToday: () => Promise<void>;
   /** ticks or unticks a manual goal: shown at once, saved, and undone if saving fails */
   setManualGoal: (goalId: string, done: boolean) => Promise<void>;
-  fetchRecent: () => Promise<void>;
+  /**
+   * the latest events: RECENT_ACTIVITY_LIMIT by default, up to RECENT_ACTIVITY_MAX (the server's cap) for "View all".
+   * Resolves true when they were loaded (false on a failure, which is kept in recentError).
+   */
+  fetchRecent: (limit?: number) => Promise<boolean>;
   recordActivity: (activity: LegacyActivityReport) => Promise<void>;
   updateAlgorithmProgress: (algorithmId: string, data: AlgorithmProgressReset) => Promise<void>;
 }
@@ -145,16 +150,18 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     }
   },
 
-  fetchRecent: async () => {
+  fetchRecent: async (limit = RECENT_ACTIVITY_LIMIT) => {
     const requestGeneration = generation;
     set({ recentLoading: true, recentError: null });
     try {
-      const recent = await read('recent', () => apiClient.progress.getRecentActivity(8));
-      if (requestGeneration !== generation) return;
+      const recent = await read(`recent:${limit}`, () => apiClient.progress.getRecentActivity(limit));
+      if (requestGeneration !== generation) return false;
       set({ recent, recentLoaded: true, recentLoading: false });
+      return true;
     } catch (err: any) {
-      if (requestGeneration !== generation) return;
+      if (requestGeneration !== generation) return false;
       set({ recentLoading: false, recentError: err?.message || 'Recent activity could not be loaded.' });
+      return false;
     }
   },
 

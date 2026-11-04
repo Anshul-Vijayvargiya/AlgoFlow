@@ -172,7 +172,7 @@ const PAGES: [string, string, ((page: Page) => Promise<void>)?][] = [
     await page.locator('#array-input').fill('5, 1, 4');
     await expect(page.getByTestId('input-error')).toBeVisible();
   }],
-  ['dashboard (charts)', '/dashboard'],
+  ['dashboard', '/dashboard'],
   ['practice', '/practice'],
   ['playground', '/playground'],
   ['playground: step-by-step trace mid-way', '/playground', visualizeFactorial],
@@ -239,18 +239,15 @@ for (const [theme, base] of [['galaxy', 'dark'], ['sunset', 'light']] as const) 
 
 test.describe('named themes: components follow the theme', () => {
   test('charts take each theme’s colours and switch with it', async ({ app, page }) => {
+    // the Progress page's daily steps chart (the Dashboard no longer draws a chart): one walkthrough draws a bar
     await app.next();
-    await page.goto('/practice');
-    await page.locator('[data-problem="p4"]').getByRole('button', { name: 'Practice Now' }).click();
-    await page.locator('#practice-submit-btn').click();
-    await expect(page.getByTestId('submission-verdict')).toBeVisible();
-    await page.goto('/dashboard');
+    await page.goto('/progress');
     const barFills = async () => [...new Set(await page.locator('.recharts-bar-rectangle path').evaluateAll(els => els.map(e => e.getAttribute('fill'))))].sort();
-    await expect.poll(barFills).toEqual(['#38BDF8', '#F59E0B']);
+    await expect.poll(barFills).toEqual(['#38BDF8']);
     await setTheme(page, 'galaxy');
-    await expect.poll(barFills).toEqual(['#C3A0FE', '#F59E0B']);
+    await expect.poll(barFills).toEqual(['#C3A0FE']);
     await setTheme(page, 'sunset');
-    await expect.poll(barFills).toEqual(['#2563EB', '#C56138']);
+    await expect.poll(barFills).toEqual(['#C56138']);
   });
 
   test('the Playground trace, editor and output panes use the theme surfaces in every theme', async ({ app, page }) => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle2, Circle, ListChecks, RotateCcw, ShieldCheck } from 'lucide-react';
 import type { TodayProgress } from '../../api';
-import { checklistSummary, resetText } from './dashboardData';
+import { checklistSummary } from './dashboardData';
 
 interface Props {
   today: TodayProgress | null;
@@ -11,8 +11,6 @@ interface Props {
   saveError: string | null;
   onRetry: () => void;
   onToggle: (goalId: string, done: boolean) => void;
-  /** the practice-time goal from Settings (estimated minutes), shown under the checklist when set */
-  practiceTime: { today: number; goal: number; met: boolean } | null;
   className: string;
   headingClass: string;
 }
@@ -22,7 +20,7 @@ interface Props {
  * by hand); the manual goal is the learner's own intention, ticked here and saved to their account. No points are
  * awarded for ticking anything.
  */
-export const DailyChecklist: React.FC<Props> = ({ today, loading, error, saving, saveError, onRetry, onToggle, practiceTime, className, headingClass }) => {
+export const DailyChecklist: React.FC<Props> = ({ today, loading, error, saving, saveError, onRetry, onToggle, className, headingClass }) => {
   const summary = today ? checklistSummary(today) : null;
 
   return (
@@ -124,18 +122,6 @@ export const DailyChecklist: React.FC<Props> = ({ today, loading, error, saving,
             ) : summary.allDone ? (
               <span className="text-emerald-300 font-semibold">All of today&apos;s goals are done. Nice work!</span>
             ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] text-slate-400 border-t border-slate-800 pt-3">
-            <span data-testid="checklist-reset">{resetText(today!.resetsAt)}. Earlier days are kept.</span>
-            {practiceTime && (
-              <span data-testid="daily-goal" title="Estimated: each practice submission counts as 5 minutes; visualizer time is not measured.">
-                Practice time (estimated):{' '}
-                <span data-testid="daily-goal-text" className={practiceTime.met ? 'text-emerald-400' : 'text-slate-300'}>
-                  {practiceTime.today} of {practiceTime.goal} min today{practiceTime.met ? ' · goal reached' : ''}
-                </span>
-              </span>
-            )}
           </div>
         </>
       )}

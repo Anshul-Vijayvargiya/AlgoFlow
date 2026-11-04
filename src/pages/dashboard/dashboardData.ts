@@ -9,7 +9,7 @@ import { getAlgorithmDefinition } from '../../engine/AlgorithmRegistry';
 import { dailyGoalStatuses, type DailyGoalStatus } from '../../data/dailyGoals';
 import { verdictOf, type VerdictTone } from '../practice/verdicts';
 import { LEARNING_TRACKS, trackSummary, type LearningTrack } from '../learning/learningPaths';
-import { IMPLEMENTED_TOPICS } from '../../data/algorithmCatalog';
+import { IMPLEMENTED_TOPICS, topicOfAlgorithm } from '../../data/algorithmCatalog';
 
 const categoryLabel = (id: string) => ALGORITHM_CATEGORIES.find(c => c.id === id)?.label ?? id;
 
@@ -17,6 +17,10 @@ export interface ContinueItem {
   id: AlgorithmId;
   name: string;
   categoryLabel: string;
+  /** the topic in words, e.g. "Sorting", "Linked List" */
+  topic: string;
+  /** average time complexity from the algorithm's definition, e.g. "O(n log n)" */
+  complexity: string;
   /** when the track was last active (ISO string from the server) */
   lastActivityAt: string;
   /** the learning path this algorithm is a milestone of, if any (src/pages/learning/learningPaths.ts) */
@@ -50,6 +54,8 @@ export function continueLearning(tracks: readonly AlgorithmTrack[]): ContinueIte
     id: def.id,
     name: def.name,
     categoryLabel: categoryLabel(def.category),
+    topic: topicOfAlgorithm(def.id) ?? categoryLabel(def.category),
+    complexity: def.complexity.average,
     lastActivityAt: t.lastActivityAt,
     path: pathOf(def.id, tracks),
   };

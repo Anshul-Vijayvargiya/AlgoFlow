@@ -26,7 +26,7 @@ const progressStore = vi.hoisted(() => ({
   recentLoaded: true,
   recentLoading: false,
   recentError: null,
-  fetchRecent: () => Promise.resolve(),
+  fetchRecent: () => Promise.resolve(true),
 }));
 vi.mock('../../../store/useProgressStore', () => ({ useProgressStore: () => progressStore }));
 vi.mock('../../../store/useVisualizerStore', () => ({
@@ -67,34 +67,11 @@ describe('daily goal summary', () => {
 });
 
 describe('Dashboard — daily goal', () => {
-  it("shows the signed-in account's goal against today's minutes in the checklist, marked as an estimate", () => {
+  it('the estimated practice time is not shown on the dashboard, whatever the goal in Settings', () => {
     signIn(45);
     progressStore.progress = progress(15);
     const html = render();
-    expect(html).toMatch(/data-testid="daily-goal-text"[^>]*>15 of 45 min today</);
-    expect(html).toMatch(/data-testid="daily-goal" title="Estimated: each practice submission counts as 5 minutes; visualizer time is not measured\."[^>]*>Practice time \(estimated\):/);
-    // inside today's checklist, after the goals
-    expect(html.indexOf('data-testid="daily-goal"')).toBeGreaterThan(html.indexOf('data-testid="daily-checklist"'));
-  });
-
-  it('a reached goal says so', () => {
-    signIn(10);
-    progressStore.progress = progress(15);
-    expect(render()).toMatch(/15 of 10 min today · goal reached/);
-  });
-
-  it('a different goal changes the panel (it follows Settings)', () => {
-    signIn(120);
-    progressStore.progress = progress(15);
-    expect(render()).toContain('15 of 120 min today');
-  });
-
-  it('not shown while progress is loading or failed to load (no invented minutes)', () => {
-    signIn(30);
-    progressStore.isLoading = true;
-    expect(render()).not.toContain('data-testid="daily-goal"');
-    progressStore.isLoading = false;
-    progressStore.error = 'offline';
-    expect(render()).not.toContain('data-testid="daily-goal"');
+    expect(html).toContain('data-testid="daily-checklist"');
+    for (const gone of ['data-testid="daily-goal"', 'data-testid="daily-goal-text"', 'Practice time', 'min today']) expect(html, gone).not.toContain(gone);
   });
 });

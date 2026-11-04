@@ -27,6 +27,8 @@ describe('continue learning', () => {
       id: 'quick-sort',
       name: 'Quick Sort',
       categoryLabel: 'SORTING',
+      topic: 'Sorting',
+      complexity: 'O(n log n)',
       lastActivityAt: '2026-10-20T09:00:00Z',
       path: { title: 'Track 2: Core Sorting Algorithms', level: 'Intermediate', estimatedMinutes: 35, explored: 3, available: 5 },
     });

@@ -22,7 +22,7 @@ const progressStore = vi.hoisted(() => ({
   recentLoaded: false,
   recentLoading: false,
   recentError: null as string | null,
-  fetchRecent: () => Promise.resolve(),
+  fetchRecent: () => Promise.resolve(true),
 }));
 vi.mock('../../../store/useProgressStore', () => ({ useProgressStore: () => progressStore }));
 // the API mode is a build flag; the tests set it
@@ -104,8 +104,7 @@ describe('Dashboard — states', () => {
     const stats = html.slice(from, html.indexOf('data-testid="daily-checklist"'));
     expect(visibleText(stats)).not.toMatch(/\d/);
     expect(html).not.toContain('Nothing in progress yet');
-    expect(html).not.toContain('data-testid="weekly-empty"');
-    expect(html).not.toContain('data-testid="recommendations"');
+    expect(html).toMatch(/data-testid="welcome-explored"[^>]*>.*Loading algorithms explored…/);
   });
 
   it('before the first request starts it is the same loading state (never zeros)', () => {
@@ -121,7 +120,8 @@ describe('Dashboard — states', () => {
     expect(html).toContain('Your progress could not be loaded');
     expect(html).toContain('Unable to connect to the server.');
     expect(html).toMatch(/<button type="button"[^>]*>.*Retry<\/button>/);
-    for (const id of ['dashboard-stats', 'continue-learning', 'weekly-activity', 'difficulty-distribution']) expect(html, id).not.toContain(`data-testid="${id}"`);
+    for (const id of ['dashboard-stats', 'continue-learning', 'difficulty-distribution']) expect(html, id).not.toContain(`data-testid="${id}"`);
+    expect(html).toMatch(/data-testid="welcome-explored"[^>]*>.*Explored count unavailable/);
   });
 
   it('a failed refresh keeps the earlier data and offers Retry', () => {
@@ -140,15 +140,13 @@ describe('Dashboard — states', () => {
     expect(html).not.toContain('dashboard-error');
     expect(visibleText(html)).toMatch(/0\s+Problems Solved/);
     expect(html).toContain('Nothing in progress yet');
-    expect(html).toContain('data-testid="weekly-empty"');
-    expect(html).toContain('No activity in the last 7 days');
-    expect(html).toMatch(/<a [^>]*href="\/visualizer"[^>]*>visualizer<\/a>/);
     expect(html).toContain('data-testid="difficulty-empty"');
     expect(html).toContain('No solved problems yet');
+    expect(html).toMatch(/data-testid="welcome-explored"[^>]*>.*0 algorithms explored/);
     expect(html).not.toContain('recharts');
   });
 
-  it('a populated account: real values, active days, badges per difficulty and the algorithm to continue', () => {
+  it('a populated account: real values, badges per difficulty and the algorithm to continue with its topic and complexity', () => {
     progressStore.progress = activeAccount;
     progressStore.tracks = [
       { algorithmId: 'heap-sort', status: 'in_progress', stepsCompleted: 3, totalSteps: 40, lastStepIndex: 2, executionCount: 1, lastActivityAt: new Date().toISOString() },
@@ -157,52 +155,45 @@ describe('Dashboard — states', () => {
     const text = visibleText(html);
     expect(text).toMatch(/6\s+Problems Solved/);
     expect(text).toMatch(/1 Day\s+Current Streak/);
-    expect(html).toMatch(/data-testid="weekly-active-days"[^>]*>Active on 2 of 7 days</);
     expect([...html.matchAll(/data-difficulty="(\w+)"[^>]*>(\w+)<span class="text-ink">(\d+)</g)].map(m => m.slice(1))).toEqual([
       ['Easy', 'Easy', '3'],
       ['Medium', 'Medium', '2'],
       ['Hard', 'Hard', '1'],
     ]);
-    expect(html).toContain('Heap Sort');
-    // real progress only: the status and when; no step count (only milestone steps are recorded)
-    expect(html).toMatch(/data-testid="continue-meta"[^>]*>SORTING · in progress · last active today</);
+    expect(html).toContain('Solved problems by difficulty: Easy 3, Medium 2, Hard 1 (6 in total).');
+    // continue learning: name, topic, time complexity and when, from the track and the algorithm's definition
+    expect(html).toMatch(/<p class="[^"]*">Heap Sort<\/p>/);
+    expect(html).toMatch(/data-testid="continue-topic"[^>]*>Sorting</);
+    expect(html).toMatch(/data-testid="continue-complexity"[^>]*>.*<span class="sr-only">Average time complexity: <\/span>O\(n log n\)</);
+    expect(html).toMatch(/data-testid="continue-meta"[^>]*>.*Last active today</);
+    // no step count (only milestone steps are recorded)
     expect(html).not.toMatch(/step viewed|Step \d+ of/);
     // the button says what it does; the algorithm is named for screen readers too (and shown beside it)
-    const resumeLink = html.match(/<a [^>]*data-testid="continue-resume"[^>]*>Resume Visualization<span class="sr-only">: Heap Sort/)![0];
+    const resumeLink = html.match(/<a [^>]*data-testid="continue-resume" aria-label="Continue: Heap Sort"[^>]*>Continue<svg/)![0];
     expect(resumeLink).toContain('href="/visualizer"');
-    // the chart summaries are available as text
-    expect(html).toContain('Friday 16 Oct: 2 practice submissions, 0 visualizer walkthroughs;');
-    expect(html).toContain('Monday 19 Oct: 0 practice submissions, 1 visualizer walkthrough;');
-    expect(html).toContain('In total: 2 practice submissions and 1 visualizer walkthrough.');
-    expect(html).toMatch(/data-testid="weekly-totals"[^>]*>This week: 2 practice submissions · 1 visualizer walkthrough</);
-    // the estimated minutes are no longer what the chart shows
-    expect(html).not.toContain('Minutes logged');
-    expect(html).toContain('Solved problems by difficulty: Easy 3, Medium 2, Hard 1 (6 in total).');
+  });
+
+  it('a different algorithm in progress is what is shown: nothing is hardcoded', () => {
+    progressStore.progress = activeAccount;
+    progressStore.tracks = [
+      { algorithmId: 'binary-search', status: 'in_progress', stepsCompleted: 1, totalSteps: 9, lastStepIndex: 1, executionCount: 1, lastActivityAt: new Date().toISOString() },
+    ];
+    const html = render();
+    expect(html).toMatch(/data-testid="continue-topic"[^>]*>Searching</);
+    expect(html).toMatch(/data-testid="continue-complexity"[^>]*>.*O\(log n\)</);
+    expect(html).toMatch(/data-testid="continue-resume" aria-label="Continue: Binary Search"[^>]*>Continue<svg/);
+    expect(html).not.toContain('Bubble Sort');
   });
 });
 
-describe('Dashboard — weekly activity counts', () => {
-  it('visualizer-only days are active and charted as walkthroughs (no longer an empty "no minutes" chart)', () => {
-    progressStore.progress = { ...emptyAccount, weeklyActivity: zeroWeek.map((d, i) => (i === 6 ? { ...d, steps: 12, walkthroughs: 2 } : d)) };
+describe('Dashboard — only the approved sections', () => {
+  it('weekly activity, progress by topic, recommended next, quick actions and learning time are not on the dashboard', () => {
+    progressStore.progress = { ...activeAccount, topicCoverage: [{ topic: 'Sorting', implemented: 6, practised: 3, completed: 1 }] };
+    progressStore.today = todayData();
+    progressStore.recentLoaded = true;
     const html = render();
-    expect(html).toMatch(/data-testid="weekly-active-days"[^>]*>Active on 1 of 7 days</);
-    expect(html).toContain('aria-describedby="weekly-summary"');
-    expect(html).not.toContain('data-testid="weekly-empty"');
-    expect(html).toContain('Wednesday 21 Oct: 0 practice submissions, 2 visualizer walkthroughs.');
-  });
-
-  it('estimated minutes without a counted submission (e.g. an old judging failure) are not activity', () => {
-    progressStore.progress = { ...emptyAccount, weeklyActivity: zeroWeek.map((d, i) => (i === 6 ? { ...d, minutes: 5 } : d)) };
-    const html = render();
-    expect(html).toMatch(/data-testid="weekly-active-days"[^>]*>Active on 0 of 7 days</);
-    expect(html).toContain('data-testid="weekly-empty"');
-  });
-
-  it('the card explains what is counted', () => {
-    progressStore.progress = emptyAccount;
-    const html = render();
-    expect(html).toContain('Practice submissions and visualizer walkthroughs per day, last 7 days (UTC).');
-    expect(html).toContain('A walkthrough is an algorithm you stepped through in the visualizer; each algorithm counts once a day.');
+    for (const id of ['weekly-activity', 'topic-progress', 'recommended-next', 'recommendations', 'quick-actions']) expect(html, id).not.toContain(`data-testid="${id}"`);
+    for (const text of ['Weekly activity', 'Progress by topic', 'Recommended next', 'Quick Actions', 'Learning Time']) expect(visibleText(html), text).not.toContain(text);
   });
 });
 
@@ -211,37 +202,18 @@ describe('Dashboard — truthfulness and accessibility', () => {
     progressStore.progress = activeAccount;
     const html = render();
     for (const invented of ['7.4 hrs', 'Resume Step', 'Step 4 of 10', 'Array Partitioning']) expect(html, invented).not.toContain(invented);
-    // recommendations show category and complexity, never a difficulty
-    const recs = html.slice(html.indexOf('data-testid="recommendations"'));
-    expect(recs).not.toContain('data-difficulty');
   });
 
-  it('each recommendation links to the visualizer for its own algorithm', () => {
-    progressStore.progress = emptyAccount;
-    const html = render();
-    const anchors = [...html.matchAll(/<a ([^>]*data-algorithm="[^"]*"[^>]*)>(.*?)<\/a>/g)];
-    for (const [, attrs] of anchors) expect(attrs).toMatch(/href="\/visualizer"/);
-    // each item's Start button is named after its algorithm
-    for (const [, , body] of anchors) expect(body).toMatch(/^Start</);
-    const links = anchors.map(([, attrs]) => [attrs.match(/data-algorithm="([a-z-]+)"/)![1], attrs.match(/aria-label="Start ([^"]+)"/)![1]]);
-    expect(links).toEqual([
-      ['bubble-sort', 'Bubble Sort'],
-      ['selection-sort', 'Selection Sort'],
-      ['insertion-sort', 'Insertion Sort'],
-      ['merge-sort', 'Merge Sort'],
-    ]);
-  });
-
-  it('one h1, every section titled by an h2, charts named and summarised, decorative emoji hidden', () => {
+  it('one h1, every section titled by an h2, the difficulty list described, decorative emoji hidden', () => {
     progressStore.progress = activeAccount;
     const html = render();
     expect(html.match(/<h1/g)).toHaveLength(1);
     // the only sub-heading: "Solved by difficulty" in the solved card
     expect(html.match(/<h3[^>]*>[^<]*<\/h3>/g)).toEqual([expect.stringContaining('>Solved by difficulty<')]);
-    for (const id of ['continue-heading', 'checklist-heading', 'weekly-heading', 'topics-heading', 'recent-heading', 'recommended-heading', 'dashboard-stats-heading']) {
+    for (const id of ['continue-heading', 'checklist-heading', 'recent-heading', 'dashboard-stats-heading']) {
       expect(html, id).toMatch(new RegExp(`<h2 id="${id}"`));
     }
-    expect(html).toMatch(/<figure aria-labelledby="weekly-heading" aria-describedby="weekly-summary"/);
+    expect(html.match(/<h2 /g)).toHaveLength(4);
     expect(html).toMatch(/<ul [^>]*aria-labelledby="difficulty-heading" aria-describedby="difficulty-summary"/);
     expect(html).toContain('<span aria-hidden="true"> 🔥</span>');
   });
@@ -256,10 +228,11 @@ describe('Dashboard — truthfulness and accessibility', () => {
 });
 
 describe('Dashboard v2 — welcome and streak', () => {
-  it('a greeting (no invented name), the two ways in, and no demo label against a real server', () => {
+  it('a greeting (no invented name), the subtitle, the two ways in, and no demo label against a real server', () => {
     progressStore.progress = emptyAccount;
     const html = render();
     expect(html).toMatch(/<h1[^>]*>Good (morning|afternoon|evening)<\/h1>/);
+    expect(html).toContain('Ready to master DSA? Continue where you left off or start a new practice.');
     expect(html).toMatch(/<a [^>]*href="\/visualizer"[^>]*>.*Launch Visualizer<\/a>/);
     expect(html).toMatch(/<a [^>]*href="\/practice"[^>]*>.*Start Practice<\/a>/);
     expect(html).not.toContain('data-testid="demo-badge"');
@@ -285,16 +258,22 @@ describe('Dashboard v2 — welcome and streak', () => {
     expect(visibleText(render())).toMatch(/0 Days\s+Current Streak\s+Step through an algorithm or submit a solution to start one/);
   });
 
-  it('solved problems: the server\'s count of accepted problems, with what counts said plainly', () => {
+  it("solved problems: the server's count of accepted problems, then the badges by difficulty", () => {
     progressStore.progress = activeAccount;
-    const html = render();
-    expect(visibleText(html)).toMatch(/6\s+Problems Solved\s+Accepted at least once/);
-    expect(html).toMatch(/<a [^>]*href="\/practice"[^>]*>Practise another problem/);
+    // (the list's screen-reader heading "Solved by difficulty" sits between them in the markup)
+    expect(visibleText(render())).toMatch(/6\s+Problems Solved\s+(Solved by difficulty\s+)?Easy\s*3\s*Medium\s*2\s*Hard\s*1/);
   });
 
-  it('algorithms explored come from the server\'s totals when it sends them', () => {
-    progressStore.progress = { ...activeAccount, algorithmTotals: { available: 50, implemented: 40, practised: 5, completed: 0 } };
-    expect(visibleText(render())).toMatch(/5 \/ 40\s+Algorithms Explored/);
+  it("algorithms explored come from the server's totals when it sends them, in the card and in the welcome", () => {
+    progressStore.progress = { ...activeAccount, algorithmTotals: { available: 50, implemented: 40, practised: 5, completed: 1 } };
+    const html = render();
+    expect(visibleText(html)).toMatch(/5 \/ 40\s+Algorithms Explored\s+1 completed in the visualizer/);
+    expect(html).toMatch(/data-testid="welcome-explored"[^>]*>.*5 algorithms explored</);
+    // an older server without the totals: its own count
+    progressStore.progress = { ...activeAccount, algorithmsLearned: 1 };
+    const older = render();
+    expect(visibleText(older)).toMatch(/1\s+Algorithms Explored\s+Stepped through in the visualizer/);
+    expect(older).toMatch(/data-testid="welcome-explored"[^>]*>.*1 algorithm explored</);
   });
 });
 
@@ -334,7 +313,9 @@ describe('Dashboard v2 — daily checklist', () => {
     expect(checkbox).toContain('aria-describedby="goal-hint-review"');
     expect(html).toContain('(done)');
     expect(html).toContain('(not done yet)');
-    expect(html).toMatch(/data-testid="checklist-reset"[^>]*>Resets at 00:00 UTC \(.+ your time\)\. Earlier days are kept\.</);
+    // no footer: neither the reset time nor the estimated practice time is shown on the dashboard
+    expect(html).not.toContain('data-testid="checklist-reset"');
+    expect(html).not.toContain('Earlier days are kept');
     // no points for ticking a box
     expect(html).not.toMatch(/\bXP\b|points/i);
   });
@@ -405,100 +386,85 @@ describe('Dashboard v2 — recent activity', () => {
     progressStore.recentError = 'timeout';
     expect(render()).toMatch(/role="alert" data-testid="recent-error"[^>]*>.*Recent activity could not be loaded\. timeout/);
   });
+
+  it('"View all" only when there may be more than the first page; it controls the list and starts collapsed', () => {
+    progressStore.recentLoaded = true;
+    progressStore.recent = events;
+    expect(render()).not.toContain('data-testid="recent-view-all"');
+
+    progressStore.recent = Array.from({ length: 8 }, (_, i) => ({ ...events[0], id: `submission:${i}` }));
+    const html = render();
+    expect(html).toMatch(/<button type="button" aria-expanded="false" aria-controls="recent-list" data-testid="recent-view-all"[^>]*>View all/);
+    expect(html).toContain('<table id="recent-list"');
+    expect(html.match(/<tr data-event-kind=/g)).toHaveLength(8);
+  });
+
+  it('collapsed, only the first page is listed even when more were loaded earlier', () => {
+    progressStore.recentLoaded = true;
+    progressStore.recent = Array.from({ length: 20 }, (_, i) => ({ ...events[0], id: `submission:${i}` }));
+    expect(render().match(/<tr data-event-kind=/g)).toHaveLength(8);
+  });
+
+  it('loading more failed: the listed events stay, with a note', () => {
+    progressStore.recentLoaded = true;
+    progressStore.recent = events;
+    progressStore.recentError = 'timeout';
+    const html = render();
+    expect(html).toContain('data-testid="recent-list"');
+    expect(html).toMatch(/data-testid="recent-more-error"[^>]*>More activity could not be loaded\. timeout/);
+  });
 });
 
 describe('Dashboard v2 — layout', () => {
-  it('three rows in reading order: continue + cards beside goals, weekly + topics, recent + recommended', () => {
+  it('reading order: welcome · continue learning and the three cards beside today\'s goals · recent activity across the width', () => {
     progressStore.progress = { ...activeAccount, algorithmTotals: { available: 50, implemented: 40, practised: 5, completed: 1 } };
     progressStore.today = todayData();
     progressStore.recentLoaded = true;
     const html = render();
-    const order = ['dashboard-welcome', 'continue-learning', 'daily-checklist', 'dashboard-stats', 'weekly-activity', 'topic-progress', 'recent-activity', 'recommended-next'];
+    const order = ['dashboard-welcome', 'dashboard-main', 'continue-learning', 'dashboard-stats', 'daily-checklist', 'recent-activity'];
     const at = order.map(id => html.indexOf(`data-testid="${id}"`));
     expect(at.every(x => x > 0), order.filter((_, i) => at[i] < 0).join(', ')).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
     const tag = (id: string) => html.match(new RegExp(`<[^>]*data-testid="${id}"[^>]*>`))![0];
-    const within = (row: string, ids: string[]) => {
-      const from = html.indexOf(`data-testid="${row}"`);
-      const next = ['dashboard-top', 'dashboard-middle', 'dashboard-lower'].map(r => html.indexOf(`data-testid="${r}"`)).filter(x => x > from).sort((a, b) => a - b)[0] ?? html.length;
-      return ids.every(id => { const x = html.indexOf(`data-testid="${id}"`); return x > from && x < next; });
-    };
-    expect(within('dashboard-top', ['continue-learning', 'daily-checklist', 'dashboard-stats'])).toBe(true);
-    expect(within('dashboard-middle', ['weekly-activity', 'topic-progress'])).toBe(true);
-    expect(within('dashboard-lower', ['recent-activity', 'recommended-next'])).toBe(true);
+    // the two columns: 3 : 2 from lg, one column below; each column sizes to its content
+    expect(tag('dashboard-main')).toContain('grid grid-cols-1 gap-5 items-start lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]');
+    // recent activity is outside the two-column grid, so it takes the full width
+    const mainEnd = html.indexOf('data-testid="daily-checklist"');
+    expect(html.indexOf('data-testid="recent-activity"')).toBeGreaterThan(mainEnd);
+    expect(tag('recent-activity')).not.toContain('col-span');
+    // exactly three compact cards, three across from sm
+    expect(tag('dashboard-stats')).toContain('grid-cols-1 sm:grid-cols-3');
+    expect([...html.matchAll(/data-stat="([^"]+)"/g)].map(m => m[1])).toEqual(['Problems Solved', 'Algorithms Explored', 'Current Streak']);
     // the downloadable notes live on the Notes page, not here
     expect(html).not.toContain('data-testid="learning-resources"');
-    expect(html).not.toContain('sql-notes.pdf');
+    // nothing can push the page sideways: cards may shrink
+    for (const id of ['continue-learning', 'daily-checklist', 'recent-activity']) expect(tag(id), id).toContain('min-w-0');
+  });
 
-    // top: halves on laptops, 3 : 2 on wide screens; continue learning (compact, top-aligned) with the cards below it,
-    // today's goals beside both
-    expect(tag('dashboard-top')).toContain('lg:grid-cols-2 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[auto_1fr]');
-    expect(tag('continue-learning')).toMatch(/md:items-start.*lg:col-start-1 lg:self-start/);
-    expect(tag('continue-learning')).not.toContain('items-center');
-    expect(tag('daily-checklist')).toContain('lg:col-start-2 lg:row-start-1 lg:row-span-2');
-    expect(html).toMatch(/<section aria-labelledby="dashboard-stats-heading" class="lg:col-start-1 lg:row-start-2 lg:self-start min-w-0">/);
-    expect(tag('dashboard-stats')).toContain('grid-cols-1 sm:grid-cols-2');
-    expect([...html.matchAll(/data-stat="([^"]+)"/g)].map(m => m[1])).toEqual(['Problems Solved', 'Algorithms Explored', 'Current Streak', 'Learning Time']);
-    // middle: two equal columns, the chart taking the height its row gives it
-    expect(tag('dashboard-middle')).toContain('lg:grid-cols-2');
-    expect(tag('weekly-activity')).toContain('flex flex-col');
-    // lower: stacked below xl (recent activity's table needs the width), 2 : 1 from xl
-    expect(tag('dashboard-lower')).toContain('grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]');
-    expect(tag('recent-activity')).not.toContain('col-span');
-    // nothing can push the page sideways: grid children may shrink
-    for (const id of order.slice(1)) if (id !== 'dashboard-stats') expect(tag(id), id).toContain('min-w-0');
+  it('a failed progress load: today\'s goals take the whole row (there is no left column to sit beside)', () => {
+    progressStore.error = 'offline';
+    const html = render();
+    const main = html.match(/<[^>]*data-testid="dashboard-main"[^>]*>/)![0];
+    expect(main).not.toContain('lg:grid-cols-');
   });
 
   it('a short hero: a decorative inline illustration (no image request) hidden from assistive technology', () => {
     progressStore.progress = emptyAccount;
     const html = render();
-    expect(html).toMatch(/<svg aria-hidden="true" viewBox="0 0 320 120"/);
+    expect(html).toMatch(/<svg aria-hidden="true" viewBox="0 0 240 150" class="hidden md:block[^"]*" data-testid="welcome-art"/);
     expect(html).not.toMatch(/<img /);
   });
-
-  it('recommendations say how they are chosen and never claim to be AI or personalised', () => {
-    progressStore.progress = emptyAccount;
-    const html = render();
-    expect(html).toMatch(/data-testid="recommendations-basis"[^>]*>The next algorithms in the course order that you have not completed/);
-    expect(html).not.toMatch(/\bAI\b|personali[sz]ed|for you/i);
-  });
 });
 
-describe('Dashboard v2 — continue learning details', () => {
-  const inProgress = (algorithmId: string): AlgorithmTrack => ({
-    algorithmId, status: 'in_progress', stepsCompleted: 0, totalSteps: 0, lastStepIndex: 1, executionCount: 0, lastActivityAt: new Date().toISOString(),
-  });
-
-  it("an algorithm on a learning path: the path's level, the milestone's estimate and real progress through the path", () => {
-    progressStore.progress = activeAccount;
-    // Binary Search is milestone 2 of Track 1 (Linear Search, Binary Search, Two Pointer); Linear Search is explored too
-    progressStore.tracks = [{ ...inProgress('linear-search'), lastActivityAt: '2026-10-01T00:00:00Z' }, inProgress('binary-search')];
-    const html = render();
-    expect(html).toMatch(/data-testid="continue-level"[^>]*>Beginner path</);
-    expect(html).toMatch(/data-testid="continue-estimate"[^>]*>.*About 25 min \(estimate\)</);
-    expect(html).toMatch(/data-testid="continue-path-progress"[^>]*>2 of 3 explored</);
-    expect(html).toMatch(/role="progressbar" aria-label="Learning path progress" aria-valuemin="0" aria-valuemax="3" aria-valuenow="2"/);
-    const resume = html.match(/<a [^>]*data-testid="continue-resume"[^>]*>Resume Visualization<span class="sr-only">: Binary Search/)![0];
-    expect(resume).toContain('href="/visualizer"');
-  });
-
-  it('an algorithm on no learning path: no level, estimate or path progress is invented', () => {
-    progressStore.progress = activeAccount;
-    progressStore.tracks = [inProgress('heap-sort')];
-    const html = render();
-    expect(html).not.toContain('data-testid="continue-path"');
-    expect(html).toContain('Not part of a learning path yet, so there is no path progress or time estimate.');
-  });
-});
-
-describe('Dashboard — welcome summary, learning time and progress by topic', () => {
-  it("the welcome shows the streak and today's goals from the user's data, and says when they are loading or unavailable", () => {
+describe('Dashboard — welcome summary and a failed load', () => {
+  it("the welcome shows the streak, today's goals and algorithms explored from the user's data, and says when they are loading or unavailable", () => {
     expect(render()).toMatch(/data-testid="welcome-streak"[^>]*>.*Loading streak…/);
-    progressStore.progress = { ...emptyAccount, streakDays: 3, longestStreakDays: 5 };
+    progressStore.progress = { ...emptyAccount, streakDays: 3, longestStreakDays: 5, algorithmTotals: { available: 50, implemented: 40, practised: 2, completed: 0 } };
     progressStore.today = todayData({ walkthroughs: 1, submissions: 0, accepted: 0 });
     const html = render();
     expect(visibleText(html)).toMatch(/3 Days streak/);
     expect(html).toMatch(/data-testid="welcome-goals"[^>]*>.*Today: 1 of \d+ goals complete/);
+    expect(html).toMatch(/data-testid="welcome-explored"[^>]*>.*2 algorithms explored/);
     progressStore.progress = null;
     progressStore.error = 'Network error.';
     progressStore.today = null;
@@ -508,47 +474,14 @@ describe('Dashboard — welcome summary, learning time and progress by topic', (
     expect(failed).toMatch(/data-testid="welcome-goals"[^>]*>.*Today&#x27;s goals unavailable/);
   });
 
-  it('learning time is not measured, so its card says so instead of showing a number', () => {
-    progressStore.progress = emptyAccount;
-    const html = render();
-    const card = html.slice(html.lastIndexOf('<', html.indexOf('data-stat="Learning Time"')), html.indexOf('data-testid="weekly-activity"'));
-    expect(card).toContain('Not tracked');
-    expect(card).toContain('AlgoFlow records what you do, not how long it takes');
-    expect(visibleText(card)).not.toMatch(/\d+\s*(min|h|hours|minutes)\b/);
-  });
-
-  it("progress by topic: each topic's explored and completed counts, with a progressbar", () => {
-    progressStore.progress = {
-      ...emptyAccount,
-      topicCoverage: [
-        { topic: 'Sorting', implemented: 6, practised: 3, completed: 1 },
-        { topic: 'Trees', implemented: 6, practised: 0, completed: 0 },
-      ],
-    };
-    const html = render();
-    const section = html.slice(html.indexOf('data-testid="topic-progress"'), html.indexOf('data-testid="recent-activity"'));
-    expect([...section.matchAll(/data-topic="([^"]+)"/g)].map(m => m[1])).toEqual(['Sorting', 'Trees']);
-    expect(visibleText(section)).toMatch(/Sorting\s+3 \/ 6\s+· 1 completed/);
-    expect(section).toMatch(/role="progressbar" aria-label="Sorting explored" aria-valuemin="0" aria-valuemax="6" aria-valuenow="3" aria-valuetext="3 of 6 Sorting algorithms explored, 1 completed"/);
-    expect(section).not.toContain('data-testid="topic-empty"');
-  });
-
-  it('progress by topic, nothing explored yet: zero for every topic and a hint, never invented progress', () => {
-    progressStore.progress = emptyAccount;
-    const html = render();
-    const section = html.slice(html.indexOf('data-testid="topic-progress"'), html.indexOf('data-testid="recent-activity"'));
-    expect(section).toContain('data-testid="topic-empty"');
-    expect([...section.matchAll(/aria-valuenow="(\d+)"/g)].every(m => m[1] === '0')).toBe(true);
-  });
-
-  it('a failed load: no numbers, cards or topics it cannot vouch for; goals, recent activity and recommendations stay usable', () => {
+  it('a failed load: no numbers or cards it cannot vouch for; goals and recent activity stay usable', () => {
     progressStore.error = 'API rate limit exceeded. Please slow down your requests.';
     progressStore.today = todayData();
     progressStore.recentLoaded = true;
     const html = render();
     expect(html).toContain('data-testid="dashboard-error"');
     expect(html).toContain('API rate limit exceeded. Please slow down your requests.');
-    for (const id of ['dashboard-stats', 'topic-progress', 'weekly-activity', 'continue-learning']) expect(html, id).not.toContain(`data-testid="${id}"`);
-    for (const id of ['daily-checklist', 'recent-activity', 'recommendations']) expect(html, id).toContain(`data-testid="${id}"`);
+    for (const id of ['dashboard-stats', 'continue-learning']) expect(html, id).not.toContain(`data-testid="${id}"`);
+    for (const id of ['daily-checklist', 'recent-activity']) expect(html, id).toContain(`data-testid="${id}"`);
   });
 });

@@ -72,7 +72,7 @@ function contrast(a: string, b: string) {
  * are clean in light must stay clean.
  */
 const CLEAN_IN_LIGHT = new Set(['visualizer: Quick Sort mid-trace (compare, pivot, code line)', 'visualizer: linked list with a node outside the list',
-  'visualizer: search found (MATCH, outcome banner)', 'visualizer: invalid input message', 'dashboard (charts)', 'patterns', 'notes',
+  'visualizer: search found (MATCH, outcome banner)', 'visualizer: invalid input message', 'dashboard', 'patterns', 'notes',
   'progress (charts)', 'profile menu open']);
 
 test.describe('Light Mode — accessibility scan (axe-core, WCAG 2.1 A/AA)', () => {
@@ -98,7 +98,7 @@ test.describe('Light Mode — accessibility scan (axe-core, WCAG 2.1 A/AA)', () 
       await page.locator('#array-input').fill('5, 1, 4');
       await expect(page.getByTestId('input-error')).toBeVisible();
     }],
-    ['dashboard (charts)', '/dashboard'],
+    ['dashboard', '/dashboard'],
     ['practice', '/practice'],
     ['playground', '/playground'],
     ['learning roadmap', '/learning'],
@@ -221,23 +221,18 @@ test.describe('Light Mode — surfaces, components and switching back', () => {
   });
 
   test('charts use the theme colours and switch with it', async ({ app, page }) => {
-    // real activity, so both weekly series are drawn: a visualizer walkthrough and a practice submission
+    // the Progress page's daily steps chart (the Dashboard no longer draws a chart): one walkthrough draws a bar
     await app.next();
-    await page.goto('/practice');
-    await page.locator('[data-problem="p4"]').getByRole('button', { name: 'Practice Now' }).click();
-    await page.locator('#practice-submit-btn').click();
-    await expect(page.getByTestId('submission-verdict')).toBeVisible();
-    await page.goto('/dashboard');
-    // submissions use the primary colour, walkthroughs the secondary one
+    await page.goto('/progress');
     const barFills = async () => [...new Set(await page.locator('.recharts-bar-rectangle path').evaluateAll(els => els.map(e => e.getAttribute('fill'))))].sort();
     const axisStroke = () => page.locator('.recharts-xAxis .recharts-cartesian-axis-line').first().getAttribute('stroke');
-    await expect.poll(barFills).toEqual(['#38BDF8', '#F59E0B']);
+    await expect.poll(barFills).toEqual(['#38BDF8']);
     expect(await axisStroke()).toBe('#64748B');
     await setTheme(page, 'light');
-    await expect.poll(barFills).toEqual(['#0284C7', '#C2410C']);
+    await expect.poll(barFills).toEqual(['#0284C7']);
     expect(await axisStroke()).toBe('#475569');
     await setTheme(page, 'dark');
-    await expect.poll(barFills).toEqual(['#38BDF8', '#F59E0B']);
+    await expect.poll(barFills).toEqual(['#38BDF8']);
   });
 
   test('the settings dialog, inputs and the theme select work in light mode', async ({ app, page }) => {

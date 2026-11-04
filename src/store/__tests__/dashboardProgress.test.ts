@@ -105,6 +105,22 @@ describe('progress store — recent activity', () => {
     await useProgressStore.getState().fetchRecent();
     expect(useProgressStore.getState()).toMatchObject({ recentLoaded: false, recentError: 'timeout' });
   });
+
+  it('"View all" asks for the server\'s maximum (20) and says whether it worked; a failure keeps what was listed', async () => {
+    const first = Array.from({ length: 8 }, (_, i) => ({ id: `w:${i}`, kind: 'walkthrough' as const, targetId: 'bubble-sort', title: 'Bubble Sort', date: '2026-10-21', stepsViewed: 3, at: '2026-10-21T08:00:00.000Z' }));
+    const get = vi
+      .spyOn(apiClient.progress, 'getRecentActivity')
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce([...first, ...first].map((e, i) => ({ ...e, id: `w:${i}` })))
+      .mockRejectedValueOnce(new Error('timeout'));
+    expect(await useProgressStore.getState().fetchRecent()).toBe(true);
+    expect(await useProgressStore.getState().fetchRecent(20)).toBe(true);
+    expect(get).toHaveBeenLastCalledWith(20);
+    expect(useProgressStore.getState().recent).toHaveLength(16);
+    expect(await useProgressStore.getState().fetchRecent(20)).toBe(false);
+    expect(useProgressStore.getState()).toMatchObject({ recentLoaded: true, recentError: 'timeout' });
+    expect(useProgressStore.getState().recent).toHaveLength(16);
+  });
 });
 
 describe('mock API — the same rules, kept in this browser', () => {
