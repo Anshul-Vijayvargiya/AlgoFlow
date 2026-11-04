@@ -401,5 +401,7 @@
   .tok-operator { color: #61afef; }
   .tok-string { color: #98c379; }
   .tok-comment { color: #7f848e; }
+  /* on the executing line's tinted background #7F848E falls to 3.6:1 (amber); this lighter grey keeps 4.6:1 on every tint */
+  [data-active] .tok-comment { color: #9196a0; }
   .tok-punctuation { color: #dcdcdc; } /* normal code text */
 }
