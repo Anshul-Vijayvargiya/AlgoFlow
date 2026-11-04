@@ -400,8 +400,13 @@
   .tok-number { color: #d19a66; } /* numbers and constants (true, null, None) */
   .tok-operator { color: #61afef; }
   .tok-string { color: #98c379; }
-  .tok-comment { color: #7f848e; }
-  /* on the executing line's tinted background #7F848E falls to 3.6:1 (amber); this lighter grey keeps 4.6:1 on every tint */
+  /*
+   * On the executing line's tinted background #7F848E falls to 3.6:1 (amber), so it uses a lighter grey there (4.6:1 on
+   * every tint). The colour changes on the same 150 ms curve as the line's background (transition-colors duration-150
+   * in CodePanel), so a line that stops being active never shows the darker grey on a tint that is still fading out:
+   * at least 4.59:1 throughout the fade.
+   */
+  .tok-comment { color: #7f848e; transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1); }
   [data-active] .tok-comment { color: #9196a0; }
   .tok-punctuation { color: #dcdcdc; } /* normal code text */
 }
