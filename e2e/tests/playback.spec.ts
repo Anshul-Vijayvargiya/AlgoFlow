@@ -193,19 +193,33 @@ test.describe('playback controls on a custom trace', () => {
       await app.speedSlider.fill(String(1300 - speedMs));
       await expect(app.speedSlider).toHaveAttribute('aria-valuetext', `${speedMs} ms per step`);
       const steps = engineSteps('two-pointer', array, target);
+      // the run itself lasts steps × speed (15.4 s at 700 ms), so the 30 s default left no room for setup under load
+      test.setTimeout(steps.length * speedMs + 30_000);
       const expected = steps.map(s => (s.result === 'true' ? 'TRUE' : s.result === 'false' ? 'FALSE' : null));
       const flips = expected.filter((r, i) => i > 0 && r && expected[i - 1] && r !== expected[i - 1]).length;
       expect(flips, 'the trace exercises consecutive opposite results').toBeGreaterThan(0);
 
-      // sample every animation frame: the step on screen and the badge(s) on screen
+      // sample the step on screen and the badge(s) on screen on every DOM change (a MutationObserver sees every
+      // committed state, even when a loaded browser starves animation frames: CI WebKit once sampled no frame with a
+      // result at 100 ms per step) and on every animation frame (states that last while nothing mutates)
       await app.page.evaluate(() => {
-        const w = window as unknown as { __frames: { step: number; badges: string[] }[]; __stop?: boolean };
+        const w = window as unknown as { __frames: { step: number; badges: string[] }[]; __stop?: () => void };
         w.__frames = [];
-        const tick = () => {
+        let stopped = false;
+        const sample = () => {
           const m = document.querySelector('[data-testid="step-counter"]')?.textContent?.match(/(\d+)\s*\/\s*\d+/);
           const badges = [...document.querySelectorAll('[data-testid="step-result"]')].map(b => b.textContent?.trim() ?? '');
           if (m) w.__frames.push({ step: Number(m[1]), badges });
-          if (!w.__stop) requestAnimationFrame(tick);
+        };
+        const tick = () => {
+          sample();
+          if (!stopped) requestAnimationFrame(tick);
+        };
+        const obs = new MutationObserver(sample);
+        obs.observe(document.body, { subtree: true, childList: true, characterData: true });
+        w.__stop = () => {
+          stopped = true;
+          obs.disconnect();
         };
         requestAnimationFrame(tick);
       });
@@ -213,14 +227,14 @@ test.describe('playback controls on a custom trace', () => {
       // the whole run takes steps × speed; wait for it explicitly (the default 5 s expect timeout is shorter at 700 ms)
       await expect(app.stepCounter).toHaveAttribute('data-step', String(steps.length), { timeout: steps.length * speedMs + 10_000 });
       const frames = await app.page.evaluate(() => {
-        const w = window as unknown as { __frames: { step: number; badges: string[] }[]; __stop?: boolean };
-        w.__stop = true;
+        const w = window as unknown as { __frames: { step: number; badges: string[] }[]; __stop?: () => void };
+        w.__stop?.();
         return w.__frames;
       });
 
       const wrong = frames.filter(f => f.badges.join('+') !== (expected[f.step - 1] ?? ''));
-      expect(frames.filter(f => expected[f.step - 1]).length, 'frames with a result were sampled').toBeGreaterThan(0);
-      expect(
+      const sampledSteps = new Set(frames.map(f => f.step));
+      expect(frames.filter(f => expected[f.step - 1]).length, `frames with a result were sampled (${frames.length} samples, steps ${[...sampledSteps].join(',')})`).toBeGreaterThan(0);      expect(
         wrong.slice(0, 5).map(f => `step ${f.step}: shows [${f.badges}] expected ${expected[f.step - 1]}`),
         `${wrong.length} of ${frames.length} frames show a badge that does not match the step`
       ).toEqual([]);
