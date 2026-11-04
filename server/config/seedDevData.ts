@@ -15,7 +15,7 @@ export async function seedDevelopmentData(): Promise<void> {
   if (env.NODE_ENV !== 'development') return;
 
   try {
-    // 1. Seed demo user for "Use demo credentials" button in AuthPage.tsx (development builds only)
+    // 1. Seed a demo user for local development sign-in (development builds only)
     const demoUser = await User.findOne({ email: 'demo@algoflow.io' });
     if (!demoUser) {
       await User.create({

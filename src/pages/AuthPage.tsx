@@ -462,25 +462,6 @@ export const AuthPage: React.FC = () => {
                   </>
                 )}
               </button>
-
-              {/* Item 3: Demo credentials — development only, never in production */}
-              {IS_DEV && mode === 'login' && (
-                <div className="pt-1 text-center">
-                  <p className="text-xs text-slate-500">
-                    Development only:{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('demo@algoflow.io');
-                        setPassword('Demo1234!');
-                      }}
-                      className="text-cyan-500/70 hover:text-cyan-400 transition-colors underline underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
-                    >
-                      Use demo credentials
-                    </button>
-                  </p>
-                </div>
-              )}
             </form>
 
             {/* Privacy note (register mode) */}
