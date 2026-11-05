@@ -108,6 +108,12 @@ export function validateNumberDraft(def: Pick<AlgorithmDefinition, 'inputSpec'>,
  */
 export const takesTexts = (def: Pick<AlgorithmDefinition, 'inputSpec'> | undefined): boolean => Boolean(def?.inputSpec?.texts);
 
+/**
+ * Whether an algorithm's input is named whole numbers (inputSpec.numbers: n; a and b) rather than an array: the number
+ * algorithms (visual 'numbers') and N-Queens (visual 'board', which takes n).
+ */
+export const takesNumbers = (def: Pick<AlgorithmDefinition, 'inputSpec'> | undefined): boolean => Boolean(def?.inputSpec?.numbers);
+
 /** a list field's items (Longest Common Prefix's strs): split at commas, each trimmed; an item may be empty */
 export const splitTextList = (value: string): string[] => value.split(',').map(item => item.trim());
 
@@ -299,7 +305,7 @@ export function validateAlgorithmInput(
       }
     }
   }
-  if (def.visual === 'numbers') return validateNumbers(def, array);
+  if (takesNumbers(def)) return validateNumbers(def, array);
   if (def.visual === 'linked-list') {
     if (array.length > maxInputLength(def)) return { ok: false, canSortCopy: false, message: tooManyNodesMessage(def, array.length) };
   } else if (array.length > MAX_ARRAY_SIZE) {

@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import type { AlgorithmDefinition, ExecutionStep, ProgrammingLanguage } from '../../types/algorithm';
 import { getAllAlgorithms, visualKindOf } from '../AlgorithmRegistry';
-import { defaultListIndex, takesTexts, validateAlgorithmInput } from '../inputParsing';
+import { defaultListIndex, takesNumbers, takesTexts, validateAlgorithmInput } from '../inputParsing';
 
 export const LANGUAGES: ProgrammingLanguage[] = ['c', 'cpp', 'java', 'python'];
 
@@ -58,6 +58,8 @@ export const NUMBER_INPUTS: Record<string, number[][]> = {
   // the binary searches: 0, 1, perfect and non-perfect squares, and the largest values (2^31 - 1, 46341² - 1)
   'valid-perfect-square': [[0], [1], [2], [4], [14], [16], [25], [26], [808201], [2147395600], [2147395601], [2147483647]],
   'sqrt-x': [[0], [1], [2], [3], [4], [8], [15], [16], [99], [100], [2147395599], [2147395600], [2147483647]],
+  // N-Queens: one solution, none (2, 3), the default and two more; n = 7 and 8 (13,552 and 57,537 steps) have their own tests
+  'backtracking-n-queens': [[1], [2], [3], [4], [5], [6]],
   'arranging-coins': [[0], [1], [2], [3], [5], [6], [8], [10], [1000], [2147450880], [2147483647]],
 };
 
@@ -131,7 +133,7 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
 
 /** the inputs a generic test should run: the given array inputs, plus a number algorithm's own representative values */
 export const inputsWithNumbers = (d: AlgorithmDefinition, arrays: readonly number[][]): number[][] =>
-  visualKindOf(d) === 'numbers'
+  takesNumbers(d)
     ? [d.defaultInput, ...(NUMBER_INPUTS[d.id] ?? [])]
     : // a text algorithm or tree traversal takes no array; its strings come from params.texts (or its default example).
       // (Build a BST draws a tree but takes an array, so it runs on the arrays.)
@@ -150,7 +152,7 @@ export function hasDefaultRun(d: AlgorithmDefinition, input: readonly number[]):
   // negative), run only on input the app would accept
   // a text algorithm or tree traversal takes no array: called without params it runs on its default example
   if (takesTexts(d)) return input.length === 0;
-  if (visualKindOf(d) === 'numbers' || d.inputSpec?.minLength !== undefined || d.inputSpec?.minValue !== undefined) {
+  if (takesNumbers(d) || d.inputSpec?.minLength !== undefined || d.inputSpec?.minValue !== undefined) {
     return validateAlgorithmInput(d, [...input], null).ok;
   }
   const index = d.inputSpec?.index;

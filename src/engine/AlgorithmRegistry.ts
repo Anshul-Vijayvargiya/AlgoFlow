@@ -75,6 +75,7 @@ import { printSubarraysDefinition } from './algorithms/printSubarrays';
 import { buildBstDefinition } from './algorithms/tree/buildBst';
 import { buildBstRecursiveDefinition } from './algorithms/tree/buildBstRecursive';
 import { bstPrintInRangeDefinition } from './algorithms/tree/printInRange';
+import { nQueensDefinition } from './algorithms/backtracking/nQueens';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ register(printSubarraysDefinition);
 register(buildBstDefinition);
 register(buildBstRecursiveDefinition);
 register(bstPrintInRangeDefinition);
+register(nQueensDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

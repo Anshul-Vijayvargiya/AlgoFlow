@@ -23,7 +23,7 @@ import type { AlgorithmId, ExecutionStep, ProgrammingLanguage } from '../types/a
 import { getAlgorithmDefinition, resolveCodeRange, resolveCodeRef, visualKindOf } from '../engine/AlgorithmRegistry';
 import { buildExecution } from '../engine/buildExecution';
 import type { ExecutionBuild, ExecutionFailure } from '../engine/buildExecution';
-import { defaultListIndex, lastListIndex, maxInputLength, sortedCopy, takesTexts, validateAlgorithmInput } from '../engine/inputParsing';
+import { defaultListIndex, lastListIndex, maxInputLength, sortedCopy, takesNumbers, takesTexts, validateAlgorithmInput } from '../engine/inputParsing';
 
 export type InputSource = 'default' | 'random' | 'custom';
 
@@ -257,7 +257,9 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
         commit(id, [], null, null, null, 'default', null, (spec?.texts ?? []).map(f => f.defaultValue));
         return;
       }
-      const sameKindOfInput = !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (fromKind !== 'numbers' && toKind !== 'numbers'));
+      // named numbers (n; a, b) are each algorithm's own: kept only between algorithms drawn the same way
+      const fromNumbers = takesNumbers(getAlgorithmDefinition(s.selectedAlgorithm));
+      const sameKindOfInput = !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
       // a second array is the algorithm's own: kept when switching between algorithms that take one, else its example
       const exampleSecond = spec?.secondArray ? [...spec.secondArray.defaultValue] : null;
       if (s.inputSource === 'custom' && sameKindOfInput) {
@@ -335,7 +337,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
         commit(s.selectedAlgorithm, [], null, null, null, 'random', kept, texts);
         return;
       }
-      if (def.visual === 'numbers') {
+      if (takesNumbers(def)) {
         // Randomize: one value per field, from the field's own range (there is no size to choose)
         const values = (spec?.numbers ?? []).map(f => randomInt(...(f.random ?? [f.min, f.max])));
         const kept = s.inputSource === 'custom' ? { kind: 'replaced-custom' as const, original: s.array } : s.inputNotice?.kind === 'replaced-custom' ? s.inputNotice : null;

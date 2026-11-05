@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { getAlgorithmDefinition, visualKindOf } from '../../engine/AlgorithmRegistry';
-import { maxInputLength, takesTexts } from '../../engine/inputParsing';
+import { maxInputLength, takesNumbers, takesTexts } from '../../engine/inputParsing';
 import { getSizeOptions } from './sizeOptions';
 
 export const SizeSelect: React.FC<{
@@ -57,8 +57,8 @@ export const ExecutionControls: React.FC = () => {
   const def = getAlgorithmDefinition(selectedAlgorithm);
   // linked lists: "list" wording, and only the sizes the operation accepts
   const isList = visualKindOf(def) === 'linked-list';
-  // number algorithms take fixed fields (n; a, b): Randomize picks new values, and there is no size to choose
-  const isNumbers = visualKindOf(def) === 'numbers';
+  // number algorithms (and N-Queens) take fixed fields (n; a, b): Randomize picks new values, and there is no size to choose
+  const isNumbers = takesNumbers(def);
   // text and tree algorithms take strings: Randomize picks one of the algorithm's examples, and there is no size either
   const isText = takesTexts(def);
   const sizeBounds = isList && def ? { min: def.inputSpec?.index?.bound === 'delete' ? 1 : 0, max: maxInputLength(def) } : undefined;

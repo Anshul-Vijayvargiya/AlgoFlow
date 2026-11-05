@@ -56,6 +56,8 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   'valid-perfect-square': { id: 'valid-perfect-square', label: 'Valid Perfect Square', heading: 'Valid Perfect Square' },
   'sqrt-x': { id: 'sqrt-x', label: 'Sqrt(x)', heading: 'Sqrt(x)' },
   'arranging-coins': { id: 'arranging-coins', label: 'Arranging Coins', heading: 'Arranging Coins' },
+  // takes n like the number algorithms, but is drawn as a board
+  'backtracking-n-queens': { id: 'backtracking-n-queens', label: 'N-Queens Problem', heading: 'N-Queens Problem' },
 };
 
 /** The tree traversals (visual 'tree'): their input is one level-order string. */

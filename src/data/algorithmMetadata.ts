@@ -516,11 +516,11 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
 
   // ─── BACKTRACKING ───────────────────────────────────────
   {
-    id: 'n-queens',
-    name: 'N-Queens',
+    id: 'backtracking-n-queens',
+    name: 'N-Queens Problem',
     category: 'BACKTRACKING',
-    subtitle: 'Place N queens so none attack each other.',
-    implemented: false,
+    subtitle: 'Place N queens so none attack each other — row by row, backtracking.',
+    implemented: true,
   },
   // ─── FUNDAMENTALS (implemented; listed last so the order above is unchanged) ───
   {

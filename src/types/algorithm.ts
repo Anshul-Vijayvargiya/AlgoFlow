@@ -53,7 +53,7 @@ export type AlgorithmId =
   | 'knapsack'
   | 'lcs'
   | 'activity-selection'
-  | 'n-queens'
+  | 'backtracking-n-queens'
   | 'prime-check'
   | 'swap-two-numbers'
   | 'two-sum'
@@ -255,6 +255,12 @@ export interface ExecutionStep {
    * the stack or queue, and the pointer variables. `state` is empty: a tree algorithm has no array.
    */
   tree?: TreeView;
+
+  /**
+   * Board algorithms only (visual: 'board', N-Queens): the board, the queens placed, the cell this step works on and
+   * the solutions found. `state` is empty: a board algorithm has no array.
+   */
+  board?: BoardView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -610,7 +616,26 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board';
+
+/** N-Queens: the board as one step leaves it. Rows and columns count from 0. */
+export interface BoardView {
+  /** the board is n × n */
+  readonly n: number;
+  /** queens[r] is the column of the queen in row r, for the rows filled so far (rows 0 … queens.length - 1) */
+  readonly queens: readonly number[];
+  /** the cell this step works on, and what it turned out to be */
+  readonly cell?: { readonly row: number; readonly col: number; readonly status: BoardCellStatus };
+  /** a conflict: the queen that attacks the cell, and along which line */
+  readonly attacker?: { readonly row: number; readonly col: number; readonly line: 'column' | 'upper-left' | 'upper-right' };
+  /** the solutions found so far, in the order found; each is a queens array of length n (copies, never changed) */
+  readonly solutions: readonly (readonly number[])[];
+  /** the rows of the solve(row) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly number[];
+}
+
+/** checking: being tested; safe / conflict: the test's outcome; placed: a queen was put there; removed: backtracking */
+export type BoardCellStatus = 'checking' | 'safe' | 'conflict' | 'placed' | 'removed';
 
 export interface AlgorithmDefinition {
   id: AlgorithmId;
@@ -627,7 +652,9 @@ export interface AlgorithmDefinition {
   /**
    * How the trace is drawn: 'array' (bars, the default when omitted), 'linked-list' (nodes and links; every step
    * then carries `list`) or 'numbers' (named value cards; every step then carries `numbers`, and the input is the
-   * values declared by inputSpec.numbers). Existing definitions omit it and are unaffected.
+   * values declared by inputSpec.numbers). 'text' and 'tree' take strings (inputSpec.texts); 'board' (N-Queens: an
+   * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers'. Existing
+   * definitions omit it and are unaffected.
    */
   visual?: VisualKind;
 
