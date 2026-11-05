@@ -73,6 +73,7 @@ export const TREE_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; h
   // a level-order BST plus low and high (three text fields)
   'bst-print-in-range': { id: 'bst-print-in-range', label: 'Print in Range (BST)', heading: 'Print in Range (BST)' },
   'tree-validate-bst': { id: 'tree-validate-bst', label: 'Validate Binary Search Tree', heading: 'Validate Binary Search Tree' },
+  'bst-mirror': { id: 'bst-mirror', label: 'Mirror a BST', heading: 'Mirror a BST' },
 };
 
 /** The text algorithms (visual 'text'): their input is strings, one per field. */

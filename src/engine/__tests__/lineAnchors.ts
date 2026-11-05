@@ -737,6 +737,19 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'recurse-right': /^\s*(bool |boolean )?right_?[Vv]alid = (isValidBST|is_valid_bst)\(node(->|\.)right, node(->|\.)val, max(_val)?\);?$/,
     'return-right': /^\s*return (rightValid|right_valid);?$/,
   },
+  'bst-mirror': {
+    // the first call and the end of the whole mirror are the function itself
+    'call-root': /\bmirror\((struct TreeNode \*|TreeNode\* |TreeNode )node\) \{$|^def mirror\(node\):$/,
+    done: /\bmirror\((struct TreeNode \*|TreeNode\* |TreeNode )node\) \{$|^def mirror\(node\):$/,
+    'check-null': /if \(?node (== (NULL|nullptr|null)|is None)\)?/,
+    'return-null': /^\s*return (NULL|nullptr|null|None);?$/,
+    'save-temp': /^\s*(struct TreeNode \*|TreeNode\* |TreeNode )?temp = node(->|\.)left;?$/,
+    'set-left': /^\s*node(->|\.)left = node(->|\.)right;?$/,
+    'set-right': /^\s*node(->|\.)right = temp;?$/,
+    'recurse-left': /^\s*mirror\(node(->|\.)left\);?$/,
+    'recurse-right': /^\s*mirror\(node(->|\.)right\);?$/,
+    'return-node': /^\s*return node;?$/,
+  },
   'bst-print-in-range': {
     // the first call and the end of the whole walk are the function itself
     'call-root': /\b(void )?print_?[Ii]n_?[Rr]ange\(.*\bnode, int low, int high\)|def print_in_range\(node, low, high\):/,

@@ -86,7 +86,8 @@ export type AlgorithmId =
   | 'build-bst-recursive'
   | 'bst-print-in-range'
   | 'tree-root-to-leaf-paths'
-  | 'tree-validate-bst';
+  | 'tree-validate-bst'
+  | 'bst-mirror';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -383,6 +384,53 @@ export interface TreeView {
   readonly paths?: TreePathsView;
   /** Validate Binary Search Tree only: the bounds of each call, the nodes checked so far and the first invalid node */
   readonly validate?: TreeValidateView;
+  /**
+   * Mirror a BST only: the tree changes step by step (nodes holds the links as they stand, each node's children
+   * swapped once its `node.right = temp` has run), the swap in progress and the recursive calls in progress.
+   */
+  readonly mirror?: TreeMirrorView;
+}
+
+/** Mirror a BST: recursive DFS that swaps the children of every node, then mirrors both subtrees. */
+export interface TreeMirrorView {
+  /** nodes whose children have been swapped, in swap order (preorder of the mirrored tree) */
+  readonly swapped: readonly string[];
+  /** nodes whose mirror() call has returned: their whole subtree is mirrored */
+  readonly completed: readonly string[];
+  /** the swap at the running call's node, while its three statements run (temp = left, left = right, right = temp) */
+  readonly swap?: TreeMirrorSwap;
+  /** the mirror(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly TreeMirrorCall[];
+  /** the input tree, in level order */
+  readonly original: string;
+  /** the tree as its links stand after this step, in level order */
+  readonly shape: string;
+}
+
+/**
+ * The swap of one node's children. TreeView.nodes keeps the node's original links until `node.right = temp` has run;
+ * left and right are its links as they really are at this step (after `node.left = node.right` both are the original
+ * right child, and the original left subtree is reachable only through temp).
+ */
+export interface TreeMirrorSwap {
+  readonly node: string;
+  readonly originalLeft: string | null;
+  readonly originalRight: string | null;
+  /** the statement that has just run: temp = node.left, node.left = node.right or node.right = temp */
+  readonly phase: 'temp' | 'left' | 'right';
+  readonly temp: string | null;
+  readonly left: string | null;
+  readonly right: string | null;
+}
+
+/** One mirror(node) call. */
+export interface TreeMirrorCall {
+  /** the subtree this call works on: its root, or null for an empty subtree (the call returns null at once) */
+  readonly node: string | null;
+  /** what the caller passed: the tree's root, or its node's left / right child (after the swap) */
+  readonly via: 'root' | 'left' | 'right';
+  /** set on the step the call returns (it returns its node, or null) */
+  readonly returned?: boolean;
 }
 
 /**

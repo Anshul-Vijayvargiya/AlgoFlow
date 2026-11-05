@@ -452,6 +452,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'bst-mirror',
+    name: 'Mirror a BST',
+    category: 'TREES',
+    subtitle: 'Invert a binary tree: swap the children of every node with a recursive DFS.',
+    implemented: true,
+  },
+  {
     id: 'binary-tree',
     name: 'Binary Tree',
     category: 'TREES',

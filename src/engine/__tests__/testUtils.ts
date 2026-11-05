@@ -143,6 +143,18 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
     ['[1]'],
     ['[]'],
   ],
+  // Mirror a BST: the example, missing children, negatives, skewed both ways, one node and the empty tree
+  'bst-mirror': [
+    ['[8, 5, 12, 3, 6, 10, 14]'],
+    ['[20, 10, 30, 5, 15, null, 35, null, 7]'],
+    ['[10, 5, 15, null, 7, 12]'],
+    ['[-5, -10, 0, -12, -7, null, 3]'],
+    ['[5, 4, null, 3, null, 2, null, 1]'],
+    ['[1, null, 2, null, 3, null, 4, null, 5]'],
+    ['[2, 1, 3]'],
+    ['[7]'],
+    ['[]'],
+  ],
   'valid-palindrome-ii': [['racecar'], ['abca'], ['cbbcc'], ['abc'], ['a'], ['aa'], ['ab'], ['deeee'], ['eeccccbebaeeabebccceea'], ['ebcbbececabbacecbbcbe']],
 };
 

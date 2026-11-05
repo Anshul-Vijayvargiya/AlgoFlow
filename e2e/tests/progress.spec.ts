@@ -33,11 +33,11 @@ test.describe('Progress', () => {
     await expect(main).not.toContainText('/ 26');
     await expect(main).not.toContainText(/cumulative algorithm executions/i);
     // only topics with visualized algorithms are listed (Graphs and DP have none yet); Trees counts every visualized tree
-    // algorithm in the catalog (the four traversals, Root to Leaf Paths, the two BST builds and Print in Range), never a
-    // number typed here
+    // algorithm in the catalog (the four traversals, Root to Leaf Paths, the two BST builds, Print in Range, Validate BST
+    // and Mirror a BST), never a number typed here
     for (const gone of ['Graphs', 'DP']) await expect(page.getByTestId('topic-coverage')).not.toContainText(gone);
     const trees = IMPLEMENTED_TOPICS.find(t => t.topic === 'Trees')!.algorithmIds.length;
-    expect(trees).toBe(9);
+    expect(trees).toBe(10);
     await expect(page.getByTestId('topic-coverage')).toContainText(`Trees 0 of ${trees}`);
     await expect(page.getByTestId('stat-learned')).toContainText(`0 / ${IMPLEMENTED}`);
     await expect(page.getByTestId('stat-learned')).toContainText(`of the ${IMPLEMENTED} visualized algorithms (${LISTED} listed)`);

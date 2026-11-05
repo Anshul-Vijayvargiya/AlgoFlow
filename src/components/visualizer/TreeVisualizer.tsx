@@ -24,7 +24,9 @@ const COMPACT_ROW = 46;
  * Print in Range: current, visited (printed), outside, pruned, waiting (its call is in progress), unvisited;
  * Root to Leaf Paths: current, path (on the current path), visited (explored and backtracked), unvisited;
  * Validate BST: current (being checked), validated (in range, its subtrees in progress), completed (its whole subtree
- * is valid), invalid (the first node outside its range), conflict (the ancestor whose bound it breaks), unvisited
+ * is valid), invalid (the first node outside its range), conflict (the ancestor whose bound it breaks), unvisited;
+ * Mirror a BST: current (its call is running), swapping (a child of the node whose links are being swapped), swapped
+ * (its children are swapped, its subtrees are still being mirrored), completed (its whole subtree is mirrored), unvisited
  */
 type NodeState =
   | 'current'
@@ -39,7 +41,9 @@ type NodeState =
   | 'validated'
   | 'completed'
   | 'invalid'
-  | 'conflict';
+  | 'conflict'
+  | 'swapping'
+  | 'swapped';
 
 const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   current: { circle: 'fill-amber-500/25 stroke-amber-400', text: 'fill-amber-200' },
@@ -55,6 +59,8 @@ const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   completed: { circle: 'fill-emerald-500/20 stroke-emerald-500', text: 'fill-emerald-300' },
   invalid: { circle: 'fill-rose-500/20 stroke-rose-400', text: 'fill-rose-200' },
   conflict: { circle: 'fill-rose-500/15 stroke-rose-400', text: 'fill-rose-200' },
+  swapping: { circle: 'fill-amber-500/10 stroke-amber-400', text: 'fill-amber-200' },
+  swapped: { circle: 'fill-sky-500/15 stroke-sky-400', text: 'fill-sky-200' },
 };
 
 /** how each state is said (the colour is never the only signal) */
@@ -72,6 +78,8 @@ const STATE_TEXT: Record<NodeState, string> = {
   completed: 'its whole subtree is a valid BST',
   invalid: 'invalid: outside its allowed range',
   conflict: 'the ancestor whose bound the invalid node breaks',
+  swapping: 'a child being swapped',
+  swapped: 'its children are swapped; its subtrees are being mirrored',
 };
 /**
  * building a BST, a node outside the search is simply part of the tree; in a range walk a visited node was printed;
@@ -126,6 +134,18 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
                 : passed.has(n.id)
                   ? 'validated'
                   : 'unvisited',
+      ])
+    );
+  }
+  const mirror = view.mirror;
+  if (mirror) {
+    const swapping = new Set(mirror.swap ? [mirror.swap.originalLeft, mirror.swap.originalRight].filter((id): id is string => id !== null) : []);
+    const swapped = new Set(mirror.swapped);
+    const completed = new Set(mirror.completed);
+    return Object.fromEntries(
+      view.nodes.map(n => [
+        n.id,
+        n.id === view.current ? 'current' : swapping.has(n.id) ? 'swapping' : completed.has(n.id) ? 'completed' : swapped.has(n.id) ? 'swapped' : 'unvisited',
       ])
     );
   }
@@ -189,6 +209,11 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
   // Validate BST: the bounds of each call, the nodes checked so far and the first invalid node
   const validate = view.validate;
   const running = validate?.calls.at(-1);
+  // Mirror a BST: the swap in progress. Its node is drawn with its real links (both may point to the same child)
+  const mirror = view.mirror;
+  const swap = mirror?.swap;
+  const swappedSet = mirror ? new Set(mirror.swapped) : null;
+  const linkOf = (n: { id: string; left: string | null; right: string | null }, side: 'left' | 'right') => (swap && swap.node === n.id ? swap[side] : n[side]);
   // Building a BST: the empty child the value goes into, drawn as a dashed node half a column beside its parent. (A
   // missing left child's inorder neighbour on that side is an ancestor, higher up, so nothing is drawn there.)
   const slot = build?.slot && build.slot.parent !== null && build.index !== null ? { parent: build.slot.parent, side: build.slot.side, value: build.values[build.index] } : null;
@@ -234,10 +259,32 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
             <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" data-testid="tree-svg" className="block mx-auto">
               {view.nodes.flatMap(n =>
                 (['left', 'right'] as const).flatMap(side => {
-                  const child = n[side];
+                  const child = linkOf(n, side);
                   if (!child) return [];
                   const a = at(n.id);
                   const b = at(child);
+                  // Mirror a BST: the links of the node being swapped, drawn amber and named; when both point to the
+                  // same child (just after node.left = node.right), they bend apart so both stay visible
+                  const rewiring = swap?.node === n.id && swap.phase !== 'right';
+                  if (mirror && swap?.node === n.id) {
+                    const bend = swap.left !== null && swap.left === swap.right ? (side === 'left' ? -1 : 1) * 18 : 0;
+                    const mx = (a.x + b.x) / 2 + bend;
+                    const my = (a.y + b.y) / 2 - (bend ? 6 : 0);
+                    return [
+                      <g key={`${n.id}-${side}-${child}`} data-edge={`${n.id}-${child}`} data-side={side} data-rewiring={rewiring ? 'true' : 'false'}>
+                        <path
+                          d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
+                          fill="none"
+                          strokeWidth={2}
+                          strokeDasharray={rewiring ? '5 3' : undefined}
+                          className={rewiring ? 'stroke-amber-400/80' : 'stroke-emerald-500/70'}
+                        />
+                        <text x={(a.x + 2 * mx + b.x) / 4 + (side === 'left' ? -10 : 10)} y={(a.y + 2 * my + b.y) / 4} textAnchor="middle" className="text-[9px] font-mono font-bold fill-amber-200">
+                          {side}
+                        </text>
+                      </g>,
+                    ];
+                  }
                   // traversals: the edges into visited nodes; building: the edges the value has walked down
                   const reached = onPath
                     ? onPath.has(n.id) && (onPath.has(child) || child === build!.inserted)
@@ -248,12 +295,15 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                         ? ['visited', 'current', 'outside', 'waiting'].includes(states[child])
                         : validate
                           ? ['validated', 'completed', 'current', 'invalid'].includes(states[child])
-                          : states[child] === 'visited' || states[child] === 'current';
+                          : swappedSet
+                            ? // the links already swapped
+                              swappedSet.has(n.id)
+                            : states[child] === 'visited' || states[child] === 'current';
                   // Print in Range: the edge into a pruned subtree is dashed (never walked)
                   const cut = range !== undefined && states[child] === 'pruned';
                   return [
                     <line
-                      key={`${n.id}-${child}`}
+                      key={`${n.id}-${side}-${child}`}
                       data-edge={`${n.id}-${child}`}
                       data-side={side}
                       x1={a.x}
@@ -344,10 +394,12 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                 ? validate.verdict === 'invalid'
                   ? 'never checked (validation stopped early)'
                   : 'not checked yet'
-                : stateText(states[n.id], building, Boolean(range), Boolean(paths))}
+                : mirror && states[n.id] === 'completed'
+                  ? 'its whole subtree is mirrored'
+                  : stateText(states[n.id], building, Boolean(range), Boolean(paths))}
               {order.has(n.id) ? ` (${ordinal(order.get(n.id)!)} visited)` : ''}
-              {pointersAt.has(n.id) ? `, ${pointersAt.get(n.id)!.join(' and ')} points here` : ''}; left child {n.left ? value(n.left) : 'none'}, right child{' '}
-              {n.right ? value(n.right) : 'none'}.
+              {pointersAt.has(n.id) ? `, ${pointersAt.get(n.id)!.join(' and ')} points here` : ''}; left child {linkOf(n, 'left') ? value(linkOf(n, 'left')!) : 'none'}, right child{' '}
+              {linkOf(n, 'right') ? value(linkOf(n, 'right')!) : 'none'}.
             </li>
           ))}
         </ul>
@@ -532,6 +584,88 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
               )}
             </>
           )}
+          {mirror && (
+            <>
+              {/* the swap at the running call's node: the original children, temp and the two links as they stand */}
+              {swap && (
+                <div
+                  data-testid="tree-swap"
+                  data-node={value(swap.node)}
+                  data-phase={swap.phase}
+                  data-original-left={swap.originalLeft === null ? 'null' : value(swap.originalLeft)}
+                  data-original-right={swap.originalRight === null ? 'null' : value(swap.originalRight)}
+                  data-temp={swap.temp === null ? 'null' : value(swap.temp)}
+                  data-left={swap.left === null ? 'null' : value(swap.left)}
+                  data-right={swap.right === null ? 'null' : value(swap.right)}
+                  className="flex flex-col gap-1 px-2 py-1.5 rounded-md border border-amber-400/50 bg-amber-500/10 text-slate-300"
+                >
+                  <span>
+                    <span className="text-slate-400">swapping the children of </span>
+                    <span className="font-bold text-amber-200">{value(swap.node)}</span>
+                    <span className="text-slate-400">: original left </span>
+                    <span className="font-bold">{swap.originalLeft === null ? 'null' : value(swap.originalLeft)}</span>
+                    <span className="text-slate-400">, original right </span>
+                    <span className="font-bold">{swap.originalRight === null ? 'null' : value(swap.originalRight)}</span>
+                  </span>
+                  <span className="flex flex-wrap gap-x-3">
+                    {(
+                      [
+                        ['temp', swap.temp, 'temp'],
+                        ['node.left', swap.left, 'left'],
+                        ['node.right', swap.right, 'right'],
+                      ] as const
+                    ).map(([name, id, phase]) => (
+                      <span key={name} data-link={name} className={swap.phase === phase ? 'font-bold text-amber-200' : ''}>
+                        {name} = {id === null ? 'null' : value(id)}
+                        {swap.phase === phase && <span className="sr-only"> (just set)</span>}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              )}
+              {/* the mirror calls in progress, outermost first; a deep stack scrolls with the running call in view */}
+              <div className="flex flex-col gap-1" data-testid="tree-calls" data-depth={mirror.calls.length}>
+                <span className="text-slate-400">call stack (outermost first):</span>
+                <div tabIndex={0} role="region" aria-label="Call stack" className="max-h-44 overflow-y-auto flex flex-col-reverse rounded-md">
+                  <ol aria-label={`Calls in progress: ${mirror.calls.length || 'none'}`} className="flex flex-col gap-0.5">
+                    {mirror.calls.length === 0 && <li className="text-slate-500">no call in progress</li>}
+                    {mirror.calls.map((f, k) => {
+                      const last = k === mirror.calls.length - 1;
+                      const status = last ? (f.returned ? 'returning' : 'active') : 'waiting';
+                      return (
+                        <li
+                          key={k}
+                          data-frame={k}
+                          data-frame-status={status}
+                          data-frame-node={f.node ?? 'null'}
+                          data-frame-via={f.via}
+                          style={{ marginLeft: `${Math.min(k, 8) * 10}px` }}
+                          className={`w-fit px-1.5 py-0.5 rounded border ${
+                            status === 'active'
+                              ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold'
+                              : status === 'returning'
+                                ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 font-bold'
+                                : 'bg-slate-900/80 border-slate-700 text-slate-300'
+                          }`}
+                        >
+                          {k > 0 && <span aria-hidden="true">└─ </span>}
+                          mirror({f.via === 'root' ? 'root' : `node.${f.via}`} = {f.node === null ? 'null' : value(f.node)})
+                          {f.node === null && !f.returned && <span className="text-amber-300"> — empty subtree</span>}
+                          {f.returned && <span> ↩ returns {f.node === null ? 'null' : `node ${value(f.node)}`}</span>}
+                          {status === 'waiting' && <span className="text-slate-500"> (waiting)</span>}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+              <p data-testid="tree-shape" data-original={mirror.original} data-shape={mirror.shape} className="text-slate-300">
+                <span className="text-slate-400">tree now (level order): </span>
+                <span className="font-bold text-cyan-300">{mirror.shape}</span>
+                <span className="text-slate-400"> (input {mirror.original})</span>
+              </p>
+            </>
+          )}
           {build?.calls && (
             // the recursive build: the insert calls in progress, outermost first. A deep stack scrolls, and starts
             // scrolled to its end (column-reverse) so the running call is always in view.
@@ -588,6 +722,25 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                     data-validated={value(id)}
                     className={`min-w-7 h-7 px-1 flex items-center justify-center rounded-md border font-bold ${
                       id === view.current ? 'bg-amber-500/20 border-amber-400 text-amber-200' : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    }`}
+                  >
+                    {value(id)}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : mirror ? (
+            // the nodes whose children have been swapped, in swap order
+            <div className="flex flex-wrap items-center gap-2" data-testid="tree-swapped">
+              <span className="text-slate-400">swapped so far:</span>
+              <ol aria-label={`Nodes whose children are swapped: ${mirror.swapped.length ? mirror.swapped.map(value).join(', ') : 'none yet'}`} className="flex flex-wrap items-center gap-1">
+                {mirror.swapped.length === 0 && <li className="text-slate-500">[ ]</li>}
+                {mirror.swapped.map(id => (
+                  <li
+                    key={id}
+                    data-swapped={value(id)}
+                    className={`min-w-7 h-7 px-1 flex items-center justify-center rounded-md border font-bold ${
+                      id === swap?.node ? 'bg-amber-500/20 border-amber-400 text-amber-200' : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
                     }`}
                   >
                     {value(id)}
