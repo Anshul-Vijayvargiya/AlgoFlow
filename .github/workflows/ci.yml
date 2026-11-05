@@ -17,7 +17,7 @@ concurrency:
 jobs:
   checks:
     name: Unit tests, types, lint, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +81,7 @@ jobs:
 
   e2e-real:
     name: Playwright E2E (real API and MongoDB)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       # a disposable database for this job only (see server/e2e/testDatabase.ts for what the suite accepts)
@@ -116,7 +116,7 @@ jobs:
   # 45-minute limit. Desktop Firefox and WebKit run every non-@mobile test; WebKit, the slowest, is split in two shards.
   e2e-cross:
     name: Playwright E2E (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       # one browser's failure does not cancel the others' results
