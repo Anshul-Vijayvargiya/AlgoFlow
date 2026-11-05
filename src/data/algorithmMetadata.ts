@@ -438,6 +438,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'bst-balance',
+    name: 'Convert BST to Balanced BST',
+    category: 'TREES',
+    subtitle: 'Inorder walk into a sorted array, then build a balanced BST from the middles (divide and conquer).',
+    implemented: true,
+  },
+  {
     id: 'bst-print-in-range',
     name: 'Print in Range (BST)',
     category: 'TREES',

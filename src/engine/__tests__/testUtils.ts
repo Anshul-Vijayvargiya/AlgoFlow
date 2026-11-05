@@ -143,6 +143,20 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
     ['[1]'],
     ['[]'],
   ],
+  // Convert BST to Balanced BST: skewed both ways, already balanced, even and odd sizes, negatives, the input's extreme
+  // values, two nodes, one node and the empty tree
+  'bst-balance': [
+    ['[1, null, 2, null, 3, null, 4, null, 5]'],
+    ['[5, 4, null, 3, null, 2, null, 1]'],
+    ['[4, 2, 6, 1, 3, 5, 7]'],
+    ['[1, null, 2, null, 3, null, 4]'],
+    ['[10, 5, null, 2, 7, null, null, 6, 8]'],
+    ['[-5, -10, null, -20, null, -30]'],
+    ['[0, -999, 999]'],
+    ['[1, null, 2]'],
+    ['[7]'],
+    ['[]'],
+  ],
   // Mirror a BST: the example, missing children, negatives, skewed both ways, one node and the empty tree
   'bst-mirror': [
     ['[8, 5, 12, 3, 6, 10, 14]'],

@@ -77,6 +77,7 @@ import { buildBstRecursiveDefinition } from './algorithms/tree/buildBstRecursive
 import { bstPrintInRangeDefinition } from './algorithms/tree/printInRange';
 import { treeValidateBstDefinition } from './algorithms/tree/validateBst';
 import { bstMirrorDefinition } from './algorithms/tree/mirrorBst';
+import { bstBalanceDefinition } from './algorithms/tree/balanceBst';
 import { nQueensDefinition } from './algorithms/backtracking/nQueens';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
@@ -143,6 +144,7 @@ register(printAllPairsDefinition);
 register(printSubarraysDefinition);
 register(buildBstDefinition);
 register(buildBstRecursiveDefinition);
+register(bstBalanceDefinition);
 register(bstPrintInRangeDefinition);
 register(treeValidateBstDefinition);
 register(bstMirrorDefinition);

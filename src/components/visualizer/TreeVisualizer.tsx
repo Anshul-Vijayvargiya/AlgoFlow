@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Equal } from 'lucide-react';
 import type { ExecutionStep, TreeView } from '../../types/algorithm';
-import { layoutTree } from '../../engine/tree/binaryTree';
+import { layoutTree, type NodePosition } from '../../engine/tree/binaryTree';
 
 interface TreeVisualizerProps {
   currentStep: ExecutionStep;
@@ -26,7 +26,10 @@ const COMPACT_ROW = 46;
  * Validate BST: current (being checked), validated (in range, its subtrees in progress), completed (its whole subtree
  * is valid), invalid (the first node outside its range), conflict (the ancestor whose bound it breaks), unvisited;
  * Mirror a BST: current (its call is running), swapping (a child of the node whose links are being swapped), swapped
- * (its children are swapped, its subtrees are still being mirrored), completed (its whole subtree is mirrored), unvisited
+ * (its children are swapped, its subtrees are still being mirrored), completed (its whole subtree is mirrored), unvisited;
+ * Convert BST to Balanced BST: stage 1 (the input tree) current, visited (its value is in the array), waiting (its
+ * inorder call is in progress), unvisited; stages 2 and 3 (the new tree) current (its call is running), created (its
+ * subtrees are being built), completed (its subtree is built)
  */
 type NodeState =
   | 'current'
@@ -43,7 +46,8 @@ type NodeState =
   | 'invalid'
   | 'conflict'
   | 'swapping'
-  | 'swapped';
+  | 'swapped'
+  | 'created';
 
 const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   current: { circle: 'fill-amber-500/25 stroke-amber-400', text: 'fill-amber-200' },
@@ -61,6 +65,7 @@ const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   conflict: { circle: 'fill-rose-500/15 stroke-rose-400', text: 'fill-rose-200' },
   swapping: { circle: 'fill-amber-500/10 stroke-amber-400', text: 'fill-amber-200' },
   swapped: { circle: 'fill-sky-500/15 stroke-sky-400', text: 'fill-sky-200' },
+  created: { circle: 'fill-sky-500/15 stroke-sky-400', text: 'fill-sky-200' },
 };
 
 /** how each state is said (the colour is never the only signal) */
@@ -80,6 +85,7 @@ const STATE_TEXT: Record<NodeState, string> = {
   conflict: 'the ancestor whose bound the invalid node breaks',
   swapping: 'a child being swapped',
   swapped: 'its children are swapped; its subtrees are being mirrored',
+  created: 'created; its subtrees are being built',
 };
 /**
  * building a BST, a node outside the search is simply part of the tree; in a range walk a visited node was printed;
@@ -137,6 +143,18 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
       ])
     );
   }
+  const balance = view.balance;
+  if (balance) {
+    if (balance.stage === 'inorder') {
+      const visited = new Set(view.visited);
+      const inCall = new Set(balance.inorderCalls.flatMap(c => (c.node ? [c.node] : [])));
+      return Object.fromEntries(
+        view.nodes.map(n => [n.id, n.id === view.current ? 'current' : visited.has(n.id) ? 'visited' : inCall.has(n.id) ? 'waiting' : 'unvisited'])
+      );
+    }
+    const completed = new Set(balance.completed);
+    return Object.fromEntries(view.nodes.map(n => [n.id, n.id === view.current ? 'current' : completed.has(n.id) ? 'completed' : 'created']));
+  }
   const mirror = view.mirror;
   if (mirror) {
     const swapping = new Set(mirror.swap ? [mirror.swap.originalLeft, mirror.swap.originalRight].filter((id): id is string => id !== null) : []);
@@ -177,6 +195,28 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
   );
 }
 
+/**
+ * Convert BST to Balanced BST, stages 2 and 3: each new node (id b<k>) in the column of its index k in the sorted array
+ * and on the level of the call that created it, so it stays put as the tree grows (and before its parent links it)
+ */
+function balancedLayout(view: TreeView): Record<string, NodePosition> {
+  const depths = view.balance!.depths;
+  return Object.fromEntries(view.nodes.map(n => [n.id, { x: Number(n.id.slice(1)), depth: depths[n.id] }]));
+}
+
+const BALANCE_STATE_TEXT = {
+  visited: 'visited in order: its value is in the array',
+  waiting: 'its inorder call is waiting',
+  completed: 'its subtree is built',
+  created: 'created; its subtrees are being built',
+} as const;
+
+const STAGE_TEXT = {
+  inorder: 'Stage 1 of 3: inorder traversal into a sorted array',
+  build: 'Stage 2 of 3: divide and conquer: build the balanced tree from the middles',
+  done: 'Stage 3 of 3: return the balanced BST',
+} as const;
+
 /** a bound of Validate BST: null is −∞ (min) or +∞ (max) */
 const boundText = (b: number | null, side: 'min' | 'max') => (b === null ? (side === 'min' ? '−∞' : '+∞') : String(b));
 
@@ -192,7 +232,7 @@ const ACTION_TEXT = { push: 'pushed', pop: 'popped', peek: 'peeked', enqueue: 'e
  */
 export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, stepIntervalMs }) => {
   const view = currentStep.tree;
-  const layout = useMemo(() => (view ? layoutTree(view) : {}), [view]);
+  const layout = useMemo(() => (view ? (view.balance && view.balance.stage !== 'inorder' ? balancedLayout(view) : layoutTree(view)) : {}), [view]);
   if (!view) return null;
   const transitionMs = Math.max(0, Math.min(300, Math.floor((stepIntervalMs ?? 700) * 0.6)));
   const byId = new Map(view.nodes.map(n => [n.id, n]));
@@ -213,6 +253,10 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
   const mirror = view.mirror;
   const swap = mirror?.swap;
   const swappedSet = mirror ? new Set(mirror.swapped) : null;
+  // Convert BST to Balanced BST: the stage, the sorted array and the calls in progress
+  const balance = view.balance;
+  const balancing = balance !== undefined && balance.stage !== 'inorder';
+  const buildTop = balancing ? balance.buildCalls.at(-1) : undefined;
   const linkOf = (n: { id: string; left: string | null; right: string | null }, side: 'left' | 'right') => (swap && swap.node === n.id ? swap[side] : n[side]);
   // Building a BST: the empty child the value goes into, drawn as a dashed node half a column beside its parent. (A
   // missing left child's inorder neighbour on that side is an ancestor, higher up, so nothing is drawn there.)
@@ -220,7 +264,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
   const slotDepth = slot ? layout[slot.parent].depth + 1 : 0;
   const levels = Math.max(0, slot ? slotDepth + 1 : 0, ...Object.values(layout).map(p => p.depth + 1));
   const row = levels > COMPACT_AFTER_LEVELS ? COMPACT_ROW : ROW;
-  const width = view.nodes.length * COL + 2 * PAD;
+  const width = Math.max(view.nodes.length, balancing ? balance.values.length : 0) * COL + 2 * PAD;
   const height = levels * row + 2 * PAD;
   const at = (id: string) => ({ x: PAD + layout[id].x * COL + COL / 2, y: PAD + layout[id].depth * row + R });
   const slotAt = slot ? { x: at(slot.parent).x + (slot.side === 'left' ? -COL / 2 : COL / 2), y: PAD + slotDepth * row + R } : null;
@@ -248,7 +292,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
 
         {view.nodes.length === 0 ? (
           <p data-testid="tree-empty" className="relative z-10 py-10 text-sm font-mono text-slate-400">
-            The tree is empty (root = null).
+            {balancing && balance.values.length > 0 ? 'The balanced tree has no node yet (root = null).' : 'The tree is empty (root = null).'}
             {build?.slot?.side === 'root' &&
               build.index !== null &&
               (created ? ` New node ${created.value} created: it becomes the root once it is returned.` : ` ${build.values[build.index]} will become the root.`)}
@@ -298,7 +342,10 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                           : swappedSet
                             ? // the links already swapped
                               swappedSet.has(n.id)
-                            : states[child] === 'visited' || states[child] === 'current';
+                            : balancing
+                              ? // a new node is linked to its parent only once its subtree is built
+                                true
+                              : states[child] === 'visited' || states[child] === 'current';
                   // Print in Range: the edge into a pruned subtree is dashed (never walked)
                   const cut = range !== undefined && states[child] === 'pruned';
                   return [
@@ -396,7 +443,9 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                   : 'not checked yet'
                 : mirror && states[n.id] === 'completed'
                   ? 'its whole subtree is mirrored'
-                  : stateText(states[n.id], building, Boolean(range), Boolean(paths))}
+                  : balance && states[n.id] !== 'current' && states[n.id] !== 'unvisited'
+                    ? BALANCE_STATE_TEXT[states[n.id] as keyof typeof BALANCE_STATE_TEXT]
+                    : stateText(states[n.id], building, Boolean(range), Boolean(paths))}
               {order.has(n.id) ? ` (${ordinal(order.get(n.id)!)} visited)` : ''}
               {pointersAt.has(n.id) ? `, ${pointersAt.get(n.id)!.join(' and ')} points here` : ''}; left child {linkOf(n, 'left') ? value(linkOf(n, 'left')!) : 'none'}, right child{' '}
               {linkOf(n, 'right') ? value(linkOf(n, 'right')!) : 'none'}.
@@ -584,6 +633,78 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
               )}
             </>
           )}
+          {balance && (
+            <>
+              <p data-testid="tree-stage" data-stage={balance.stage} className="font-bold text-cyan-300">
+                {STAGE_TEXT[balance.stage]}
+              </p>
+              <p data-testid="tree-original" data-original={balance.original} className="text-slate-300">
+                <span className="text-slate-400">input tree (level order, never changed): </span>
+                {balance.original}
+              </p>
+              {/* the calls in progress, outermost first; a deep stack scrolls with the running call in view */}
+              <div className="flex flex-col gap-1" data-testid="tree-calls" data-depth={balancing ? balance.buildCalls.length : balance.inorderCalls.length}>
+                <span className="text-slate-400">call stack (outermost first):</span>
+                <div tabIndex={0} role="region" aria-label="Call stack" className="max-h-44 overflow-y-auto flex flex-col-reverse rounded-md">
+                  <ol aria-label={`Calls in progress: ${(balancing ? balance.buildCalls.length : balance.inorderCalls.length) || 'none'}`} className="flex flex-col gap-0.5">
+                    {(balancing ? balance.buildCalls.length : balance.inorderCalls.length) === 0 && <li className="text-slate-500">no call in progress</li>}
+                    {balancing
+                      ? balance.buildCalls.map((f, k) => {
+                          const last = k === balance.buildCalls.length - 1;
+                          const status = last ? (f.returns === undefined ? 'active' : 'returning') : 'waiting';
+                          return (
+                            <li
+                              key={k}
+                              data-frame={k}
+                              data-frame-status={status}
+                              data-frame-via={f.via}
+                              data-frame-left={f.left}
+                              data-frame-right={f.right}
+                              data-frame-mid={f.mid ?? ''}
+                              data-frame-node={f.node ?? ''}
+                              data-frame-returns={f.returns === undefined ? '' : f.returns === null ? 'null' : value(f.returns)}
+                              style={{ marginLeft: `${Math.min(k, 8) * 10}px` }}
+                              className={`w-fit px-1.5 py-0.5 rounded border ${
+                                status === 'active'
+                                  ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold'
+                                  : status === 'returning'
+                                    ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 font-bold'
+                                    : 'bg-slate-900/80 border-slate-700 text-slate-300'
+                              }`}
+                            >
+                              {k > 0 && <span aria-hidden="true">└─ </span>}
+                              buildBalanced(values, {f.left}, {f.right})
+                              {f.left > f.right && f.returns === undefined && <span className="text-amber-300"> — empty range</span>}
+                              {f.mid !== undefined && <span>, mid = {f.mid}</span>}
+                              {f.returns !== undefined && <span> ↩ returns {f.returns === null ? 'null' : `node ${value(f.returns)}`}</span>}
+                              {status === 'waiting' && <span className="text-slate-500"> (waiting)</span>}
+                            </li>
+                          );
+                        })
+                      : balance.inorderCalls.map((f, k) => {
+                          const active = k === balance.inorderCalls.length - 1;
+                          return (
+                            <li
+                              key={k}
+                              data-frame={k}
+                              data-frame-status={active ? 'active' : 'waiting'}
+                              data-frame-node={f.node ?? 'null'}
+                              data-frame-via={f.via}
+                              style={{ marginLeft: `${Math.min(k, 8) * 10}px` }}
+                              className={`w-fit px-1.5 py-0.5 rounded border ${active ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold' : 'bg-slate-900/80 border-slate-700 text-slate-300'}`}
+                            >
+                              {k > 0 && <span aria-hidden="true">└─ </span>}
+                              inorder({f.via === 'root' ? 'root' : `node.${f.via}`} = {f.node === null ? 'null' : value(f.node)})
+                              {f.node === null && <span className="text-amber-300"> — empty subtree</span>}
+                              {!active && <span className="text-slate-500"> (waiting)</span>}
+                            </li>
+                          );
+                        })}
+                  </ol>
+                </div>
+              </div>
+            </>
+          )}
           {mirror && (
             <>
               {/* the swap at the running call's node: the original children, temp and the two links as they stand */}
@@ -727,6 +848,82 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                     {value(id)}
                   </li>
                 ))}
+              </ol>
+            </div>
+          ) : balance ? (
+            // the sorted array: stage 1 fills it in inorder; stage 2 marks the running call's range [left, right], its
+            // middle and the values already turned into nodes
+            <div
+              className="flex flex-col gap-1"
+              data-testid="tree-sorted"
+              data-values={balance.values.join(',')}
+              data-left={buildTop && buildTop.left <= buildTop.right ? buildTop.left : ''}
+              data-right={buildTop && buildTop.left <= buildTop.right ? buildTop.right : ''}
+              data-mid={buildTop?.mid ?? ''}
+            >
+              <span className="text-slate-400">
+                {balancing ? 'sorted values' : 'sorted values (inorder so far)'}
+                {buildTop && (
+                  <span data-testid="tree-range-indices" className="text-slate-300">
+                    {buildTop.left > buildTop.right
+                      ? `: left = ${buildTop.left}, right = ${buildTop.right} (empty range)`
+                      : `: left = ${buildTop.left}, right = ${buildTop.right}${buildTop.mid !== undefined ? `, mid = ${buildTop.mid} (value ${balance.values[buildTop.mid]})` : ''}`}
+                  </span>
+                )}
+              </span>
+              <ol
+                aria-label={`Sorted values: ${balance.values.length ? balance.values.join(', ') : 'none yet'}${
+                  buildTop && buildTop.left <= buildTop.right ? `; range ${buildTop.left} to ${buildTop.right}${buildTop.mid !== undefined ? `, middle index ${buildTop.mid}` : ''}` : ''
+                }`}
+                className="flex flex-wrap items-start gap-1"
+              >
+                {balance.values.length === 0 && <li className="text-slate-500">[ ]</li>}
+                {balance.values.map((v, k) => {
+                  const made = balance.created.includes(`b${k}`);
+                  const inRange = buildTop !== undefined && k >= buildTop.left && k <= buildTop.right;
+                  // stage 1: the value just appended, or one collected before; stage 2: the middle, a value already
+                  // turned into a node, one in the running call's range, or one outside it
+                  const cell = !balancing
+                    ? k === balance.values.length - 1 && view.current !== undefined && view.visited.at(-1) === view.current
+                      ? 'appended'
+                      : 'collected'
+                    : k === buildTop?.mid
+                      ? 'mid'
+                      : made
+                        ? 'created'
+                        : inRange
+                          ? 'in-range'
+                          : 'outside';
+                  const marks =
+                    buildTop && buildTop.left <= buildTop.right
+                      ? [k === buildTop.left ? 'L' : '', k === buildTop.mid ? 'M' : '', k === buildTop.right ? 'R' : ''].filter(Boolean).join(' ')
+                      : '';
+                  return (
+                    <li key={k} data-index={k} data-value={v} data-cell={cell} data-marks={marks} className="flex flex-col items-center gap-0.5">
+                      <span
+                        className={`min-w-7 h-7 px-1 flex items-center justify-center rounded-md border font-bold ${
+                          cell === 'mid' || cell === 'appended'
+                            ? 'bg-amber-500/20 border-amber-400 text-amber-200'
+                            : cell === 'created' || cell === 'collected'
+                              ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                              : cell === 'in-range'
+                                ? 'bg-sky-500/15 border-sky-400 text-sky-200'
+                                : 'bg-slate-900/80 border-slate-700 text-slate-400'
+                        }`}
+                      >
+                        {v}
+                      </span>
+                      <span className="text-[10px] text-slate-400" aria-hidden="true">
+                        {k}
+                      </span>
+                      {marks && (
+                        <span className="text-[10px] font-bold text-cyan-300" aria-hidden="true">
+                          {marks}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             </div>
           ) : mirror ? (

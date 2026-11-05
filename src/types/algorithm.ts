@@ -87,7 +87,8 @@ export type AlgorithmId =
   | 'bst-print-in-range'
   | 'tree-root-to-leaf-paths'
   | 'tree-validate-bst'
-  | 'bst-mirror';
+  | 'bst-mirror'
+  | 'bst-balance';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -389,6 +390,51 @@ export interface TreeView {
    * swapped once its `node.right = temp` has run), the swap in progress and the recursive calls in progress.
    */
   readonly mirror?: TreeMirrorView;
+  /**
+   * Convert BST to Balanced BST only: stage 1 walks the input tree (nodes is the input, visited the inorder order);
+   * stages 2 and 3 build a new tree (nodes holds the nodes created so far, each id b<k> for the value at index k of
+   * the sorted array, linked to its parent once the call that created it returns).
+   */
+  readonly balance?: TreeBalanceView;
+}
+
+/** Convert BST to Balanced BST: an inorder walk into a sorted array, then a balanced tree built from its middles. */
+export interface TreeBalanceView {
+  /** inorder: collecting the values; build: building the balanced tree; done: the balanced tree is returned */
+  readonly stage: 'inorder' | 'build' | 'done';
+  /** the input tree, in level order */
+  readonly original: string;
+  /** the sorted array: the values appended so far (stage 1), then all of them */
+  readonly values: readonly number[];
+  /** stage 1: the inorder(...) calls in progress, outermost first */
+  readonly inorderCalls: readonly TreeBalanceInorderCall[];
+  /** stages 2 and 3: the buildBalanced(...) calls in progress, outermost first */
+  readonly buildCalls: readonly TreeBalanceBuildCall[];
+  /** the new nodes created so far, in creation order */
+  readonly created: readonly string[];
+  /** the new nodes whose call has returned: their whole subtree is built */
+  readonly completed: readonly string[];
+  /** the level of each new node in the new tree (it is drawn there before its parent links it) */
+  readonly depths: Readonly<Record<string, number>>;
+}
+
+/** One inorder(node) call of stage 1. */
+export interface TreeBalanceInorderCall {
+  readonly node: string | null;
+  readonly via: 'root' | 'left' | 'right';
+}
+
+/** One buildBalanced(values, left, right) call: the subtree for values[left..right]. */
+export interface TreeBalanceBuildCall {
+  readonly left: number;
+  readonly right: number;
+  readonly via: 'root' | 'left' | 'right';
+  /** once computed: left + (right - left) / 2 */
+  readonly mid?: number;
+  /** once created: the new node for values[mid] */
+  readonly node?: string;
+  /** set on the step the call returns: the node it returns, or null for an empty range */
+  readonly returns?: string | null;
 }
 
 /** Mirror a BST: recursive DFS that swaps the children of every node, then mirrors both subtrees. */

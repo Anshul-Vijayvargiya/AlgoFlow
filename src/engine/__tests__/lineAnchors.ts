@@ -737,6 +737,26 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'recurse-right': /^\s*(bool |boolean )?right_?[Vv]alid = (isValidBST|is_valid_bst)\(node(->|\.)right, node(->|\.)val, max(_val)?\);?$/,
     'return-right': /^\s*return (rightValid|right_valid);?$/,
   },
+  'bst-balance': {
+    // the wrapper's calls start stages 1 and 2, its return is stage 3; a recursive call and its link share a line
+    'call-inorder': /^\s*inorder\(root, values(, &count)?\);?$/,
+    'in-check-null': /^\s*if \(?node (== (NULL|nullptr|null)|is None)\)?/,
+    'in-return-null': /^\s*return;?$/,
+    'in-recurse-left': /^\s*inorder\(node(->|\.)left, values(, count)?\);?$/,
+    'in-append': /^\s*(values\[\(\*count\)\+\+\] = node->val|values\.push_back\(node->val\)|values\.add\(node\.val\)|values\.append\(node\.val\));?$/,
+    'in-recurse-right': /^\s*inorder\(node(->|\.)right, values(, count)?\);?$/,
+    'call-build': /^\s*(struct TreeNode\* |TreeNode\* |TreeNode )?balanced = build_?[Bb]alanced\(values, 0, /,
+    'b-check-range': /^\s*if \(?left > right\)?/,
+    'b-return-null': /^\s*return (NULL|nullptr|null|None);?$/,
+    'b-mid': /^\s*(int )?mid = left \+ \(right - left\) \/\/? 2;?$/,
+    'b-create': /^\s*(struct TreeNode\* |TreeNode\* |TreeNode )?node = (createNode\(values\[mid\], failed\)|new TreeNode\(values\[mid\]\)|new TreeNode\(values\.get\(mid\)\)|TreeNode\(values\[mid\]\));?$/,
+    'b-recurse-left': /^\s*node(->|\.)left = build_?[Bb]alanced\(values, left, mid - 1/,
+    'b-link-left': /^\s*node(->|\.)left = build_?[Bb]alanced\(values, left, mid - 1/,
+    'b-recurse-right': /^\s*node(->|\.)right = build_?[Bb]alanced\(values, mid \+ 1, right/,
+    'b-link-right': /^\s*node(->|\.)right = build_?[Bb]alanced\(values, mid \+ 1, right/,
+    'b-return-node': /^\s*return node;?$/,
+    done: /^\s*return balanced;?$/,
+  },
   'bst-mirror': {
     // the first call and the end of the whole mirror are the function itself
     'call-root': /\bmirror\((struct TreeNode \*|TreeNode\* |TreeNode )node\) \{$|^def mirror\(node\):$/,
