@@ -37,7 +37,7 @@ test.describe('Progress', () => {
     // number typed here
     for (const gone of ['Graphs', 'DP']) await expect(page.getByTestId('topic-coverage')).not.toContainText(gone);
     const trees = IMPLEMENTED_TOPICS.find(t => t.topic === 'Trees')!.algorithmIds.length;
-    expect(trees).toBe(8);
+    expect(trees).toBe(9);
     await expect(page.getByTestId('topic-coverage')).toContainText(`Trees 0 of ${trees}`);
     await expect(page.getByTestId('stat-learned')).toContainText(`0 / ${IMPLEMENTED}`);
     await expect(page.getByTestId('stat-learned')).toContainText(`of the ${IMPLEMENTED} visualized algorithms (${LISTED} listed)`);

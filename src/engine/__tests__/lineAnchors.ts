@@ -723,6 +723,20 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     backtrack: /\(\*len\)--|path\.pop_back\(\)|path\.remove\(path\.size\(\) - 1\)|path\.pop\(\)/,
     return: /^\s*return (count|paths);?\s*$/,
   },
+  'tree-validate-bst': {
+    // the first call and the end of the whole check are the wrapper's one statement
+    'call-root': /^\s*return (isValidBST|is_valid_bst)\(root, (LLONG_MIN, LLONG_MAX|Long\.MIN_VALUE, Long\.MAX_VALUE|float\("-inf"\), float\("inf"\))\);?$/,
+    done: /^\s*return (isValidBST|is_valid_bst)\(root, (LLONG_MIN, LLONG_MAX|Long\.MIN_VALUE, Long\.MAX_VALUE|float\("-inf"\), float\("inf"\))\);?$/,
+    'check-null': /if \(?node (== (NULL|nullptr|null)|is None)\)?/,
+    'return-null': /^\s*return (true|True);?$/,
+    'check-range': /^\s*if \(?node(->|\.)val <= min(_val)? (\|\||or) node(->|\.)val >= max(_val)?\)?/,
+    'return-invalid': /^\s*return (false|False);?$/,
+    'recurse-left': /^\s*(bool |boolean )?left_?[Vv]alid = (isValidBST|is_valid_bst)\(node(->|\.)left, min(_val)?, node(->|\.)val\);?$/,
+    'check-left': /^\s*if \(?(!leftValid|not left_valid)\)?/,
+    'return-left-false': /^\s*return (false|False);?$/,
+    'recurse-right': /^\s*(bool |boolean )?right_?[Vv]alid = (isValidBST|is_valid_bst)\(node(->|\.)right, node(->|\.)val, max(_val)?\);?$/,
+    'return-right': /^\s*return (rightValid|right_valid);?$/,
+  },
   'bst-print-in-range': {
     // the first call and the end of the whole walk are the function itself
     'call-root': /\b(void )?print_?[Ii]n_?[Rr]ange\(.*\bnode, int low, int high\)|def print_in_range\(node, low, high\):/,

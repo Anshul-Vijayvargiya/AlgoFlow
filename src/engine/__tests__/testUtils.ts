@@ -128,6 +128,21 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
     ['[7]', '1', '2'],
     ['[]', '1', '5'],
   ],
+  // Validate BST: valid, invalid by its parent or only by a higher ancestor, repeated values (at a child and deeper),
+  // negatives, skewed both ways, the input's extreme values, one node and the empty tree
+  'tree-validate-bst': [
+    ['[10, 5, 15, 2, 7, 12, 20]'],
+    ['[10, 5, 15, null, null, 6, 20]'],
+    ['[5, 1, 4, null, null, 3, 6]'],
+    ['[10, 5, 15, 5]'],
+    ['[10, 5, 15, null, 10]'],
+    ['[-5, -10, 0, -12, -7, null, 3]'],
+    ['[5, 4, null, 3, null, 2, null, 1]'],
+    ['[1, null, 2, null, 3, null, 4, null, 5]'],
+    ['[-999, null, 999]'],
+    ['[1]'],
+    ['[]'],
+  ],
   'valid-palindrome-ii': [['racecar'], ['abca'], ['cbbcc'], ['abc'], ['a'], ['aa'], ['ab'], ['deeee'], ['eeccccbebaeeabebccceea'], ['ebcbbececabbacecbbcbe']],
 };
 

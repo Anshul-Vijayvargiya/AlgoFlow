@@ -22,9 +22,24 @@ const COMPACT_ROW = 46;
 /**
  * traversals: current, visited, waiting, unvisited; building a BST: current, path, inserted, duplicate, unvisited;
  * Print in Range: current, visited (printed), outside, pruned, waiting (its call is in progress), unvisited;
- * Root to Leaf Paths: current, path (on the current path), visited (explored and backtracked), unvisited
+ * Root to Leaf Paths: current, path (on the current path), visited (explored and backtracked), unvisited;
+ * Validate BST: current (being checked), validated (in range, its subtrees in progress), completed (its whole subtree
+ * is valid), invalid (the first node outside its range), conflict (the ancestor whose bound it breaks), unvisited
  */
-type NodeState = 'current' | 'visited' | 'waiting' | 'unvisited' | 'path' | 'inserted' | 'duplicate' | 'outside' | 'pruned';
+type NodeState =
+  | 'current'
+  | 'visited'
+  | 'waiting'
+  | 'unvisited'
+  | 'path'
+  | 'inserted'
+  | 'duplicate'
+  | 'outside'
+  | 'pruned'
+  | 'validated'
+  | 'completed'
+  | 'invalid'
+  | 'conflict';
 
 const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   current: { circle: 'fill-amber-500/25 stroke-amber-400', text: 'fill-amber-200' },
@@ -36,6 +51,10 @@ const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   duplicate: { circle: 'fill-rose-500/20 stroke-rose-400', text: 'fill-rose-200' },
   outside: { circle: 'fill-rose-500/15 stroke-rose-400', text: 'fill-rose-200' },
   pruned: { circle: 'fill-slate-900/40 stroke-slate-600', text: 'fill-slate-400' },
+  validated: { circle: 'fill-sky-500/15 stroke-sky-400', text: 'fill-sky-200' },
+  completed: { circle: 'fill-emerald-500/20 stroke-emerald-500', text: 'fill-emerald-300' },
+  invalid: { circle: 'fill-rose-500/20 stroke-rose-400', text: 'fill-rose-200' },
+  conflict: { circle: 'fill-rose-500/15 stroke-rose-400', text: 'fill-rose-200' },
 };
 
 /** how each state is said (the colour is never the only signal) */
@@ -49,6 +68,10 @@ const STATE_TEXT: Record<NodeState, string> = {
   duplicate: 'equal to the value (skipped)',
   outside: 'checked: outside the range, not printed',
   pruned: 'skipped: its subtree cannot hold a value in range',
+  validated: 'in its allowed range; its subtrees are being checked',
+  completed: 'its whole subtree is a valid BST',
+  invalid: 'invalid: outside its allowed range',
+  conflict: 'the ancestor whose bound the invalid node breaks',
 };
 /**
  * building a BST, a node outside the search is simply part of the tree; in a range walk a visited node was printed;
@@ -85,6 +108,27 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
       ])
     );
   }
+  const validate = view.validate;
+  if (validate) {
+    const passed = new Set(validate.passed);
+    const completed = new Set(validate.completed);
+    return Object.fromEntries(
+      view.nodes.map(n => [
+        n.id,
+        n.id === validate.invalid
+          ? 'invalid'
+          : n.id === view.current
+            ? 'current'
+            : n.id === validate.conflict
+              ? 'conflict'
+              : completed.has(n.id)
+                ? 'completed'
+                : passed.has(n.id)
+                  ? 'validated'
+                  : 'unvisited',
+      ])
+    );
+  }
   const paths = view.paths;
   if (paths) {
     const onPath = new Set(paths.path);
@@ -113,6 +157,9 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
   );
 }
 
+/** a bound of Validate BST: null is −∞ (min) or +∞ (max) */
+const boundText = (b: number | null, side: 'min' | 'max') => (b === null ? (side === 'min' ? '−∞' : '+∞') : String(b));
+
 const ACTION_TEXT = { push: 'pushed', pop: 'popped', peek: 'peeked', enqueue: 'enqueued', dequeue: 'dequeued' } as const;
 
 /**
@@ -139,6 +186,9 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
   // Root to Leaf Paths: the current path, the paths found and the calls in progress
   const paths = view.paths;
   const onCurrentPath = paths ? new Set(paths.path) : null;
+  // Validate BST: the bounds of each call, the nodes checked so far and the first invalid node
+  const validate = view.validate;
+  const running = validate?.calls.at(-1);
   // Building a BST: the empty child the value goes into, drawn as a dashed node half a column beside its parent. (A
   // missing left child's inorder neighbour on that side is an ancestor, higher up, so nothing is drawn there.)
   const slot = build?.slot && build.slot.parent !== null && build.index !== null ? { parent: build.slot.parent, side: build.slot.side, value: build.values[build.index] } : null;
@@ -196,7 +246,9 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                         onCurrentPath.has(n.id) && (onCurrentPath.has(child) || child === view.current)
                       : range
                         ? ['visited', 'current', 'outside', 'waiting'].includes(states[child])
-                        : states[child] === 'visited' || states[child] === 'current';
+                        : validate
+                          ? ['validated', 'completed', 'current', 'invalid'].includes(states[child])
+                          : states[child] === 'visited' || states[child] === 'current';
                   // Print in Range: the edge into a pruned subtree is dashed (never walked)
                   const cut = range !== undefined && states[child] === 'pruned';
                   return [
@@ -237,7 +289,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                       cy={y}
                       r={R}
                       strokeWidth={s === 'current' ? 3 : 2}
-                      strokeDasharray={s === 'pruned' ? '4 3' : undefined}
+                      strokeDasharray={s === 'pruned' || s === 'conflict' ? '4 3' : undefined}
                       style={{ transitionDuration: `${transitionMs}ms` }}
                       className={`transition-colors motion-reduce:transition-none ${NODE_TONE[s].circle}`}
                     />
@@ -287,7 +339,12 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
           )}
           {view.nodes.map(n => (
             <li key={n.id}>
-              Node {n.value}: {stateText(states[n.id], building, Boolean(range), Boolean(paths))}
+              Node {n.value}:{' '}
+              {validate && states[n.id] === 'unvisited'
+                ? validate.verdict === 'invalid'
+                  ? 'never checked (validation stopped early)'
+                  : 'not checked yet'
+                : stateText(states[n.id], building, Boolean(range), Boolean(paths))}
               {order.has(n.id) ? ` (${ordinal(order.get(n.id)!)} visited)` : ''}
               {pointersAt.has(n.id) ? `, ${pointersAt.get(n.id)!.join(' and ')} points here` : ''}; left child {n.left ? value(n.left) : 'none'}, right child{' '}
               {n.right ? value(n.right) : 'none'}.
@@ -405,6 +462,76 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
               </div>
             </>
           )}
+          {validate && (
+            <>
+              {/* the range the running call allows: min < node.val < max, both ends excluded */}
+              <p
+                data-testid="tree-bounds"
+                data-min={running ? boundText(running.min, 'min') : ''}
+                data-max={running ? boundText(running.max, 'max') : ''}
+                className="text-slate-300"
+              >
+                <span className="text-slate-400">allowed range{running?.node ? ` for ${value(running.node)}` : ''}: </span>
+                {running ? (
+                  <>
+                    <span className="font-bold text-cyan-300">
+                      ({boundText(running.min, 'min')}, {boundText(running.max, 'max')})
+                    </span>
+                    <span className="text-slate-400"> (min &lt; value &lt; max)</span>
+                  </>
+                ) : (
+                  <span className="text-slate-500">no call in progress</span>
+                )}
+              </p>
+              {/* the isValidBST calls in progress with their bounds, outermost first; a deep stack scrolls with the running call in view */}
+              <div className="flex flex-col gap-1" data-testid="tree-calls" data-depth={validate.calls.length}>
+                <span className="text-slate-400">call stack (outermost first):</span>
+                <div tabIndex={0} role="region" aria-label="Call stack" className="max-h-44 overflow-y-auto flex flex-col-reverse rounded-md">
+                  <ol aria-label={`Calls in progress: ${validate.calls.length || 'none'}`} className="flex flex-col gap-0.5">
+                    {validate.calls.length === 0 && <li className="text-slate-500">no call in progress</li>}
+                    {validate.calls.map((f, k) => {
+                      const last = k === validate.calls.length - 1;
+                      const status = last ? (f.returns === undefined ? 'active' : 'returning') : 'waiting';
+                      return (
+                        <li
+                          key={k}
+                          data-frame={k}
+                          data-frame-status={status}
+                          data-frame-node={f.node ?? 'null'}
+                          data-frame-via={f.via}
+                          data-frame-min={boundText(f.min, 'min')}
+                          data-frame-max={boundText(f.max, 'max')}
+                          data-frame-returns={f.returns === undefined ? '' : String(f.returns)}
+                          style={{ marginLeft: `${Math.min(k, 8) * 10}px` }}
+                          className={`w-fit px-1.5 py-0.5 rounded border ${
+                            status === 'active'
+                              ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold'
+                              : status === 'returning'
+                                ? f.returns
+                                  ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 font-bold'
+                                  : 'bg-rose-500/15 border-rose-400/60 text-rose-200 font-bold'
+                                : 'bg-slate-900/80 border-slate-700 text-slate-300'
+                          }`}
+                        >
+                          {k > 0 && <span aria-hidden="true">└─ </span>}
+                          isValidBST({f.via === 'root' ? 'root' : `node.${f.via}`} = {f.node === null ? 'null' : value(f.node)}, {boundText(f.min, 'min')},{' '}
+                          {boundText(f.max, 'max')})
+                          {f.node === null && f.returns === undefined && <span className="text-amber-300"> — empty subtree</span>}
+                          {f.returns !== undefined && <span> ↩ returns {String(f.returns)}</span>}
+                          {status === 'waiting' && <span className="text-slate-500"> (waiting)</span>}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+              {validate.violation && (
+                <p data-testid="tree-violation" className="text-rose-200 font-bold">
+                  {validate.violation}.
+                </p>
+              )}
+            </>
+          )}
           {build?.calls && (
             // the recursive build: the insert calls in progress, outermost first. A deep stack scrolls, and starts
             // scrolled to its end (column-reverse) so the running call is always in view.
@@ -446,7 +573,29 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
               </div>
             </div>
           )}
-          {paths ? (
+          {validate ? (
+            // the nodes found inside their range so far, in check order
+            <div className="flex flex-wrap items-center gap-2" data-testid="tree-validated">
+              <span className="text-slate-400">in range so far:</span>
+              <ol
+                aria-label={`Nodes inside their allowed range so far: ${validate.passed.length ? validate.passed.map(value).join(', ') : 'none yet'}`}
+                className="flex flex-wrap items-center gap-1"
+              >
+                {validate.passed.length === 0 && <li className="text-slate-500">[ ]</li>}
+                {validate.passed.map(id => (
+                  <li
+                    key={id}
+                    data-validated={value(id)}
+                    className={`min-w-7 h-7 px-1 flex items-center justify-center rounded-md border font-bold ${
+                      id === view.current ? 'bg-amber-500/20 border-amber-400 text-amber-200' : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    }`}
+                  >
+                    {value(id)}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : paths ? (
             // the root-to-leaf paths found so far, in the order found (left to right)
             <div className="flex flex-col gap-1" data-testid="tree-paths" data-count={paths.completed.length}>
               <span className="text-slate-400">paths found:</span>
@@ -526,7 +675,10 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
         <div
           role="status"
           data-testid="tree-result"
-          className="flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-mono font-bold bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
+          data-verdict={validate?.verdict}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-mono font-bold ${
+            validate?.verdict === 'invalid' ? 'bg-rose-500/15 border-rose-400/50 text-rose-200' : 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+          }`}
         >
           <Equal className="w-4 h-4 shrink-0" aria-hidden="true" />
           {view.result.text}

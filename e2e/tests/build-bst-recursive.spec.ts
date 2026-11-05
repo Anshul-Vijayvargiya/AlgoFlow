@@ -87,7 +87,12 @@ test.describe('Build a Binary Search Tree (Recursive)', () => {
     await expect(app.arrayInput).toHaveValue(EXAMPLE.join(', '));
     await expect(page.getByTestId('step-counter')).toHaveAttribute('data-total', String(engine(EXAMPLE).length));
     await page.getByTestId('sidebar-search').fill('binary search tree');
-    await expect(app.sidebar.locator('button:not([data-testid])')).toHaveText([/^Build a Binary Search Tree$/, /^Build a Binary Search Tree \(Recursive\)$/]);
+    await expect(app.sidebar.locator('button:not([data-testid])')).toHaveText([
+      /^Build a Binary Search Tree$/,
+      /^Build a Binary Search Tree \(Recursive\)$/,
+      // the query is in its name too
+      /^Validate Binary Search Tree$/,
+    ]);
   });
 
   test('every step of the example: call stack, tree, node states, empty child / created node, input and C++ line, as traced', async ({ app, page }) => {

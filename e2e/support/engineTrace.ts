@@ -72,6 +72,7 @@ export const TREE_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; h
   'build-bst-recursive': { id: 'build-bst-recursive', label: 'Build a Binary Search Tree (Recursive)', heading: 'Build a Binary Search Tree (Recursive)' },
   // a level-order BST plus low and high (three text fields)
   'bst-print-in-range': { id: 'bst-print-in-range', label: 'Print in Range (BST)', heading: 'Print in Range (BST)' },
+  'tree-validate-bst': { id: 'tree-validate-bst', label: 'Validate Binary Search Tree', heading: 'Validate Binary Search Tree' },
 };
 
 /** The text algorithms (visual 'text'): their input is strings, one per field. */

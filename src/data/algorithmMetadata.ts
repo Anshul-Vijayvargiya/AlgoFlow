@@ -445,6 +445,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'tree-validate-bst',
+    name: 'Validate Binary Search Tree',
+    category: 'TREES',
+    subtitle: 'Is it a BST? Recursive DFS that passes each subtree its allowed (min, max) range.',
+    implemented: true,
+  },
+  {
     id: 'binary-tree',
     name: 'Binary Tree',
     category: 'TREES',

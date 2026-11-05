@@ -85,7 +85,8 @@ export type AlgorithmId =
   | 'build-bst'
   | 'build-bst-recursive'
   | 'bst-print-in-range'
-  | 'tree-root-to-leaf-paths';
+  | 'tree-root-to-leaf-paths'
+  | 'tree-validate-bst';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -380,6 +381,48 @@ export interface TreeView {
   readonly range?: TreeRangeView;
   /** Root to Leaf Paths only: the path being built, the paths found and the recursive calls in progress */
   readonly paths?: TreePathsView;
+  /** Validate Binary Search Tree only: the bounds of each call, the nodes checked so far and the first invalid node */
+  readonly validate?: TreeValidateView;
+}
+
+/**
+ * Validate Binary Search Tree: recursive DFS where each call gets the exclusive range (min, max) its ancestors allow.
+ * Each node's status: checked and in range (its subtrees still being checked), its whole subtree validated, or the
+ * first node found outside its range (validation stops there).
+ */
+export interface TreeValidateView {
+  /** nodes whose value was inside their allowed range, in check order */
+  readonly passed: readonly string[];
+  /** nodes whose call returned true: their whole subtree is a valid BST */
+  readonly completed: readonly string[];
+  /** the first node outside its allowed range */
+  readonly invalid?: string;
+  /** the ancestor whose value is the bound the invalid node breaks */
+  readonly conflict?: string;
+  /** why the invalid node breaks the rule, in words */
+  readonly violation?: string;
+  /** the isValidBST(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly TreeValidateCall[];
+  /** the answer, on the last step only */
+  readonly verdict?: 'valid' | 'invalid';
+}
+
+/** One isValidBST(node, min, max) call: the node must satisfy min < node.val < max. */
+export interface TreeValidateCall {
+  /** the subtree this call works on: its root, or null for an empty subtree (the call returns true at once) */
+  readonly node: string | null;
+  /** what the caller passed: the tree's root, or its node's left / right child */
+  readonly via: 'root' | 'left' | 'right';
+  /** the exclusive lower bound; null is −∞ (no ancestor sets one) */
+  readonly min: number | null;
+  /** the exclusive upper bound; null is +∞ */
+  readonly max: number | null;
+  /** the ancestor whose value is min (the nearest one this subtree is to the right of); null for −∞ */
+  readonly minFrom: string | null;
+  /** the ancestor whose value is max (the nearest one this subtree is to the left of); null for +∞ */
+  readonly maxFrom: string | null;
+  /** set on the step the call returns: what it returns */
+  readonly returns?: boolean;
 }
 
 /** Root to Leaf Paths: the DFS with backtracking, as each step leaves it. */
