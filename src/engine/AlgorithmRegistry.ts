@@ -73,6 +73,7 @@ import { printAllPairsDefinition } from './algorithms/printAllPairs';
 import { printSubarraysDefinition } from './algorithms/printSubarrays';
 import { buildBstDefinition } from './algorithms/tree/buildBst';
 import { buildBstRecursiveDefinition } from './algorithms/tree/buildBstRecursive';
+import { bstPrintInRangeDefinition } from './algorithms/tree/printInRange';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ register(printAllPairsDefinition);
 register(printSubarraysDefinition);
 register(buildBstDefinition);
 register(buildBstRecursiveDefinition);
+register(bstPrintInRangeDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

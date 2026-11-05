@@ -1,5 +1,5 @@
 import type { AlgorithmInputSpec, CharMark, ExecutionStep, TextRow } from '../../../types/algorithm';
-import { validateTextField } from '../../inputParsing';
+import { textRangeProblem, validateTextField } from '../../inputParsing';
 
 /**
  * The strings a text algorithm runs on: params.texts (one per declared field, as the visualizer passes them), or the
@@ -17,6 +17,8 @@ export function textInputs(spec: AlgorithmInputSpec, params: Record<string, unkn
     const r = validateTextField(texts[i], field);
     if (!r.ok) throw new RangeError(r.message);
   });
+  const range = textRangeProblem(spec, texts as string[]);
+  if (range) throw new RangeError(range.message);
   return texts as string[];
 }
 

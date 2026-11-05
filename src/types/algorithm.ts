@@ -83,7 +83,8 @@ export type AlgorithmId =
   | 'print-all-pairs'
   | 'print-subarrays'
   | 'build-bst'
-  | 'build-bst-recursive';
+  | 'build-bst-recursive'
+  | 'bst-print-in-range';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -368,6 +369,31 @@ export interface TreeView {
    * says how the value being inserted finds its place. The traversals leave it out.
    */
   readonly build?: TreeBuildView;
+  /** Print in Range (BST) only: the range, what each node turned out to be, and the recursive calls in progress */
+  readonly range?: TreeRangeView;
+}
+
+/**
+ * Print in Range (BST): the nodes printed are view.visited (in print order, which is ascending). Each node's status
+ * otherwise: checked and found outside [low, high], or never visited because its subtree was pruned.
+ */
+export interface TreeRangeView {
+  readonly low: number;
+  readonly high: number;
+  /** nodes whose value was checked and is outside [low, high] (not printed), in check order */
+  readonly outside: readonly string[];
+  /** nodes of the subtrees skipped by pruning: none of them can be in range, so none is visited */
+  readonly pruned: readonly string[];
+  /** the printInRange(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly TreeRangeCall[];
+}
+
+/** One printInRange(node, low, high) call. */
+export interface TreeRangeCall {
+  /** the subtree this call works on: its root, or null for an empty subtree (the call returns at once) */
+  readonly node: string | null;
+  /** what the caller passed: the tree's root, or its node's left / right child */
+  readonly via: 'root' | 'left' | 'right';
 }
 
 export interface TreeBuildView {
@@ -527,6 +553,11 @@ export interface AlgorithmInputSpec {
   texts?: readonly TextField[];
   /** Text algorithms: complete inputs (one string per field) that Randomize picks from */
   textExamples?: readonly (readonly string[])[];
+  /**
+   * Text algorithms: two of the fields (by position) are the ends of a range, both whole numbers: low must not be
+   * greater than high. A problem is reported on the high field.
+   */
+  textRange?: { readonly low: number; readonly high: number };
 }
 
 /** One string input of a text algorithm. */
@@ -544,7 +575,7 @@ export interface TextField {
    */
   list?: { readonly itemMaxLength: number };
   /** a rule beyond the characters: a canonical Roman numeral, a binary number without leading zeros, at least one word */
-  rule?: 'roman-numeral' | 'binary-number' | 'has-word' | 'level-order-tree';
+  rule?: 'roman-numeral' | 'binary-number' | 'has-word' | 'level-order-tree' | 'level-order-bst' | 'whole-number';
 }
 
 export interface NumberField {

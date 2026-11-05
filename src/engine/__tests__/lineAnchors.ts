@@ -691,6 +691,19 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'insert-right': /parent(->|\.)right = (newNode|new TreeNode|TreeNode)\(value\)/,
     return: /^\s*return root;?$/,
   },
+  'bst-print-in-range': {
+    // the first call and the end of the whole walk are the function itself
+    'call-root': /\b(void )?print_?[Ii]n_?[Rr]ange\(.*\bnode, int low, int high\)|def print_in_range\(node, low, high\):/,
+    done: /\b(void )?print_?[Ii]n_?[Rr]ange\(.*\bnode, int low, int high\)|def print_in_range\(node, low, high\):/,
+    'check-null': /if \(?node (== (NULL|nullptr|null)|is None)\)?/,
+    'return-null': /^\s*return;?\s*$/,
+    'check-left': /^\s*if \(?node(->|\.)val > low\)?/,
+    'recurse-left': /^\s*print_?[Ii]n_?[Rr]ange\(node(->|\.)left, low, high\);?\s*$/,
+    'check-range': /^\s*if \(?low <= node(->|\.)val (&& node(->|\.)val )?<= high\)?/,
+    print: /printf\("%d ", node->val\)|cout << node->val|System\.out\.print\(node\.val|print\(node\.val/,
+    'check-right': /^\s*if \(?node(->|\.)val < high\)?/,
+    'recurse-right': /^\s*print_?[Ii]n_?[Rr]ange\(node(->|\.)right, low, high\);?\s*$/,
+  },
   'build-bst-recursive': {
     // inside insert(node, value) — C also passes its allocation-failure flag (", failed")
     'check-null': /if \(?node (== (NULL|nullptr|null)|is None)/,

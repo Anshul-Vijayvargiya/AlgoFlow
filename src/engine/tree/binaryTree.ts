@@ -94,6 +94,43 @@ export function treeFromLevelOrder(text: string): BinaryTree {
 
 export const nodeMap = (tree: BinaryTree): ReadonlyMap<string, TreeNodeView> => new Map(tree.nodes.map(n => [n.id, n]));
 
+/**
+ * Why a tree is not a binary search tree, or null when it is one: every value in a node's left subtree is smaller than
+ * the node, every value in its right subtree larger (so no value appears twice). The first problem found in level
+ * order is reported, naming the node and the ancestor whose rule it breaks.
+ */
+export function bstViolation(tree: BinaryTree): string | null {
+  const byId = nodeMap(tree);
+  // breadth first, so the problem nearest the root is the one reported. below: the nearest ancestor the node must be
+  // smaller than (the node is in its left subtree); above: the nearest one it must be larger than (its right subtree)
+  const queue: { id: string; below: number | null; above: number | null }[] = tree.root ? [{ id: tree.root, below: null, above: null }] : [];
+  while (queue.length) {
+    const { id, below, above } = queue.shift()!;
+    const n = byId.get(id)!;
+    const v = n.value;
+    const repeat = (bound: number) => (v === bound ? ' (values cannot repeat)' : '');
+    if (below !== null && v >= below) return `Not a binary search tree: ${v} is in the left subtree of ${below}, so it must be smaller than ${below}${repeat(below)}.`;
+    if (above !== null && v <= above) return `Not a binary search tree: ${v} is in the right subtree of ${above}, so it must be larger than ${above}${repeat(above)}.`;
+    if (n.left) queue.push({ id: n.left, below: v, above });
+    if (n.right) queue.push({ id: n.right, below, above: v });
+  }
+  return null;
+}
+
+/** the ids of a subtree's nodes, root first (none for an empty subtree) */
+export function subtreeIds(tree: BinaryTree, root: string | null): string[] {
+  const byId = nodeMap(tree);
+  const out: string[] = [];
+  const walk = (id: string | null) => {
+    if (id === null) return;
+    out.push(id);
+    walk(byId.get(id)!.left);
+    walk(byId.get(id)!.right);
+  };
+  walk(root);
+  return out;
+}
+
 /** the number of levels (0 for the empty tree) */
 export function treeLevels(tree: BinaryTree): number {
   const byId = nodeMap(tree);

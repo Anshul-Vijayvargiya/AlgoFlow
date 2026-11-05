@@ -431,6 +431,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'bst-print-in-range',
+    name: 'Print in Range (BST)',
+    category: 'TREES',
+    subtitle: 'Print the values in [low, high], skipping subtrees that cannot hold any.',
+    implemented: true,
+  },
+  {
     id: 'binary-tree',
     name: 'Binary Tree',
     category: 'TREES',

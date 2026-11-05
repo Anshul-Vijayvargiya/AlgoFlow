@@ -19,8 +19,11 @@ const PAD = 26;
 const COMPACT_AFTER_LEVELS = 6;
 const COMPACT_ROW = 46;
 
-/** traversals: current, visited, waiting, unvisited; building a BST: current, path, inserted, duplicate, unvisited */
-type NodeState = 'current' | 'visited' | 'waiting' | 'unvisited' | 'path' | 'inserted' | 'duplicate';
+/**
+ * traversals: current, visited, waiting, unvisited; building a BST: current, path, inserted, duplicate, unvisited;
+ * Print in Range: current, visited (printed), outside, pruned, waiting (its call is in progress), unvisited
+ */
+type NodeState = 'current' | 'visited' | 'waiting' | 'unvisited' | 'path' | 'inserted' | 'duplicate' | 'outside' | 'pruned';
 
 const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   current: { circle: 'fill-amber-500/25 stroke-amber-400', text: 'fill-amber-200' },
@@ -30,6 +33,8 @@ const NODE_TONE: Record<NodeState, { circle: string; text: string }> = {
   path: { circle: 'fill-sky-500/15 stroke-sky-400', text: 'fill-sky-200' },
   inserted: { circle: 'fill-emerald-500/20 stroke-emerald-500', text: 'fill-emerald-300' },
   duplicate: { circle: 'fill-rose-500/20 stroke-rose-400', text: 'fill-rose-200' },
+  outside: { circle: 'fill-rose-500/15 stroke-rose-400', text: 'fill-rose-200' },
+  pruned: { circle: 'fill-slate-900/40 stroke-slate-600', text: 'fill-slate-400' },
 };
 
 /** how each state is said (the colour is never the only signal) */
@@ -41,9 +46,12 @@ const STATE_TEXT: Record<NodeState, string> = {
   path: 'on the search path',
   inserted: 'just inserted',
   duplicate: 'equal to the value (skipped)',
+  outside: 'checked: outside the range, not printed',
+  pruned: 'skipped: its subtree cannot hold a value in range',
 };
-/** building a BST, a node outside the search is simply part of the tree */
-const stateText = (s: NodeState, building: boolean) => (building && s === 'unvisited' ? 'in the tree' : STATE_TEXT[s]);
+/** building a BST, a node outside the search is simply part of the tree; in a range walk a visited node was printed */
+const stateText = (s: NodeState, building: boolean, ranging = false) =>
+  building && s === 'unvisited' ? 'in the tree' : ranging && s === 'visited' ? 'printed' : ranging && s === 'waiting' ? 'its call is waiting' : STATE_TEXT[s];
 
 const ordinal = (k: number) => `${k}${k % 10 === 1 && k % 100 !== 11 ? 'st' : k % 10 === 2 && k % 100 !== 12 ? 'nd' : k % 10 === 3 && k % 100 !== 13 ? 'rd' : 'th'}`;
 
@@ -60,6 +68,19 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
       view.nodes.map(n => [
         n.id,
         n.id === build.inserted ? 'inserted' : n.id === build.duplicate ? 'duplicate' : n.id === view.current ? 'current' : path.has(n.id) ? 'path' : 'unvisited',
+      ])
+    );
+  }
+  const range = view.range;
+  if (range) {
+    const printed = new Set(view.visited);
+    const outside = new Set(range.outside);
+    const pruned = new Set(range.pruned);
+    const inCall = new Set(range.calls.flatMap(c => (c.node ? [c.node] : [])));
+    return Object.fromEntries(
+      view.nodes.map(n => [
+        n.id,
+        n.id === view.current ? 'current' : printed.has(n.id) ? 'visited' : outside.has(n.id) ? 'outside' : pruned.has(n.id) ? 'pruned' : inCall.has(n.id) ? 'waiting' : 'unvisited',
       ])
     );
   }
@@ -91,6 +112,8 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
   const build = view.build;
   const building = Boolean(build);
   const onPath = build ? new Set(build.path) : null;
+  // Print in Range: the range, the nodes skipped by pruning and the calls in progress
+  const range = view.range;
   // Building a BST: the empty child the value goes into, drawn as a dashed node half a column beside its parent. (A
   // missing left child's inorder neighbour on that side is an ancestor, higher up, so nothing is drawn there.)
   const slot = build?.slot && build.slot.parent !== null && build.index !== null ? { parent: build.slot.parent, side: build.slot.side, value: build.values[build.index] } : null;
@@ -143,7 +166,11 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                   // traversals: the edges into visited nodes; building: the edges the value has walked down
                   const reached = onPath
                     ? onPath.has(n.id) && (onPath.has(child) || child === build!.inserted)
-                    : states[child] === 'visited' || states[child] === 'current';
+                    : range
+                      ? ['visited', 'current', 'outside', 'waiting'].includes(states[child])
+                      : states[child] === 'visited' || states[child] === 'current';
+                  // Print in Range: the edge into a pruned subtree is dashed (never walked)
+                  const cut = range !== undefined && states[child] === 'pruned';
                   return [
                     <line
                       key={`${n.id}-${child}`}
@@ -154,7 +181,9 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                       x2={b.x}
                       y2={b.y}
                       strokeWidth={2}
-                      className={reached ? 'stroke-emerald-500/70' : 'stroke-slate-600'}
+                      strokeDasharray={cut ? '4 4' : undefined}
+                      data-pruned={cut ? 'true' : undefined}
+                      className={reached ? 'stroke-emerald-500/70' : cut ? 'stroke-slate-700' : 'stroke-slate-600'}
                     />,
                   ];
                 })
@@ -180,6 +209,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                       cy={y}
                       r={R}
                       strokeWidth={s === 'current' ? 3 : 2}
+                      strokeDasharray={s === 'pruned' ? '4 3' : undefined}
                       style={{ transitionDuration: `${transitionMs}ms` }}
                       className={`transition-colors motion-reduce:transition-none ${NODE_TONE[s].circle}`}
                     />
@@ -229,7 +259,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
           )}
           {view.nodes.map(n => (
             <li key={n.id}>
-              Node {n.value}: {stateText(states[n.id], building)}
+              Node {n.value}: {stateText(states[n.id], building, Boolean(range))}
               {order.has(n.id) ? ` (${ordinal(order.get(n.id)!)} visited)` : ''}
               {pointersAt.has(n.id) ? `, ${pointersAt.get(n.id)!.join(' and ')} points here` : ''}; left child {n.left ? value(n.left) : 'none'}, right child{' '}
               {n.right ? value(n.right) : 'none'}.
@@ -267,6 +297,49 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
             <p data-testid="tree-null-pointers" className="text-slate-400">
               {nullPointers.map(n => `${n} = null`).join(', ')}
             </p>
+          )}
+          {range && (
+            <>
+              <p data-testid="tree-range" data-low={range.low} data-high={range.high} className="text-slate-300">
+                <span className="text-slate-400">range: </span>
+                <span className="font-bold text-cyan-300">
+                  [{range.low}, {range.high}]
+                </span>
+                <span className="text-slate-400"> (low ≤ value ≤ high)</span>
+              </p>
+              {/* the printInRange calls in progress, outermost first; a deep stack scrolls with the running call in view */}
+              <div className="flex flex-col gap-1" data-testid="tree-calls" data-depth={range.calls.length}>
+                <span className="text-slate-400">call stack (outermost first):</span>
+                <div tabIndex={0} role="region" aria-label="Call stack" className="max-h-44 overflow-y-auto flex flex-col-reverse rounded-md">
+                  <ol aria-label={`Calls in progress: ${range.calls.length || 'none'}`} className="flex flex-col gap-0.5">
+                    {range.calls.length === 0 && <li className="text-slate-500">no call in progress</li>}
+                    {range.calls.map((f, k) => {
+                      const active = k === range.calls.length - 1;
+                      return (
+                        <li
+                          key={k}
+                          data-frame={k}
+                          data-frame-status={active ? 'active' : 'waiting'}
+                          data-frame-node={f.node ?? 'null'}
+                          data-frame-via={f.via}
+                          style={{ marginLeft: `${Math.min(k, 8) * 10}px` }}
+                          className={`w-fit px-1.5 py-0.5 rounded border ${active ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold' : 'bg-slate-900/80 border-slate-700 text-slate-300'}`}
+                        >
+                          {k > 0 && <span aria-hidden="true">└─ </span>}
+                          printInRange({f.via === 'root' ? 'root' : `node.${f.via}`} = {f.node === null ? 'null' : value(f.node)}, {range.low}, {range.high})
+                          {f.node === null && <span className="text-amber-300"> — empty subtree</span>}
+                          {!active && <span className="text-slate-500"> (waiting)</span>}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+              <p data-testid="tree-pruned" className="text-slate-400">
+                skipped by pruning:{' '}
+                {range.pruned.length ? <span className="text-slate-300">{range.pruned.map(value).join(', ')}</span> : <span className="text-slate-500">none yet</span>}
+              </p>
+            </>
           )}
           {build?.calls && (
             // the recursive build: the insert calls in progress, outermost first. A deep stack scrolls, and starts
@@ -346,7 +419,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
             </div>
           ) : (
           <div className="flex flex-wrap items-center gap-2" data-testid="tree-output">
-            <span className="text-slate-400">output:</span>
+            <span className="text-slate-400">{range ? 'printed:' : 'output:'}</span>
             <ol aria-label={`Output so far: ${view.visited.length ? view.visited.map(value).join(', ') : 'nothing yet'}`} className="flex flex-wrap items-center gap-1">
               {view.visited.length === 0 && <li className="text-slate-500">[ ]</li>}
               {view.visited.map((id, k) => (

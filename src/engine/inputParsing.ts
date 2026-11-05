@@ -6,8 +6,8 @@
  * never "fixed" silently. The only transformation offered anywhere is the explicit, user-triggered
  * `sortedCopy`, which the UI discloses.
  */
-import type { AlgorithmDefinition, NumberField, TextField } from '../types/algorithm';
-import { parseLevelOrderTree } from './tree/binaryTree';
+import type { AlgorithmDefinition, AlgorithmInputSpec, NumberField, TextField } from '../types/algorithm';
+import { bstViolation, parseLevelOrderTree } from './tree/binaryTree';
 
 /** Keeps bars and pointer labels legible; far above anything the traces need to demonstrate. */
 export const MAX_ARRAY_SIZE = 16;
@@ -151,11 +151,36 @@ export function validateTextField(value: string, field: TextField): ParseResult<
   if (field.rule === 'has-word' && !/[^ ]/.test(value)) {
     return { ok: false, message: `"${field.label}" needs at least one word.` };
   }
-  if (field.rule === 'level-order-tree') {
+  if (field.rule === 'level-order-tree' || field.rule === 'level-order-bst') {
     const tree = parseLevelOrderTree(value);
     if (!tree.ok) return { ok: false, message: tree.message };
+    const notBst = field.rule === 'level-order-bst' ? bstViolation(tree.tree) : null;
+    if (notBst) return { ok: false, message: notBst };
+  }
+  if (field.rule === 'whole-number') {
+    const t = value.trim();
+    if (!/^-?\d+$/.test(t)) return { ok: false, message: `"${field.label}" must be a whole number, e.g. 5 or -3.` };
+    const v = Number(t);
+    if (v < MIN_VALUE || v > MAX_VALUE) return { ok: false, message: `"${field.label}" (${t}) is out of range: use ${MIN_VALUE} to ${MAX_VALUE}.` };
   }
   return { ok: true, value };
+}
+
+/**
+ * The ends of a declared range (inputSpec.textRange), once each field is valid on its own: low must not be greater than
+ * high. Reported on the high field.
+ */
+export function textRangeProblem(spec: AlgorithmInputSpec | undefined, texts: readonly string[]): { field: number; message: string } | null {
+  const range = spec?.textRange;
+  const fields = spec?.texts;
+  if (!range || !fields) return null;
+  const low = Number(texts[range.low]?.trim());
+  const high = Number(texts[range.high]?.trim());
+  if (low <= high) return null;
+  return {
+    field: range.high,
+    message: `"${fields[range.low].label}" (${low}) is greater than "${fields[range.high].label}" (${high}): the range needs ${fields[range.low].label} ≤ ${fields[range.high].label}.`,
+  };
 }
 
 /** the strings of a text algorithm: exactly one per declared field, each valid for its field */
@@ -168,6 +193,8 @@ function validateTexts(def: Pick<AlgorithmDefinition, 'name' | 'inputSpec'>, tex
     const r = validateTextField(texts[i], field);
     if (!r.ok) return { ok: false, canSortCopy: false, message: r.message };
   }
+  const range = textRangeProblem(def.inputSpec, texts);
+  if (range) return { ok: false, canSortCopy: false, message: range.message };
   return { ok: true };
 }
 
@@ -180,7 +207,10 @@ export function validateTextDraft(def: Pick<AlgorithmDefinition, 'inputSpec'>, d
     const r = validateTextField(drafts[i] ?? '', field);
     if (!r.ok) return { ok: false, field: i, message: r.message };
   }
-  return { ok: true, texts: fields.map((_, i) => drafts[i] ?? '') };
+  const texts = fields.map((_, i) => drafts[i] ?? '');
+  const range = textRangeProblem(def.inputSpec, texts);
+  if (range) return { ok: false, ...range };
+  return { ok: true, texts };
 }
 
 /** Index i such that a[i-1] > a[i], or -1 when the array is non-decreasing. */

@@ -100,6 +100,21 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
   'tree-preorder': TREE_TEST_INPUTS,
   'tree-postorder': TREE_TEST_INPUTS,
   'tree-level-order': TREE_TEST_INPUTS,
+  // Print in Range (BST): the example, a narrow range, the whole tree, low = high, below and above every value,
+  // negatives, a skewed tree, one node and the empty tree
+  'bst-print-in-range': [
+    ['[8, 5, 12, 3, 6, 10, 14]', '5', '12'],
+    ['[8, 5, 12, 3, 6, 10, 14]', '9', '11'],
+    ['[8, 5, 12, 3, 6, 10, 14]', '-999', '999'],
+    ['[8, 5, 12, 3, 6, 10, 14]', '6', '6'],
+    ['[8, 5, 12, 3, 6, 10, 14]', '-5', '1'],
+    ['[8, 5, 12, 3, 6, 10, 14]', '20', '30'],
+    ['[-5, -10, 0, -12, -7, null, 3]', '-8', '-1'],
+    ['[1, null, 2, null, 3, null, 4]', '2', '3'],
+    ['[7]', '7', '7'],
+    ['[7]', '1', '2'],
+    ['[]', '1', '5'],
+  ],
   'valid-palindrome-ii': [['racecar'], ['abca'], ['cbbcc'], ['abc'], ['a'], ['aa'], ['ab'], ['deeee'], ['eeccccbebaeeabebccceea'], ['ebcbbececabbacecbbcbe']],
 };
 
