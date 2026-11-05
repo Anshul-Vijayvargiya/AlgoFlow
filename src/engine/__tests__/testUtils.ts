@@ -100,6 +100,17 @@ export const TEXT_INPUTS: Record<string, string[][]> = {
   'tree-preorder': TREE_TEST_INPUTS,
   'tree-postorder': TREE_TEST_INPUTS,
   'tree-level-order': TREE_TEST_INPUTS,
+  // Root to Leaf Paths: the traversals' trees, plus the example, a lone left / right child, skewed trees, duplicates
+  'tree-root-to-leaf-paths': [
+    ...TREE_TEST_INPUTS,
+    ['[1, 2, 3, 4, 5, 6, 7]'],
+    ['[1, 2]'],
+    ['[1, null, 2]'],
+    ['[1, 2, null, 3, null, 4, null, 5]'],
+    ['[1, null, 2, null, 3, null, 4, null, 5]'],
+    ['[2, 2, 2, 2, null, null, 2]'],
+    ['[-1, -2, -3, null, -4]'],
+  ],
   // Print in Range (BST): the example, a narrow range, the whole tree, low = high, below and above every value,
   // negatives, a skewed tree, one node and the empty tree
   'bst-print-in-range': [

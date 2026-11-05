@@ -84,7 +84,8 @@ export type AlgorithmId =
   | 'print-subarrays'
   | 'build-bst'
   | 'build-bst-recursive'
-  | 'bst-print-in-range';
+  | 'bst-print-in-range'
+  | 'tree-root-to-leaf-paths';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -371,6 +372,28 @@ export interface TreeView {
   readonly build?: TreeBuildView;
   /** Print in Range (BST) only: the range, what each node turned out to be, and the recursive calls in progress */
   readonly range?: TreeRangeView;
+  /** Root to Leaf Paths only: the path being built, the paths found and the recursive calls in progress */
+  readonly paths?: TreePathsView;
+}
+
+/** Root to Leaf Paths: the DFS with backtracking, as each step leaves it. */
+export interface TreePathsView {
+  /** the current path, root first (the nodes whose values are in `path`) */
+  readonly path: readonly string[];
+  /** the root-to-leaf paths saved so far, in the order found (left to right), each root first */
+  readonly completed: readonly (readonly string[])[];
+  /** nodes whose call has finished (their value has been removed from the path again) */
+  readonly finished: readonly string[];
+  /** the dfs(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly TreePathCall[];
+}
+
+/** One dfs(node, path, paths) call. */
+export interface TreePathCall {
+  /** the subtree this call works on: its root, or null for an empty child (the call returns at once) */
+  readonly node: string | null;
+  /** what the caller passed: the tree's root, or its node's left / right child */
+  readonly via: 'root' | 'left' | 'right';
 }
 
 /**

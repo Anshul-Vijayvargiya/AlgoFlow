@@ -691,6 +691,21 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'insert-right': /parent(->|\.)right = (newNode|new TreeNode|TreeNode)\(value\)/,
     return: /^\s*return root;?$/,
   },
+  'tree-root-to-leaf-paths': {
+    init: /int path\[100\];|vector<vector<int>> paths;|List<List<Integer>> paths = new ArrayList|^\s*paths = \[\]$/,
+    'call-root': /^\s*dfs\(root, path, (&len, paths, sizes, &count|paths)\);?\s*$/,
+    'check-null': /if \(?node (== (NULL|nullptr|null)|is None)\)?/,
+    'return-null': /^\s*return;?\s*$/,
+    add: /path\[\(\*len\)\+\+\] = node->val|path\.(push_back|add|append)\(node(->|\.)val\)/,
+    'check-leaf': /if \(?node(->|\.)left (== (NULL|nullptr|null)|is None) (&&|and) node(->|\.)right (== (NULL|nullptr|null)|is None)\)?/,
+    save: /paths\[\*count\] = malloc|paths\.push_back\(path\)|paths\.add\(new ArrayList<>\(path\)\)|paths\.append\(path\.copy\(\)\)/,
+    'recurse-left': /^\s*dfs\(node(->|\.)left, path, /,
+    'left-returned': /^\s*dfs\(node(->|\.)left, path, /,
+    'recurse-right': /^\s*dfs\(node(->|\.)right, path, /,
+    'right-returned': /^\s*dfs\(node(->|\.)right, path, /,
+    backtrack: /\(\*len\)--|path\.pop_back\(\)|path\.remove\(path\.size\(\) - 1\)|path\.pop\(\)/,
+    return: /^\s*return (count|paths);?\s*$/,
+  },
   'bst-print-in-range': {
     // the first call and the end of the whole walk are the function itself
     'call-root': /\b(void )?print_?[Ii]n_?[Rr]ange\(.*\bnode, int low, int high\)|def print_in_range\(node, low, high\):/,

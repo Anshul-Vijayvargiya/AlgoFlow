@@ -417,6 +417,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'tree-root-to-leaf-paths',
+    name: 'Root to Leaf Paths',
+    category: 'TREES',
+    subtitle: 'Every path from the root to a leaf — DFS with backtracking.',
+    implemented: true,
+  },
+  {
     id: 'build-bst',
     name: 'Build a Binary Search Tree',
     category: 'TREES',

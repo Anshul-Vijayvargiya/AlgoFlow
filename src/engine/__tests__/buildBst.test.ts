@@ -219,7 +219,9 @@ describe('Build a BST — input and integration', () => {
       expect.objectContaining({ name: 'Build a Binary Search Tree', category: 'TREES', implemented: true }),
     ]);
     const order = ALGORITHM_NAV.map(a => a.id);
-    expect(order.indexOf('build-bst')).toBe(order.indexOf('tree-level-order') + 1);
+    // the general binary-tree algorithms (the traversals, then Root to Leaf Paths) come first, then the BST ones
+    expect(order.indexOf('tree-root-to-leaf-paths')).toBe(order.indexOf('tree-level-order') + 1);
+    expect(order.indexOf('build-bst')).toBe(order.indexOf('tree-root-to-leaf-paths') + 1);
     expect(bst.complexity).toMatchObject({ average: 'O(n log n)', worst: 'O(n²)', space: 'O(n)' });
     expect(bst.description).toMatch(/AVL and Red-Black/);
     expect(bst.defaultInput).toEqual([50, 30, 70, 20, 40, 60, 80]);

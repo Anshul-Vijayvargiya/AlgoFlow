@@ -21,7 +21,8 @@ const COMPACT_ROW = 46;
 
 /**
  * traversals: current, visited, waiting, unvisited; building a BST: current, path, inserted, duplicate, unvisited;
- * Print in Range: current, visited (printed), outside, pruned, waiting (its call is in progress), unvisited
+ * Print in Range: current, visited (printed), outside, pruned, waiting (its call is in progress), unvisited;
+ * Root to Leaf Paths: current, path (on the current path), visited (explored and backtracked), unvisited
  */
 type NodeState = 'current' | 'visited' | 'waiting' | 'unvisited' | 'path' | 'inserted' | 'duplicate' | 'outside' | 'pruned';
 
@@ -49,9 +50,22 @@ const STATE_TEXT: Record<NodeState, string> = {
   outside: 'checked: outside the range, not printed',
   pruned: 'skipped: its subtree cannot hold a value in range',
 };
-/** building a BST, a node outside the search is simply part of the tree; in a range walk a visited node was printed */
-const stateText = (s: NodeState, building: boolean, ranging = false) =>
-  building && s === 'unvisited' ? 'in the tree' : ranging && s === 'visited' ? 'printed' : ranging && s === 'waiting' ? 'its call is waiting' : STATE_TEXT[s];
+/**
+ * building a BST, a node outside the search is simply part of the tree; in a range walk a visited node was printed;
+ * finding root-to-leaf paths, a path node is on the current path and a visited one has been explored and backtracked
+ */
+const stateText = (s: NodeState, building: boolean, ranging = false, pathing = false) =>
+  building && s === 'unvisited'
+    ? 'in the tree'
+    : ranging && s === 'visited'
+      ? 'printed'
+      : ranging && s === 'waiting'
+        ? 'its call is waiting'
+        : pathing && s === 'path'
+          ? 'on the current path'
+          : pathing && s === 'visited'
+            ? 'explored and backtracked'
+            : STATE_TEXT[s];
 
 const ordinal = (k: number) => `${k}${k % 10 === 1 && k % 100 !== 11 ? 'st' : k % 10 === 2 && k % 100 !== 12 ? 'nd' : k % 10 === 3 && k % 100 !== 13 ? 'rd' : 'th'}`;
 
@@ -69,6 +83,14 @@ function nodeStates(view: TreeView): Record<string, NodeState> {
         n.id,
         n.id === build.inserted ? 'inserted' : n.id === build.duplicate ? 'duplicate' : n.id === view.current ? 'current' : path.has(n.id) ? 'path' : 'unvisited',
       ])
+    );
+  }
+  const paths = view.paths;
+  if (paths) {
+    const onPath = new Set(paths.path);
+    const finished = new Set(paths.finished);
+    return Object.fromEntries(
+      view.nodes.map(n => [n.id, n.id === view.current ? 'current' : onPath.has(n.id) ? 'path' : finished.has(n.id) ? 'visited' : 'unvisited'])
     );
   }
   const range = view.range;
@@ -114,6 +136,9 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
   const onPath = build ? new Set(build.path) : null;
   // Print in Range: the range, the nodes skipped by pruning and the calls in progress
   const range = view.range;
+  // Root to Leaf Paths: the current path, the paths found and the calls in progress
+  const paths = view.paths;
+  const onCurrentPath = paths ? new Set(paths.path) : null;
   // Building a BST: the empty child the value goes into, drawn as a dashed node half a column beside its parent. (A
   // missing left child's inorder neighbour on that side is an ancestor, higher up, so nothing is drawn there.)
   const slot = build?.slot && build.slot.parent !== null && build.index !== null ? { parent: build.slot.parent, side: build.slot.side, value: build.values[build.index] } : null;
@@ -166,9 +191,12 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
                   // traversals: the edges into visited nodes; building: the edges the value has walked down
                   const reached = onPath
                     ? onPath.has(n.id) && (onPath.has(child) || child === build!.inserted)
-                    : range
-                      ? ['visited', 'current', 'outside', 'waiting'].includes(states[child])
-                      : states[child] === 'visited' || states[child] === 'current';
+                    : onCurrentPath
+                      ? // the edges along the current path, down to the node being visited
+                        onCurrentPath.has(n.id) && (onCurrentPath.has(child) || child === view.current)
+                      : range
+                        ? ['visited', 'current', 'outside', 'waiting'].includes(states[child])
+                        : states[child] === 'visited' || states[child] === 'current';
                   // Print in Range: the edge into a pruned subtree is dashed (never walked)
                   const cut = range !== undefined && states[child] === 'pruned';
                   return [
@@ -259,7 +287,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
           )}
           {view.nodes.map(n => (
             <li key={n.id}>
-              Node {n.value}: {stateText(states[n.id], building, Boolean(range))}
+              Node {n.value}: {stateText(states[n.id], building, Boolean(range), Boolean(paths))}
               {order.has(n.id) ? ` (${ordinal(order.get(n.id)!)} visited)` : ''}
               {pointersAt.has(n.id) ? `, ${pointersAt.get(n.id)!.join(' and ')} points here` : ''}; left child {n.left ? value(n.left) : 'none'}, right child{' '}
               {n.right ? value(n.right) : 'none'}.
@@ -341,6 +369,42 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
               </p>
             </>
           )}
+          {paths && (
+            <>
+              <p data-testid="tree-current-path" data-path={paths.path.map(value).join(',')} className="text-slate-300">
+                <span className="text-slate-400">current path: </span>
+                <span className="font-bold text-sky-200">[{paths.path.map(value).join(', ')}]</span>
+              </p>
+              {/* the dfs calls in progress, outermost first; a deep stack scrolls with the running call in view */}
+              <div className="flex flex-col gap-1" data-testid="tree-calls" data-depth={paths.calls.length}>
+                <span className="text-slate-400">call stack (outermost first):</span>
+                <div tabIndex={0} role="region" aria-label="Call stack" className="max-h-44 overflow-y-auto flex flex-col-reverse rounded-md">
+                  <ol aria-label={`Calls in progress: ${paths.calls.length || 'none'}`} className="flex flex-col gap-0.5">
+                    {paths.calls.length === 0 && <li className="text-slate-500">no call in progress</li>}
+                    {paths.calls.map((f, k) => {
+                      const active = k === paths.calls.length - 1;
+                      return (
+                        <li
+                          key={k}
+                          data-frame={k}
+                          data-frame-status={active ? 'active' : 'waiting'}
+                          data-frame-node={f.node ?? 'null'}
+                          data-frame-via={f.via}
+                          style={{ marginLeft: `${Math.min(k, 8) * 10}px` }}
+                          className={`w-fit px-1.5 py-0.5 rounded border ${active ? 'bg-amber-500/20 border-amber-400 text-amber-200 font-bold' : 'bg-slate-900/80 border-slate-700 text-slate-300'}`}
+                        >
+                          {k > 0 && <span aria-hidden="true">└─ </span>}
+                          dfs({f.via === 'root' ? 'root' : `node.${f.via}`} = {f.node === null ? 'null' : value(f.node)})
+                          {f.node === null && <span className="text-amber-300"> — empty child</span>}
+                          {!active && <span className="text-slate-500"> (waiting)</span>}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </div>
+            </>
+          )}
           {build?.calls && (
             // the recursive build: the insert calls in progress, outermost first. A deep stack scrolls, and starts
             // scrolled to its end (column-reverse) so the running call is always in view.
@@ -382,7 +446,26 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ currentStep, ste
               </div>
             </div>
           )}
-          {build ? (
+          {paths ? (
+            // the root-to-leaf paths found so far, in the order found (left to right)
+            <div className="flex flex-col gap-1" data-testid="tree-paths" data-count={paths.completed.length}>
+              <span className="text-slate-400">paths found:</span>
+              <ol aria-label={`Paths found: ${paths.completed.length ? paths.completed.map(p => p.map(value).join(' → ')).join('; ') : 'none yet'}`} className="flex flex-col gap-1">
+                {paths.completed.length === 0 && <li className="text-slate-500">none yet</li>}
+                {paths.completed.map((p, k) => (
+                  <li
+                    key={k}
+                    data-saved-path={p.map(value).join(',')}
+                    className={`w-fit px-1.5 py-0.5 rounded-md border font-bold ${
+                      k === paths.completed.length - 1 && p.at(-1) === view.current ? 'bg-amber-500/20 border-amber-400 text-amber-200' : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                    }`}
+                  >
+                    [{p.map(value).join(', ')}]
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : build ? (
             // building a BST: the input in insertion order — inserted, skipped as a duplicate, current, still to come
             <div className="flex flex-wrap items-center gap-2" data-testid="tree-input">
               <span className="text-slate-400">insert in order:</span>

@@ -64,6 +64,7 @@ export const TREE_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; h
   'tree-preorder': { id: 'tree-preorder', label: 'Preorder Traversal', heading: 'Preorder Traversal' },
   'tree-postorder': { id: 'tree-postorder', label: 'Postorder Traversal', heading: 'Postorder Traversal' },
   'tree-level-order': { id: 'tree-level-order', label: 'Level Order Traversal', heading: 'Level Order Traversal' },
+  'tree-root-to-leaf-paths': { id: 'tree-root-to-leaf-paths', label: 'Root to Leaf Paths', heading: 'Root to Leaf Paths' },
   // drawn as a tree, but built from an array (the array input form)
   'build-bst': { id: 'build-bst', label: 'Build a Binary Search Tree', heading: 'Build a Binary Search Tree' },
   'build-bst-recursive': { id: 'build-bst-recursive', label: 'Build a Binary Search Tree (Recursive)', heading: 'Build a Binary Search Tree (Recursive)' },

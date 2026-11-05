@@ -64,6 +64,7 @@ import { treeInorderDefinition } from './algorithms/tree/inorder';
 import { treePreorderDefinition } from './algorithms/tree/preorder';
 import { treePostorderDefinition } from './algorithms/tree/postorder';
 import { treeLevelOrderDefinition } from './algorithms/tree/levelOrder';
+import { treeRootToLeafPathsDefinition } from './algorithms/tree/rootToLeafPaths';
 
 import { removeDuplicatesSortedDefinition } from './algorithms/removeDuplicatesSorted';
 import { maximumSubarrayDefinition } from './algorithms/maximumSubarray';
@@ -129,6 +130,7 @@ register(treeInorderDefinition);
 register(treePreorderDefinition);
 register(treePostorderDefinition);
 register(treeLevelOrderDefinition);
+register(treeRootToLeafPathsDefinition);
 
 register(removeDuplicatesSortedDefinition);
 register(maximumSubarrayDefinition);
