@@ -152,8 +152,10 @@ function runExecution(id: AlgorithmId, arr: number[], target: number | null, ind
 const randomInt = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
 
 /** random values from 10 to 94, or from the algorithm's own range (inputSpec.randomValues) */
-function randomArray(size: number, ascending: boolean, [min, max]: readonly [number, number] = [10, 94]): number[] {
+function randomArray(size: number, ascending: boolean, [min, max]: readonly [number, number] = [10, 94], distinct = false): number[] {
   const arr = Array.from({ length: size }, () => randomInt(min, max));
+  // distinct: drawn again until no value repeats (the range is much wider than the sizes such an algorithm allows)
+  while (distinct && new Set(arr).size < size) arr[arr.findIndex((v, i) => arr.indexOf(v) !== i)] = randomInt(min, max);
   return ascending ? sortedCopy(arr) : arr;
 }
 
@@ -260,7 +262,8 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       // named numbers (n; a, b) are each algorithm's own: kept only between algorithms drawn the same way
       const fromNumbers = takesNumbers(getAlgorithmDefinition(s.selectedAlgorithm));
       // (a bit algorithm's fields differ from the next one's: a, b; n, i; n, i, bit; n, l, r: it always loads its own values)
-      const sameKindOfInput = toKind !== 'bits' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
+      // (Subsets takes few, distinct values, so another algorithm's array may not fit: it loads its own example too)
+      const sameKindOfInput = toKind !== 'bits' && toKind !== 'decision-tree' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
       // a second array is the algorithm's own: kept when switching between algorithms that take one, else its example
       const exampleSecond = spec?.secondArray ? [...spec.secondArray.defaultValue] : null;
       if (s.inputSource === 'custom' && sameKindOfInput) {
@@ -371,7 +374,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       commit(
         s.selectedAlgorithm,
         // values from the algorithm's own range when it declares one (inputSpec.randomValues), for both arrays
-        randomArray(m, sorted, spec?.randomValues),
+        randomArray(m, sorted, spec?.randomValues, spec?.distinctValues),
         numberSpec ? (s.target ?? numberSpec.defaultValue) : s.target,
         // a position is kept when the new list has it; otherwise it moves to the nearest valid one
         spec?.index ? Math.max(0, Math.min(s.index ?? spec.index.defaultValue, lastListIndex(spec.index.bound, n))) : s.index,

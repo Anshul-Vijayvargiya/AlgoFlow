@@ -61,7 +61,8 @@ export const ExecutionControls: React.FC = () => {
   const isNumbers = takesNumbers(def);
   // text and tree algorithms take strings: Randomize picks one of the algorithm's examples, and there is no size either
   const isText = takesTexts(def);
-  const sizeBounds = isList && def ? { min: def.inputSpec?.index?.bound === 'delete' ? 1 : 0, max: maxInputLength(def) } : undefined;
+  // an array algorithm with its own limit (Subsets) offers only the sizes it accepts, too
+  const sizeBounds = (isList || def?.inputSpec?.maxLength !== undefined) && def ? { min: def.inputSpec?.index?.bound === 'delete' ? 1 : 0, max: maxInputLength(def) } : undefined;
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;

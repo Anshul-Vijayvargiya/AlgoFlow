@@ -156,7 +156,7 @@ const InputPanelForm: React.FC = () => {
             ? `${arrayLabel} and ${spec.secondArray.label}: up to ${MAX_ARRAY_SIZE} whole numbers together`
             : spec?.minLength
               ? `${spec.minLength} to ${MAX_ARRAY_SIZE} whole numbers`
-              : `Up to ${MAX_ARRAY_SIZE} whole numbers`}{' '}
+              : `Up to ${spec?.maxLength ?? MAX_ARRAY_SIZE}${spec?.distinctValues ? ' distinct' : ''} whole numbers`}{' '}
           ({spec?.minValue ?? MIN_VALUE} to {MAX_VALUE}), separated by commas
           {spec?.sortedRequired ? (spec?.secondArray ? '; each must be sorted ascending' : '; must be sorted ascending') : ''}.
           {spec?.target ? ` ${spec.target.hint}.` : ''}

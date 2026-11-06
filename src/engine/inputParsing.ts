@@ -256,6 +256,7 @@ const nodes = (n: number) => `${n} node${n === 1 ? '' : 's'}`;
 
 /** The longest input an algorithm accepts: 16 array values, 10 list nodes, or 9 when the operation adds a node. */
 export function maxInputLength(def: Pick<AlgorithmDefinition, 'inputSpec' | 'visual'>): number {
+  if (def.inputSpec?.maxLength !== undefined) return def.inputSpec.maxLength;
   if (def.visual !== 'linked-list') return MAX_ARRAY_SIZE;
   return def.inputSpec?.addsNode ? MAX_LIST_SIZE - 1 : MAX_LIST_SIZE;
 }
@@ -320,8 +321,19 @@ export function validateAlgorithmInput(
   if (takesNumbers(def)) return validateNumbers(def, array);
   if (def.visual === 'linked-list') {
     if (array.length > maxInputLength(def)) return { ok: false, canSortCopy: false, message: tooManyNodesMessage(def, array.length) };
-  } else if (array.length > MAX_ARRAY_SIZE) {
-    return { ok: false, canSortCopy: false, message: `Too many values (${array.length}). The visualizer supports at most ${MAX_ARRAY_SIZE}.` };
+  } else if (array.length > maxInputLength(def)) {
+    return { ok: false, canSortCopy: false, message: `Too many values (${array.length}). The visualizer supports at most ${maxInputLength(def)}.` };
+  }
+  if (spec?.distinctValues) {
+    const repeat = array.findIndex((v, i) => array.indexOf(v) !== i);
+    if (repeat !== -1) {
+      return {
+        ok: false,
+        canSortCopy: false,
+        field: 'array',
+        message: `${def.name} needs distinct values, but ${array[repeat]} appears more than once (values ${array.indexOf(array[repeat]) + 1} and ${repeat + 1}).`,
+      };
+    }
   }
   if (spec?.minLength !== undefined && array.length < spec.minLength) {
     return {

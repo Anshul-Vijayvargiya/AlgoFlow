@@ -546,6 +546,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Place N queens so none attack each other — row by row, backtracking.',
     implemented: true,
   },
+  {
+    id: 'backtracking-subsets',
+    name: 'Subsets (Power Set)',
+    category: 'BACKTRACKING',
+    subtitle: 'Every subset of an array: include or skip each element, backtracking in between.',
+    implemented: true,
+  },
   // ─── FUNDAMENTALS (implemented; listed last so the order above is unchanged) ───
   {
     id: 'bitwise-and',

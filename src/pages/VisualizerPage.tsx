@@ -19,6 +19,7 @@ import { TextInputPanel } from '../components/visualizer/TextInputPanel';
 import { TreeVisualizer } from '../components/visualizer/TreeVisualizer';
 import { BoardVisualizer } from '../components/visualizer/BoardVisualizer';
 import { BitVisualizer } from '../components/visualizer/BitVisualizer';
+import { SubsetsVisualizer } from '../components/visualizer/SubsetsVisualizer';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
@@ -233,6 +234,7 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'tree' && <TreeVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'board' && <BoardVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'bits' && <BitVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'decision-tree' && <SubsetsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"
@@ -248,7 +250,7 @@ export const VisualizerPage: React.FC = () => {
 
                   {/* Array / target input, the linked-list form, a number algorithm's values, or the strings of a text or tree algorithm */}
                   {/* arrays, and a tree built from an array (Build a BST), take the array form; the traversals take their tree as text */}
-                  {visual === 'array' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : takesNumbers(def) ? <NumberInputPanel /> : <TextInputPanel />}
+                  {visual === 'array' || visual === 'decision-tree' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : takesNumbers(def) ? <NumberInputPanel /> : <TextInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

@@ -92,6 +92,7 @@ import { bitUpdateIthDefinition } from './algorithms/bits/bitUpdateIth';
 import { bitClearLastIDefinition } from './algorithms/bits/bitClearLastI';
 import { bitClearRangeDefinition } from './algorithms/bits/bitClearRange';
 import { nQueensDefinition } from './algorithms/backtracking/nQueens';
+import { subsetsDefinition } from './algorithms/backtracking/subsets';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,7 @@ register(bstPrintInRangeDefinition);
 register(treeValidateBstDefinition);
 register(bstMirrorDefinition);
 register(nQueensDefinition);
+register(subsetsDefinition);
 register(bitwiseAndDefinition);
 register(bitwiseOrDefinition);
 register(bitwiseXorDefinition);

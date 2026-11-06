@@ -102,7 +102,8 @@ export type AlgorithmId =
   | 'bit-clear-ith'
   | 'bit-update-ith'
   | 'bit-clear-last-i'
-  | 'bit-clear-range';
+  | 'bit-clear-range'
+  | 'backtracking-subsets';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -284,6 +285,12 @@ export interface ExecutionStep {
    * bit algorithm has no array.
    */
   bits?: BitView;
+
+  /**
+   * Subsets only (visual: 'decision-tree'): the include / exclude tree, the current subset, the calls in progress and the
+   * subsets saved so far. `state` is empty: the input array is shown by the visualizer itself.
+   */
+  subsets?: SubsetsView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -691,6 +698,10 @@ export interface AlgorithmInputSpec {
   sortedRequired?: boolean;
   /** Array algorithms: the fewest values the algorithm accepts (Container With Most Water needs two lines) */
   minLength?: number;
+  /** Array algorithms: the most values the algorithm accepts, when it is fewer than the visualizer's maximum */
+  maxLength?: number;
+  /** Array algorithms: no value may appear twice (Subsets: a repeat would give the same subset twice) */
+  distinctValues?: boolean;
   /** Array algorithms: the smallest value allowed (heights cannot be negative: 0) */
   minValue?: number;
   /** What the main array field is called when "Array" would be ambiguous (Merge Sorted Array: "nums1") */
@@ -780,7 +791,51 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree';
+
+/**
+ * Subsets: the recursion as one step leaves it. A node of the decision tree is named by its path from the root: '' is the
+ * root, then I (include) or E (exclude) for each element decided, so 'IE' is dfs(2) after including nums[0] and skipping
+ * nums[1]. The whole tree follows from the array's length, so only what has happened is stored.
+ */
+export interface SubsetsView {
+  readonly nums: readonly number[];
+  /** the index of the element this step decides on; null at the start and the end, and when all are decided */
+  readonly index: number | null;
+  /** the elements chosen so far */
+  readonly current: readonly number[];
+  /** the value this step removed from current (backtracking) */
+  readonly removed?: number;
+  /** the value this step added to current */
+  readonly added?: number;
+  /** the dfs(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly SubsetsCall[];
+  /** the node of the running call; null before the first call and after the last */
+  readonly node: string | null;
+  /** nodes whose call has returned */
+  readonly finished: readonly string[];
+  /** the subsets saved so far, in order; each is a copy, never changed */
+  readonly subsets: readonly (readonly number[])[];
+  /** for each saved subset, the node it was saved for */
+  readonly savedAt: readonly string[];
+  /** dfs calls made so far: 2^(n+1) - 1 in the end */
+  readonly callsMade: number;
+  /** elements copied into saved subsets so far: n × 2^(n-1) in the end. A separate cost from the calls */
+  readonly elementsCopied: number;
+  /** the final answer, on the last step only */
+  readonly result?: { readonly text: string };
+}
+
+/** One dfs(nums, i, current, result) call. */
+export interface SubsetsCall {
+  readonly i: number;
+  /** the node of the decision tree this call is */
+  readonly node: string;
+  /** how its caller got here */
+  readonly via: 'root' | 'include' | 'exclude';
+  /** set on the step the call returns */
+  readonly returning?: boolean;
+}
 
 /**
  * What a bit does at this step: left alone, picked out by the operation, written as 1 or as 0, inverted, moved by a
@@ -856,7 +911,8 @@ export interface AlgorithmDefinition {
    * then carries `list`) or 'numbers' (named value cards; every step then carries `numbers`, and the input is the
    * values declared by inputSpec.numbers). 'text' and 'tree' take strings (inputSpec.texts); 'board' (N-Queens: an
    * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers', as does
-   * 'bits' (32-bit rows; every step then carries `bits`). Existing
+   * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets: every step then carries `subsets`)
+   * takes the array form. Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

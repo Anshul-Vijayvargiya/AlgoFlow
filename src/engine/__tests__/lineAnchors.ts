@@ -813,6 +813,18 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     apply: /^\s*(int32_t |int )?result = .*& mask\)*;?$/,
     done: /^\s*return result;?$/,
   },
+  'backtracking-subsets': {
+    start: /result\.(push_back\(\{\}\)|add\(new ArrayList<>\(\)\))|sizes\[count\+\+\] = 0|result = \[\[\]\]/,
+    'call-root': /^\s*dfs\(nums, (n, )?0, /,
+    'check-end': /^\s*if \(?i == (n|\(int\)nums\.size\(\)|nums\.length|len\(nums\))\)?/,
+    'return-end': /^\s*return;?$/,
+    include: /current\[\(\*size\)\+\+\] = nums\[i\]|current\.(push_back|add|append)\(nums\[i\]\)/,
+    save: /memcpy\(result\[\*count\]|result\.push_back\(current\)|result\.add\(new ArrayList<>\(current\)\)|result\.append\(current\[:\]\)/,
+    'recurse-include': /^\s*dfs\(nums, (n, )?i \+ 1, current, (size, )?result(, sizes, count)?\);?$/,
+    pop: /\(\*size\)--|current\.(pop_back\(\)|remove\(current\.size\(\) - 1\)|pop\(\))/,
+    'recurse-exclude': /^\s*dfs\(nums, (n, )?i \+ 1, current, (size, )?result(, sizes, count)?\);?\s+(\/\/|#) exclude nums\[i\]$/,
+    done: /^\s*return (count|result);?$/,
+  },
   'bst-balance': {
     // the wrapper's calls start stages 1 and 2, its return is stage 3; a recursive call and its link share a line
     'call-inorder': /^\s*inorder\(root, values(, &count)?\);?$/,

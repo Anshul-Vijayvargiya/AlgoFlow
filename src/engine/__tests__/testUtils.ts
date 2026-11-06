@@ -207,7 +207,7 @@ export function hasDefaultRun(d: AlgorithmDefinition, input: readonly number[]):
   // negative), run only on input the app would accept
   // a text algorithm or tree traversal takes no array: called without params it runs on its default example
   if (takesTexts(d)) return input.length === 0;
-  if (takesNumbers(d) || d.inputSpec?.minLength !== undefined || d.inputSpec?.minValue !== undefined) {
+  if (takesNumbers(d) || d.inputSpec?.minLength !== undefined || d.inputSpec?.minValue !== undefined || d.inputSpec?.maxLength !== undefined || d.inputSpec?.distinctValues) {
     return validateAlgorithmInput(d, [...input], null).ok;
   }
   const index = d.inputSpec?.index;
