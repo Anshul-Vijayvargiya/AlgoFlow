@@ -60,6 +60,7 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   'backtracking-n-queens': { id: 'backtracking-n-queens', label: 'N-Queens Problem', heading: 'N-Queens Problem' },
   // takes an array, but is drawn as a decision tree
   'backtracking-subsets': { id: 'backtracking-subsets', label: 'Subsets (Power Set)', heading: 'Subsets (Power Set)' },
+  'backtracking-permutations': { id: 'backtracking-permutations', label: 'Find All Permutations', heading: 'Find All Permutations' },
 };
 
 /** Bit manipulation (visual 'bits'): their input is named values, like the number algorithms, drawn as 32-bit rows. */

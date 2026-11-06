@@ -553,6 +553,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Every subset of an array: include or skip each element, backtracking in between.',
     implemented: true,
   },
+  {
+    id: 'backtracking-permutations',
+    name: 'Find All Permutations',
+    category: 'BACKTRACKING',
+    subtitle: 'Every ordering of an array: pick each unused element in turn, backtracking in between.',
+    implemented: true,
+  },
   // ─── FUNDAMENTALS (implemented; listed last so the order above is unchanged) ───
   {
     id: 'bitwise-and',

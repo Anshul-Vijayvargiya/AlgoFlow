@@ -103,7 +103,8 @@ export type AlgorithmId =
   | 'bit-update-ith'
   | 'bit-clear-last-i'
   | 'bit-clear-range'
-  | 'backtracking-subsets';
+  | 'backtracking-subsets'
+  | 'backtracking-permutations';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -291,6 +292,12 @@ export interface ExecutionStep {
    * subsets saved so far. `state` is empty: the input array is shown by the visualizer itself.
    */
   subsets?: SubsetsView;
+
+  /**
+   * Find All Permutations only (visual: 'decision-tree'): the decision tree, used[], the current permutation, the calls
+   * in progress and the permutations saved so far. `state` is empty: the input array is shown by the visualizer itself.
+   */
+  permutations?: PermutationsView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -826,6 +833,55 @@ export interface SubsetsView {
   readonly result?: { readonly text: string };
 }
 
+/**
+ * Find All Permutations: the recursion as one step leaves it. A node of the decision tree is named by the input indices
+ * chosen to reach it: '' is the root, and '20' is the call after choosing nums[2], then nums[0]. It has one child per
+ * index not in its name, so the whole tree follows from the array's length and only what has happened is stored.
+ */
+export interface PermutationsView {
+  readonly nums: readonly number[];
+  /** the index of the element this step looks at; null when it looks at none */
+  readonly index: number | null;
+  /** used[i]: nums[i] is in current */
+  readonly used: readonly boolean[];
+  /** the elements chosen so far, in order */
+  readonly current: readonly number[];
+  /** the value this step pushed onto current */
+  readonly added?: number;
+  /** the value this step popped from current (backtracking) */
+  readonly removed?: number;
+  /** the value this step found already used, and skipped */
+  readonly skipped?: number;
+  /** the dfs(...) calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly PermutationsCall[];
+  /** the node of the running call; null before the first call and after the last */
+  readonly node: string | null;
+  /** nodes whose call has returned */
+  readonly finished: readonly string[];
+  /** the permutations saved so far, in order; each is a copy, never changed */
+  readonly permutations: readonly (readonly number[])[];
+  /** for each saved permutation, the node it was saved at */
+  readonly savedAt: readonly string[];
+  /** dfs calls made so far */
+  readonly callsMade: number;
+  /** used[i] tests made so far: all n elements, in each call that is not finished */
+  readonly usedChecks: number;
+  /** elements copied into saved permutations so far: n × n! in the end */
+  readonly elementsCopied: number;
+  /** the final answer, on the last step only */
+  readonly result?: { readonly text: string };
+}
+
+/** One dfs(nums, used, current, result) call of Find All Permutations. Its depth is its place on the stack. */
+export interface PermutationsCall {
+  /** the node of the decision tree this call is */
+  readonly node: string;
+  /** the input index its caller chose; null for the first call */
+  readonly chosen: number | null;
+  /** set on the step the call returns */
+  readonly returning?: boolean;
+}
+
 /** One dfs(nums, i, current, result) call. */
 export interface SubsetsCall {
   readonly i: number;
@@ -911,7 +967,7 @@ export interface AlgorithmDefinition {
    * then carries `list`) or 'numbers' (named value cards; every step then carries `numbers`, and the input is the
    * values declared by inputSpec.numbers). 'text' and 'tree' take strings (inputSpec.texts); 'board' (N-Queens: an
    * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers', as does
-   * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets: every step then carries `subsets`)
+   * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets and Find All Permutations: every step then carries `subsets` or `permutations`)
    * takes the array form. Existing
    * definitions omit it and are unaffected.
    */

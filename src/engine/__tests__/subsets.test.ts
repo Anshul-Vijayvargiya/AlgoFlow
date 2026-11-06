@@ -298,7 +298,7 @@ describe('Subsets — registration and the listings', () => {
     expect(def).toMatchObject({ id: 'backtracking-subsets', name: 'Subsets (Power Set)', category: 'BACKTRACKING', visual: 'decision-tree' });
     expect(visualKindOf(def)).toBe('decision-tree');
     const nav = ALGORITHM_NAV.filter(a => a.category === 'BACKTRACKING');
-    expect(nav.map(a => a.id)).toEqual(['backtracking-n-queens', 'backtracking-subsets']);
+    expect(nav.map(a => a.id)).toEqual(['backtracking-n-queens', 'backtracking-subsets', 'backtracking-permutations']);
     expect(nav[1]).toMatchObject({ name: def.name, subtitle: def.subtitle, implemented: true });
     expect(def.complexity).toMatchObject({ best: 'O(n × 2^n)', average: 'O(n × 2^n)', worst: 'O(n × 2^n)', space: 'O(n)' });
     expect(def.description).toContain('2^(n+1) - 1 recursive calls');

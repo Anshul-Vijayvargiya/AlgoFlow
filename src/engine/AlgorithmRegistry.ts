@@ -93,6 +93,7 @@ import { bitClearLastIDefinition } from './algorithms/bits/bitClearLastI';
 import { bitClearRangeDefinition } from './algorithms/bits/bitClearRange';
 import { nQueensDefinition } from './algorithms/backtracking/nQueens';
 import { subsetsDefinition } from './algorithms/backtracking/subsets';
+import { permutationsDefinition } from './algorithms/backtracking/permutations';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ register(treeValidateBstDefinition);
 register(bstMirrorDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
+register(permutationsDefinition);
 register(bitwiseAndDefinition);
 register(bitwiseOrDefinition);
 register(bitwiseXorDefinition);

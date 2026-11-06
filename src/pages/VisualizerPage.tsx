@@ -20,6 +20,7 @@ import { TreeVisualizer } from '../components/visualizer/TreeVisualizer';
 import { BoardVisualizer } from '../components/visualizer/BoardVisualizer';
 import { BitVisualizer } from '../components/visualizer/BitVisualizer';
 import { SubsetsVisualizer } from '../components/visualizer/SubsetsVisualizer';
+import { PermutationsVisualizer } from '../components/visualizer/PermutationsVisualizer';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
@@ -234,7 +235,9 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'tree' && <TreeVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'board' && <BoardVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'bits' && <BitVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {/* the two decision trees branch differently: each visualizer draws only the steps it has a view for */}
                     {currentStep && visual === 'decision-tree' && <SubsetsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'decision-tree' && <PermutationsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"
