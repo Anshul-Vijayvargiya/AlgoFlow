@@ -119,13 +119,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onSelect, coll
               </div>
 
               <div className="space-y-0.5">
-                {shownAlgorithms.map(alg => {
+                {shownAlgorithms.map((alg, k) => {
                   const isActive = selectedAlgorithm === alg.id;
                   const isImplemented = alg.implemented;
+                  // a subheading where the category's optional group changes (only Bit Manipulation has groups)
+                  const groupStarts = alg.group !== undefined && alg.group !== shownAlgorithms[k - 1]?.group;
 
                   return (
+                    <React.Fragment key={alg.id}>
+                    {groupStarts && (
+                      <p data-testid="algorithm-group" className="px-3 pt-2 pb-0.5 text-[10px] font-mono font-semibold tracking-wide text-slate-400">
+                        {alg.group}
+                      </p>
+                    )}
                     <button
-                      key={alg.id}
                       onClick={() => handleSelect(alg.id)}
                       title={
                         !isImplemented
@@ -166,6 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onSelect, coll
                         />
                       )}
                     </button>
+                    </React.Fragment>
                   );
                 })}
               </div>

@@ -83,7 +83,17 @@ function validateNumbers(def: Pick<AlgorithmDefinition, 'name' | 'inputSpec'>, v
     const r = parseNumberField(String(values[i]), fields[i]);
     if (!r.ok) return { ok: false, canSortCopy: false, message: r.message };
   }
+  const range = numberRangeProblem(def.inputSpec, values);
+  if (range) return { ok: false, canSortCopy: false, message: range.message };
   return { ok: true };
+}
+
+/** a number algorithm's range (inputSpec.numberRange): low must not be greater than high; reported on the high field */
+function numberRangeProblem(spec: AlgorithmInputSpec | undefined, values: readonly number[]): { field: number; message: string } | null {
+  const range = spec?.numberRange;
+  const fields = spec?.numbers;
+  if (!range || !fields || values[range.low] <= values[range.high]) return null;
+  return { field: range.high, message: `"${fields[range.low].label}" (${values[range.low]}) must not be greater than "${fields[range.high].label}" (${values[range.high]}).` };
 }
 
 export type NumberDraftValidation = { ok: true; values: number[] } | { ok: false; field: number; message: string };
@@ -97,6 +107,8 @@ export function validateNumberDraft(def: Pick<AlgorithmDefinition, 'inputSpec'>,
     if (!r.ok) return { ok: false, field: i, message: r.message };
     values.push(r.value);
   }
+  const range = numberRangeProblem(def.inputSpec, values);
+  if (range) return { ok: false, ...range };
   return { ok: true, values };
 }
 

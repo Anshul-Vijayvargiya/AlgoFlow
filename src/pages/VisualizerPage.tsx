@@ -18,6 +18,7 @@ import { TextVisualizer } from '../components/visualizer/TextVisualizer';
 import { TextInputPanel } from '../components/visualizer/TextInputPanel';
 import { TreeVisualizer } from '../components/visualizer/TreeVisualizer';
 import { BoardVisualizer } from '../components/visualizer/BoardVisualizer';
+import { BitVisualizer } from '../components/visualizer/BitVisualizer';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
@@ -231,6 +232,7 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'text' && <TextVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'tree' && <TreeVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'board' && <BoardVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'bits' && <BitVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"

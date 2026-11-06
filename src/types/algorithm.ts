@@ -13,6 +13,7 @@ export type AlgorithmCategory =
   | 'DP'
   | 'GREEDY'
   | 'BACKTRACKING'
+  | 'BIT_MANIPULATION'
   | 'FUNDAMENTALS';
 
 export type AlgorithmId =
@@ -88,7 +89,20 @@ export type AlgorithmId =
   | 'tree-root-to-leaf-paths'
   | 'tree-validate-bst'
   | 'bst-mirror'
-  | 'bst-balance';
+  | 'bst-balance'
+  | 'bitwise-and'
+  | 'bitwise-or'
+  | 'bitwise-xor'
+  | 'bitwise-not'
+  | 'bitwise-left-shift'
+  | 'bitwise-right-shift'
+  | 'bit-check-even'
+  | 'bit-get-ith'
+  | 'bit-set-ith'
+  | 'bit-clear-ith'
+  | 'bit-update-ith'
+  | 'bit-clear-last-i'
+  | 'bit-clear-range';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -264,6 +278,12 @@ export interface ExecutionStep {
    * the solutions found. `state` is empty: a board algorithm has no array.
    */
   board?: BoardView;
+
+  /**
+   * Bit manipulation only (visual: 'bits'): the 32-bit rows of this step and what each bit is doing. `state` is empty: a
+   * bit algorithm has no array.
+   */
+  bits?: BitView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -713,6 +733,13 @@ export interface AlgorithmInputSpec {
    */
   numbers?: readonly NumberField[];
   /**
+   * Number algorithms: two of the fields (by position) are the ends of a range: low must not be greater than high. A
+   * problem is reported on the high field.
+   */
+  numberRange?: { readonly low: number; readonly high: number };
+  /** Number algorithms: complete inputs (one value per field) that Randomize picks from, instead of random values */
+  numberExamples?: readonly (readonly number[])[];
+  /**
    * Text algorithms (visual: 'text'): the strings the user enters, in order; passed to generateSteps as params.texts
    * (one string per field, exactly as typed). The main input array is always empty.
    */
@@ -753,7 +780,45 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits';
+
+/**
+ * What a bit does at this step: left alone, picked out by the operation, written as 1 or as 0, inverted, moved by a
+ * shift, or not worked out yet (a result still being evaluated bit by bit).
+ */
+export type BitState = 'unchanged' | 'selected' | 'set' | 'cleared' | 'flipped' | 'shifted' | 'pending';
+
+/** One 32-bit value drawn as a row of bits. Position 0 is the rightmost (least significant) bit. */
+export interface BitRow {
+  /** a stable name for the row: a, b, n, mask, result */
+  readonly id: string;
+  /** how the row is labelled: "a", "1 << i", "a & b" */
+  readonly label: string;
+  readonly role: 'input' | 'mask' | 'intermediate' | 'output';
+  /** the bits, read as signed 32-bit two's complement */
+  readonly value: number;
+  /** the state of each position that is not 'unchanged' */
+  readonly states?: Readonly<Record<number, BitState>>;
+  /** this position and the ones above it are not worked out yet: they are drawn as pending */
+  readonly pendingFrom?: number;
+}
+
+/** Bit manipulation: the rows of one step. */
+export interface BitView {
+  /** every row has this many bits */
+  readonly width: 32;
+  /** the expression being evaluated, as the algorithm's formula writes it */
+  readonly operation: string;
+  /** how the values are read, in words */
+  readonly interpretation: string;
+  readonly rows: readonly BitRow[];
+  /** the bit position this step works on */
+  readonly position?: number;
+  /** Shifts: the bits pushed out so far, the ones lost first listed first */
+  readonly discarded?: readonly (0 | 1)[];
+  /** the final answer, on the last step only */
+  readonly result?: { readonly text: string };
+}
 
 /** N-Queens: the board as one step leaves it. Rows and columns count from 0. */
 export interface BoardView {
@@ -790,7 +855,8 @@ export interface AlgorithmDefinition {
    * How the trace is drawn: 'array' (bars, the default when omitted), 'linked-list' (nodes and links; every step
    * then carries `list`) or 'numbers' (named value cards; every step then carries `numbers`, and the input is the
    * values declared by inputSpec.numbers). 'text' and 'tree' take strings (inputSpec.texts); 'board' (N-Queens: an
-   * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers'. Existing
+   * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers', as does
+   * 'bits' (32-bit rows; every step then carries `bits`). Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

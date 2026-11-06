@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { ALGORITHMS, LIST_ALGORITHMS, NUMBER_ALGORITHMS, TEXT_ALGORITHMS, TREE_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
+import { ALGORITHMS, BIT_ALGORITHMS, LIST_ALGORITHMS, NUMBER_ALGORITHMS, TEXT_ALGORITHMS, TREE_ALGORITHMS, type AlgorithmId, type ListParams, type ProgrammingLanguage } from './engineTrace';
 
 export interface BarState {
   index: number;
@@ -198,7 +198,7 @@ export class VisualizerApp {
   }
 
   async selectAlgorithm(id: AlgorithmId) {
-    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id] ?? NUMBER_ALGORITHMS[id] ?? TEXT_ALGORITHMS[id] ?? TREE_ALGORITHMS[id];
+    const { label, heading } = ALGORITHMS[id] ?? LIST_ALGORITHMS[id] ?? NUMBER_ALGORITHMS[id] ?? TEXT_ALGORITHMS[id] ?? TREE_ALGORITHMS[id] ?? BIT_ALGORITHMS[id];
     // labels can hold regex characters ("Sqrt(x)"), so they are matched literally; "Valid Palindrome" must not also
     // match "Valid Palindrome II", nor "Build a Binary Search Tree" its "(Recursive)" variant
     const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])(?! [IVX]+\\b)(?! \\()`);

@@ -259,7 +259,8 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       }
       // named numbers (n; a, b) are each algorithm's own: kept only between algorithms drawn the same way
       const fromNumbers = takesNumbers(getAlgorithmDefinition(s.selectedAlgorithm));
-      const sameKindOfInput = !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
+      // (a bit algorithm's fields differ from the next one's: a, b; n, i; n, i, bit; n, l, r: it always loads its own values)
+      const sameKindOfInput = toKind !== 'bits' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
       // a second array is the algorithm's own: kept when switching between algorithms that take one, else its example
       const exampleSecond = spec?.secondArray ? [...spec.secondArray.defaultValue] : null;
       if (s.inputSource === 'custom' && sameKindOfInput) {
@@ -338,8 +339,13 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
         return;
       }
       if (takesNumbers(def)) {
-        // Randomize: one value per field, from the field's own range (there is no size to choose)
-        const values = (spec?.numbers ?? []).map(f => randomInt(...(f.random ?? [f.min, f.max])));
+        // Randomize: one of the algorithm's own examples, another than the current input, when it has them; otherwise
+        // one value per field, from the field's own range (there is no size to choose)
+        const examples = spec?.numberExamples ?? [];
+        const otherExamples = examples.filter(e => JSON.stringify(e) !== JSON.stringify(s.array));
+        const values = otherExamples.length
+          ? [...otherExamples[randomInt(0, otherExamples.length - 1)]]
+          : (spec?.numbers ?? []).map(f => randomInt(...(f.random ?? [f.min, f.max])));
         const kept = s.inputSource === 'custom' ? { kind: 'replaced-custom' as const, original: s.array } : s.inputNotice?.kind === 'replaced-custom' ? s.inputNotice : null;
         commit(s.selectedAlgorithm, values, null, null, null, 'random', kept);
         return;

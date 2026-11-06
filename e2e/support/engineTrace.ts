@@ -60,6 +60,23 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   'backtracking-n-queens': { id: 'backtracking-n-queens', label: 'N-Queens Problem', heading: 'N-Queens Problem' },
 };
 
+/** Bit manipulation (visual 'bits'): their input is named values, like the number algorithms, drawn as 32-bit rows. */
+export const BIT_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
+  'bitwise-and': { id: 'bitwise-and', label: 'Binary AND', heading: 'Binary AND' },
+  'bitwise-or': { id: 'bitwise-or', label: 'Binary OR', heading: 'Binary OR' },
+  'bitwise-xor': { id: 'bitwise-xor', label: 'Binary XOR', heading: 'Binary XOR' },
+  'bitwise-not': { id: 'bitwise-not', label: "Binary One's Complement", heading: "Binary One's Complement" },
+  'bitwise-left-shift': { id: 'bitwise-left-shift', label: 'Binary Left Shift', heading: 'Binary Left Shift' },
+  'bitwise-right-shift': { id: 'bitwise-right-shift', label: 'Binary Right Shift', heading: 'Binary Right Shift' },
+  'bit-check-even': { id: 'bit-check-even', label: 'Check if Even', heading: 'Check if Even' },
+  'bit-get-ith': { id: 'bit-get-ith', label: 'Get i-th Bit', heading: 'Get i-th Bit' },
+  'bit-set-ith': { id: 'bit-set-ith', label: 'Set i-th Bit', heading: 'Set i-th Bit' },
+  'bit-clear-ith': { id: 'bit-clear-ith', label: 'Clear i-th Bit', heading: 'Clear i-th Bit' },
+  'bit-update-ith': { id: 'bit-update-ith', label: 'Update i-th Bit', heading: 'Update i-th Bit' },
+  'bit-clear-last-i': { id: 'bit-clear-last-i', label: 'Clear Last i Bits', heading: 'Clear Last i Bits' },
+  'bit-clear-range': { id: 'bit-clear-range', label: 'Clear Range of Bits', heading: 'Clear Range of Bits' },
+};
+
 /** The tree traversals (visual 'tree'): their input is one level-order string. */
 export const TREE_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; heading: string }> = {
   'tree-inorder': { id: 'tree-inorder', label: 'Inorder Traversal', heading: 'Inorder Traversal' },

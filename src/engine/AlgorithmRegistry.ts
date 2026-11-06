@@ -78,6 +78,19 @@ import { bstPrintInRangeDefinition } from './algorithms/tree/printInRange';
 import { treeValidateBstDefinition } from './algorithms/tree/validateBst';
 import { bstMirrorDefinition } from './algorithms/tree/mirrorBst';
 import { bstBalanceDefinition } from './algorithms/tree/balanceBst';
+import { bitwiseAndDefinition } from './algorithms/bits/bitwiseAnd';
+import { bitwiseOrDefinition } from './algorithms/bits/bitwiseOr';
+import { bitwiseXorDefinition } from './algorithms/bits/bitwiseXor';
+import { bitwiseNotDefinition } from './algorithms/bits/bitwiseNot';
+import { bitwiseLeftShiftDefinition } from './algorithms/bits/bitwiseLeftShift';
+import { bitwiseRightShiftDefinition } from './algorithms/bits/bitwiseRightShift';
+import { bitCheckEvenDefinition } from './algorithms/bits/bitCheckEven';
+import { bitGetIthDefinition } from './algorithms/bits/bitGetIth';
+import { bitSetIthDefinition } from './algorithms/bits/bitSetIth';
+import { bitClearIthDefinition } from './algorithms/bits/bitClearIth';
+import { bitUpdateIthDefinition } from './algorithms/bits/bitUpdateIth';
+import { bitClearLastIDefinition } from './algorithms/bits/bitClearLastI';
+import { bitClearRangeDefinition } from './algorithms/bits/bitClearRange';
 import { nQueensDefinition } from './algorithms/backtracking/nQueens';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
@@ -149,6 +162,19 @@ register(bstPrintInRangeDefinition);
 register(treeValidateBstDefinition);
 register(bstMirrorDefinition);
 register(nQueensDefinition);
+register(bitwiseAndDefinition);
+register(bitwiseOrDefinition);
+register(bitwiseXorDefinition);
+register(bitwiseNotDefinition);
+register(bitwiseLeftShiftDefinition);
+register(bitwiseRightShiftDefinition);
+register(bitCheckEvenDefinition);
+register(bitGetIthDefinition);
+register(bitSetIthDefinition);
+register(bitClearIthDefinition);
+register(bitUpdateIthDefinition);
+register(bitClearLastIDefinition);
+register(bitClearRangeDefinition);
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

@@ -737,6 +737,82 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'recurse-right': /^\s*(bool |boolean )?right_?[Vv]alid = (isValidBST|is_valid_bst)\(node(->|\.)right, node(->|\.)val, max(_val)?\);?$/,
     'return-right': /^\s*return (rightValid|right_valid);?$/,
   },
+  'bitwise-and': {
+    start: /\b(bitwise[A-Z]\w+|bitwise_and)\(/,
+    'eval-bit': /^\s*(int32_t |int )?result = (to_int32\()?a & b\)?;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bitwise-or': {
+    start: /\b(bitwise[A-Z]\w+|bitwise_or)\(/,
+    'eval-bit': /^\s*(int32_t |int )?result = (to_int32\()?a \| b\)?;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bitwise-xor': {
+    start: /\b(bitwise[A-Z]\w+|bitwise_xor)\(/,
+    'eval-bit': /^\s*(int32_t |int )?result = (to_int32\()?a \^ b\)?;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bitwise-not': {
+    start: /\b(bitwiseNot|bitwise_not)\(/,
+    'eval-bit': /^\s*(int32_t |int )?result = (to_int32\()?~a\)?;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bitwise-left-shift': {
+    start: /\b(leftShift|left_shift)\(/,
+    shift: /^\s*(int32_t |int )?result = .*\ba\)? << i/,
+    done: /^\s*return result;?$/,
+  },
+  'bitwise-right-shift': {
+    start: /\b(rightShift|right_shift)\(int|def right_shift\(/,
+    shift: /^\s*(int32_t |int )?result = (to_int32\()?a >> i\)?;?$/,
+    'compare-logical': /^\s*return \(.*\) ?(>>>?) i;?$|^\s*return \(uint32_t\)a >> i;$/,
+    done: /^\s*return result;?$/,
+  },
+  'bit-check-even': {
+    start: /\b(isEven|is_even)\(/,
+    lsb: /^\s*(int32_t |int )?lsb = n & 1;?$/,
+    compare: /^\s*return lsb == 0;?$/,
+    done: /^\s*return lsb == 0;?$/,
+  },
+  'bit-get-ith': {
+    start: /\b(getBit|get_bit)\(/,
+    shift: /^\s*(uint32_t |int )?shifted = /,
+    mask: /^\s*(int )?bit = shifted & 1u?;?$/,
+    done: /^\s*return bit;?$/,
+  },
+  'bit-set-ith': {
+    start: /\b(setBit|set_bit)\(/,
+    mask: /^\s*(uint32_t |int )?mask = .*<< i;?$/,
+    apply: /^\s*(int32_t |int )?result = .*\| mask\)*;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bit-clear-ith': {
+    start: /\b(clearBit|clear_bit)\(/,
+    mask: /^\s*(uint32_t |int )?mask = ~\(/,
+    apply: /^\s*(int32_t |int )?result = .*& mask\)*;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bit-update-ith': {
+    start: /\b(updateBit|update_bit)\(/,
+    clear: /^\s*(uint32_t |int )?cleared = .*~\(/,
+    place: /^\s*(uint32_t |int )?placed = .*bit << i;?$/,
+    combine: /^\s*(int32_t |int )?result = .*cleared \| placed\)*;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bit-clear-last-i': {
+    start: /\b(clearLastBits|clear_last_bits)\(/,
+    mask: /^\s*(uint32_t |int )?mask = .*i == 32/,
+    apply: /^\s*(int32_t |int )?result = .*& mask\)*;?$/,
+    done: /^\s*return result;?$/,
+  },
+  'bit-clear-range': {
+    start: /\b(clearRange|clear_range)\(/,
+    width: /^\s*(int )?width = r - l \+ 1/,
+    ones: /^\s*(uint32_t |int )?ones = .*width == 32/,
+    mask: /^\s*(uint32_t |int )?mask = ~\(ones << l\)/,
+    apply: /^\s*(int32_t |int )?result = .*& mask\)*;?$/,
+    done: /^\s*return result;?$/,
+  },
   'bst-balance': {
     // the wrapper's calls start stages 1 and 2, its return is stage 3; a recursive call and its link share a line
     'call-inorder': /^\s*inorder\(root, values(, &count)?\);?$/,

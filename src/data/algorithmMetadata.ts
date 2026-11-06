@@ -15,6 +15,8 @@ export interface AlgorithmNavItem {
   subtitle: string;
   /** True only if a full AlgorithmDefinition exists in AlgorithmRegistry */
   implemented: boolean;
+  /** A subheading inside the category, shown above the first algorithm of the group */
+  group?: string;
 }
 
 export interface AlgorithmMetadata {
@@ -46,6 +48,7 @@ export const ALGORITHM_CATEGORIES: { id: AlgorithmCategory; label: string }[] = 
   { id: 'DP', label: 'DYNAMIC PROGRAMMING' },
   { id: 'GREEDY', label: 'GREEDY' },
   { id: 'BACKTRACKING', label: 'BACKTRACKING' },
+  { id: 'BIT_MANIPULATION', label: 'BIT MANIPULATION' },
   { id: 'FUNDAMENTALS', label: 'FUNDAMENTALS' },
 ];
 
@@ -544,6 +547,110 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   // ─── FUNDAMENTALS (implemented; listed last so the order above is unchanged) ───
+  {
+    id: 'bitwise-and',
+    name: 'Binary AND',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bitwise Operators',
+    subtitle: 'a & b: a result bit is 1 only where both input bits are 1.',
+    implemented: true,
+  },
+  {
+    id: 'bitwise-or',
+    name: 'Binary OR',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bitwise Operators',
+    subtitle: 'a | b: a result bit is 1 where either input bit is 1.',
+    implemented: true,
+  },
+  {
+    id: 'bitwise-xor',
+    name: 'Binary XOR',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bitwise Operators',
+    subtitle: 'a ^ b: a result bit is 1 where the input bits differ.',
+    implemented: true,
+  },
+  {
+    id: 'bitwise-not',
+    name: "Binary One's Complement",
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bitwise Operators',
+    subtitle: '~a: every one of the 32 bits is inverted.',
+    implemented: true,
+  },
+  {
+    id: 'bitwise-left-shift',
+    name: 'Binary Left Shift',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bitwise Operators',
+    subtitle: 'a << i: bits move left, zeros fill in, the top bits are discarded.',
+    implemented: true,
+  },
+  {
+    id: 'bitwise-right-shift',
+    name: 'Binary Right Shift',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bitwise Operators',
+    subtitle: 'a >> i: bits move right and the sign bit fills in (arithmetic shift).',
+    implemented: true,
+  },
+  {
+    id: 'bit-check-even',
+    name: 'Check if Even',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bit Manipulation',
+    subtitle: '(n & 1) == 0: the lowest bit decides whether n is even.',
+    implemented: true,
+  },
+  {
+    id: 'bit-get-ith',
+    name: 'Get i-th Bit',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bit Manipulation',
+    subtitle: '(n >> i) & 1: reads the bit at position i.',
+    implemented: true,
+  },
+  {
+    id: 'bit-set-ith',
+    name: 'Set i-th Bit',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bit Manipulation',
+    subtitle: 'n | (1 << i): makes the bit at position i a 1.',
+    implemented: true,
+  },
+  {
+    id: 'bit-clear-ith',
+    name: 'Clear i-th Bit',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bit Manipulation',
+    subtitle: 'n & ~(1 << i): makes the bit at position i a 0.',
+    implemented: true,
+  },
+  {
+    id: 'bit-update-ith',
+    name: 'Update i-th Bit',
+    category: 'BIT_MANIPULATION',
+    group: 'Basic Bit Manipulation',
+    subtitle: '(n & ~(1 << i)) | (bit << i): writes a chosen bit at position i.',
+    implemented: true,
+  },
+  {
+    id: 'bit-clear-last-i',
+    name: 'Clear Last i Bits',
+    category: 'BIT_MANIPULATION',
+    group: 'Advanced Bit Manipulation',
+    subtitle: 'n & (~0 << i): clears the i lowest bit positions.',
+    implemented: true,
+  },
+  {
+    id: 'bit-clear-range',
+    name: 'Clear Range of Bits',
+    category: 'BIT_MANIPULATION',
+    group: 'Advanced Bit Manipulation',
+    subtitle: 'Clears positions l through r with a mask that cannot overflow.',
+    implemented: true,
+  },
   {
     id: 'prime-check',
     name: 'Prime Number Checker',

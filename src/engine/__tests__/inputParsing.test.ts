@@ -257,8 +257,8 @@ describe('linked-list input validation (rejected before execution)', () => {
     expect(validateAlgorithmInput(def('bubble-sort'), list(11), null, -5).ok).toBe(true);
   });
 
-  it('exactly the LINKED_LIST operations are drawn as linked lists, the FUNDAMENTALS as numbers, the STRINGS as text, the TREES as trees and the BACKTRACKING as a board; every other algorithm is still an array', () => {
-    const kind = { LINKED_LIST: 'linked-list', FUNDAMENTALS: 'numbers', STRINGS: 'text', TREES: 'tree', BACKTRACKING: 'board' } as Record<string, string>;
+  it('exactly the LINKED_LIST operations are drawn as linked lists, the FUNDAMENTALS as numbers, the STRINGS as text, the TREES as trees, the BACKTRACKING as a board and the BIT_MANIPULATION as bits; every other algorithm is still an array', () => {
+    const kind = { LINKED_LIST: 'linked-list', FUNDAMENTALS: 'numbers', STRINGS: 'text', TREES: 'tree', BACKTRACKING: 'board', BIT_MANIPULATION: 'bits' } as Record<string, string>;
     for (const d of getAllAlgorithms()) {
       expect(visualKindOf(d), d.id).toBe(kind[d.category] ?? 'array');
     }
