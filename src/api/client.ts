@@ -1,6 +1,7 @@
 import type { PracticeProblem } from '../types/algorithm';
 import type { ExecutionTrace } from '../execution/trace';
 import type { VerifiedActivityToday } from '../data/dailyGoals';
+import type { RevisionReasonId, RevisionStatus } from '../data/revisions';
 
 export type UserRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -260,6 +261,26 @@ export interface NotesApi {
   getTags(): Promise<string[]>;
 }
 
+/** one algorithm on the signed-in user's Revision List (at most one per algorithm) */
+export interface RevisionRecord {
+  algorithmId: string;
+  status: RevisionStatus;
+  reason?: RevisionReasonId;
+  /** when it was last marked as revised; absent while pending */
+  revisedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RevisionsApi {
+  /** the whole list, most recently marked first */
+  getRevisions(): Promise<RevisionRecord[]>;
+  /** adds the algorithm, or changes its reason if already there (its status stays). null clears the reason */
+  markForRevision(algorithmId: string, reason: RevisionReasonId | null): Promise<RevisionRecord>;
+  setRevisionStatus(algorithmId: string, status: RevisionStatus): Promise<RevisionRecord>;
+  removeRevision(algorithmId: string): Promise<void>;
+}
+
 export interface SettingsApi {
   getProfile(): Promise<UserProfile>;
   updateProfile(data: {
@@ -424,6 +445,7 @@ export interface ApiClient {
   practice: PracticeApi;
   progress: ProgressApi;
   notes: NotesApi;
+  revisions: RevisionsApi;
   settings: SettingsApi;
   admin: AdminApi;
   execution: ExecutionApi;

@@ -104,6 +104,7 @@ test.describe('Light Mode — accessibility scan (axe-core, WCAG 2.1 A/AA)', () 
     ['learning roadmap', '/learning'],
     ['patterns', '/patterns'],
     ['notes', '/notes'],
+    ['revision list (empty)', '/revision'],
     ['progress (charts)', '/progress'],
     ['profile menu open', '/visualizer', async page => {
       await page.locator('#header-profile-btn').click();

@@ -179,6 +179,7 @@ const PAGES: [string, string, ((page: Page) => Promise<void>)?][] = [
   ['learning roadmap', '/learning'],
   ['patterns', '/patterns'],
   ['notes', '/notes'],
+  ['revision list (empty)', '/revision'],
   ['progress (charts)', '/progress'],
   ['profile menu open', '/visualizer', async page => {
     await page.locator('#header-profile-btn').click();

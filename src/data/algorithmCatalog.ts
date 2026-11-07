@@ -21,6 +21,9 @@ const topicOf = new Map<string, string>(
 
 export const isImplementedAlgorithm = (id: unknown): id is string => typeof id === 'string' && IMPLEMENTED_ALGORITHM_IDS.includes(id);
 
+/** any algorithm the app lists, implemented or not */
+export const isListedAlgorithm = (id: unknown): id is string => typeof id === 'string' && topicOf.has(id);
+
 /** the topic (category) of a listed algorithm, or null */
 export const topicOfAlgorithm = (id: string): string | null => topicOf.get(id) ?? null;
 

@@ -11,7 +11,7 @@ import { test, expect } from '../fixtures';
  * scrollbar and evaluates them on the width without it, so at exactly 1024px it is still in the tablet tier. Where
  * there is no classic scrollbar (Chromium, Firefox, macOS Safari), the tiers must match the pixel widths exactly.
  */
-const NAV = ['Dashboard', 'Visualizer', 'Playground', 'Patterns', 'Notes', 'Resources', 'Progress'];
+const NAV = ['Dashboard', 'Visualizer', 'Revision', 'Playground', 'Patterns', 'Notes', 'Resources', 'Progress'];
 /** pages that keep their routes but have no header link */
 const NOT_IN_NAV = ['Practice', 'Roadmap'];
 const PAGES = ['/dashboard', '/visualizer', '/practice', '/patterns', '/notes', '/resources'];
@@ -161,7 +161,7 @@ test.describe('phones', () => {
 // widths well inside each tier (1024 itself is covered above), so every browser is in the tier the test names
 test.describe('names and links are kept in the compact tiers', () => {
   for (const width of [1040, 1300, 1440]) {
-    test(`${width}px: all seven links, the brand and the profile keep their names and work`, async ({ app, page }) => {
+    test(`${width}px: all eight links, the brand and the profile keep their names and work`, async ({ app, page }) => {
       void app;
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/dashboard');
@@ -194,7 +194,7 @@ test.describe('names and links are kept in the compact tiers', () => {
     await page.goto('/dashboard');
     const nav = page.getByRole('banner').getByRole('navigation');
     const PATHS: Record<string, RegExp> = {
-      Dashboard: /\/dashboard$/, Visualizer: /\/visualizer$/, Playground: /\/playground$/, Patterns: /\/patterns$/, Notes: /\/notes$/, Resources: /\/resources$/, Progress: /\/progress$/,
+      Dashboard: /\/dashboard$/, Visualizer: /\/visualizer$/, Revision: /\/revision$/, Playground: /\/playground$/, Patterns: /\/patterns$/, Notes: /\/notes$/, Resources: /\/resources$/, Progress: /\/progress$/,
     };
     for (const name of NAV) {
       await nav.getByRole('link', { name, exact: true }).click();

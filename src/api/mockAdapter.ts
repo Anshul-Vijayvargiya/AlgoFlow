@@ -2,6 +2,7 @@ import type {
   ApiClient,
   UserProfile,
   NoteRecord,
+  RevisionRecord,
   UserProgressData,
   AlgorithmTrack,
   VisualizerActivityResult,
@@ -31,6 +32,8 @@ import {
   topicOfAlgorithm,
 } from '../data/algorithmCatalog';
 import type { PracticeProblem } from '../types/algorithm';
+import { isListedAlgorithm } from '../data/algorithmCatalog';
+import type { RevisionReasonId, RevisionStatus } from '../data/revisions';
 import { ALGORITHM_NAV } from '../data/algorithmMetadata';
 import { currentStreak, isManualGoal, longestStreak, nextUtcMidnight } from '../data/dailyGoals';
 
@@ -184,6 +187,23 @@ function readMockNotes(): NoteRecord[] {
   const saved = localStorage.getItem('algoflow_notes');
   if (!saved) localStorage.setItem('algoflow_notes', JSON.stringify(INITIAL_NOTES));
   return saved ? JSON.parse(saved) : [...INITIAL_NOTES];
+}
+
+/** the Revision List on the device, per mock account, with the server's rules (server/routes/revisionRoutes.ts) */
+const MOCK_REVISIONS_KEY = 'algoflow_revisions';
+function mockRevisionOwner(): string {
+  // with no stored user, the mock's getCurrentUser signs in its default user, u1
+  return String(JSON.parse(localStorage.getItem('algoflow_user') ?? 'null')?.id ?? 'u1');
+}
+function readMockRevisions(): Record<string, RevisionRecord[]> {
+  return JSON.parse(localStorage.getItem(MOCK_REVISIONS_KEY) ?? '{}');
+}
+function updateMockRevisions(algorithmId: string, change: (list: RevisionRecord[]) => RevisionRecord[]): void {
+  if (!isListedAlgorithm(algorithmId)) throw new Error('Unknown algorithm.');
+  const all = readMockRevisions();
+  const owner = mockRevisionOwner();
+  all[owner] = change(all[owner] ?? []);
+  localStorage.setItem(MOCK_REVISIONS_KEY, JSON.stringify(all));
 }
 
 export class MockApiClient implements ApiClient {
@@ -550,6 +570,34 @@ export class MockApiClient implements ApiClient {
       const notes = readMockNotes();
       const filtered = notes.filter((n) => n.id !== id);
       localStorage.setItem('algoflow_notes', JSON.stringify(filtered));
+    },
+  };
+
+  revisions = {
+    async getRevisions(): Promise<RevisionRecord[]> {
+      return readMockRevisions()[mockRevisionOwner()] ?? [];
+    },
+    async markForRevision(algorithmId: string, reason: RevisionReasonId | null): Promise<RevisionRecord> {
+      const now = new Date().toISOString();
+      let saved!: RevisionRecord;
+      updateMockRevisions(algorithmId, list => {
+        const existing = list.find(r => r.algorithmId === algorithmId);
+        saved = { ...(existing ?? { algorithmId, status: 'pending' as const, createdAt: now }), reason: reason ?? undefined, updatedAt: now };
+        return existing ? list.map(r => (r === existing ? saved : r)) : [saved, ...list];
+      });
+      return saved;
+    },
+    async setRevisionStatus(algorithmId: string, status: RevisionStatus): Promise<RevisionRecord> {
+      const now = new Date().toISOString();
+      let saved: RevisionRecord | undefined;
+      updateMockRevisions(algorithmId, list =>
+        list.map(r => (r.algorithmId === algorithmId ? (saved = { ...r, status, revisedAt: status === 'revised' ? now : undefined, updatedAt: now }) : r))
+      );
+      if (!saved) throw new Error('This algorithm is not on your Revision List.');
+      return saved;
+    },
+    async removeRevision(algorithmId: string): Promise<void> {
+      updateMockRevisions(algorithmId, list => list.filter(r => r.algorithmId !== algorithmId));
     },
   };
 

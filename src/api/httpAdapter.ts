@@ -3,6 +3,7 @@ import type {
   UserProfile,
   NoteRecord,
   NotesListResponse,
+  RevisionRecord,
   UserProgressData,
   AlgorithmTrack,
   VisualizerActivityResult,
@@ -38,6 +39,7 @@ import {
   startSession,
 } from './authSession';
 import { resolveApiRuntime } from '../config/deployment';
+import { isRevisionReason, type RevisionReasonId, type RevisionStatus } from '../data/revisions';
 import type { PracticeProblem } from '../types/algorithm';
 
 // '/api' in development (Vite proxy) and tests; deployed builds must set VITE_API_BASE_URL (see src/config/deployment.ts)
@@ -130,6 +132,17 @@ function sanitizeNote(raw: any): NoteRecord {
  * returned to the caller as an error, never refreshed again. A 401 does not by itself mean "signed out": that is
  * decided by the refresh (its 401) or by a code saying the session was revoked or the account suspended.
  */
+function sanitizeRevision(raw: any): RevisionRecord {
+  return {
+    algorithmId: String(raw.algorithmId || ''),
+    status: raw.status === 'revised' ? 'revised' : 'pending',
+    reason: isRevisionReason(raw.reason) ? raw.reason : undefined,
+    revisedAt: raw.revisedAt ? String(raw.revisedAt) : undefined,
+    createdAt: String(raw.createdAt || ''),
+    updatedAt: String(raw.updatedAt || ''),
+  };
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 10_000, isRetry = false): Promise<T> {
   const sessionEndpoint = SESSION_ENDPOINTS.has(endpoint.split('?')[0]);
   // a refresh is running: wait for its token instead of sending the one it replaces
@@ -439,6 +452,27 @@ export class HttpApiClient implements ApiClient {
 
     async deleteNote(id: string): Promise<void> {
       await request(`/notes/${id}`, { method: 'DELETE' });
+    },
+  };
+
+  revisions = {
+    async getRevisions(): Promise<RevisionRecord[]> {
+      const res = await request<{ revisions?: unknown[] }>('/revisions');
+      return (res.revisions ?? []).map(sanitizeRevision);
+    },
+
+    async markForRevision(algorithmId: string, reason: RevisionReasonId | null): Promise<RevisionRecord> {
+      const res = await request<unknown>(`/revisions/${encodeURIComponent(algorithmId)}`, { method: 'PUT', body: JSON.stringify({ reason }) });
+      return sanitizeRevision(res);
+    },
+
+    async setRevisionStatus(algorithmId: string, status: RevisionStatus): Promise<RevisionRecord> {
+      const res = await request<unknown>(`/revisions/${encodeURIComponent(algorithmId)}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      return sanitizeRevision(res);
+    },
+
+    async removeRevision(algorithmId: string): Promise<void> {
+      await request(`/revisions/${encodeURIComponent(algorithmId)}`, { method: 'DELETE' });
     },
   };
 

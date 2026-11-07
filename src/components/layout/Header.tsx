@@ -8,6 +8,7 @@ import {
   BarChart2,
   Globe,
   ChevronDown,
+  Bookmark,
   Bot,
   Library,
   Terminal,
@@ -20,10 +21,26 @@ import {
 } from 'lucide-react';
 import { useVisualizerStore } from '../../store/useVisualizerStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { revisionCounts, useRevisionStore } from '../../store/useRevisionStore';
 import { AITutorDrawer } from '../ai/AITutorDrawer';
 import { SettingsModal } from '../settings/SettingsModal';
 import { ThemeSelect } from '../theme/ThemeSelect';
 import type { ProgrammingLanguage } from '../../types/algorithm';
+
+/** the pending count; a count of 0 shows nothing. The number is named by the link's own text */
+const RevisionBadge: React.FC<{ count: number; className?: string }> = ({ count, className = '' }) =>
+  count > 0 ? (
+    <>
+      <span
+        aria-hidden="true"
+        data-testid="revision-badge"
+        className={`min-w-4 h-4 px-1 rounded-full bg-purple-600 text-white text-[10px] leading-4 font-mono font-bold text-center ${className}`}
+      >
+        {count > 99 ? '99+' : count}
+      </span>
+      <span className="sr-only">{count} pending</span>
+    </>
+  ) : null;
 
 function getInitials(name: string): string {
   return name
@@ -42,6 +59,14 @@ export const Header: React.FC = () => {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const loadRevisions = useRevisionStore((s) => s.load);
+  const pendingRevisions = useRevisionStore((s) => revisionCounts(s.items).pending);
+  const userId = user?.id;
+
+  // the badge needs the list on every page; the store loads it once per account
+  useEffect(() => {
+    if (userId) loadRevisions();
+  }, [userId, loadRevisions]);
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -58,6 +83,7 @@ export const Header: React.FC = () => {
   const navItems = [
     { to: '/dashboard',  label: 'Dashboard',  icon: Sparkles   },
     { to: '/visualizer', label: 'Visualizer',  icon: Play       },
+    { to: '/revision',   label: 'Revision',    icon: Bookmark   },
     { to: '/playground', label: 'Playground',  icon: Terminal   },
     { to: '/patterns',   label: 'Patterns',    icon: Brain      },
     { to: '/notes',      label: 'Notes',       icon: FileText   },
@@ -124,12 +150,29 @@ export const Header: React.FC = () => {
             >
               <item.icon className="w-3.5 h-3.5 shrink-0 lg:max-[1400px]:hidden" aria-hidden="true" />
               {item.label}
+              {item.to === '/revision' && <RevisionBadge count={pendingRevisions} />}
             </NavLink>
           ))}
         </nav>
 
         {/* Top Right Quick Actions */}
         <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+          {/* Revision on tablets, where the navigation above is hidden; narrower screens have no room here (it would clip the brand name), so it is in the profile menu */}
+          <NavLink
+            to="/revision"
+            title="Revision List"
+            data-testid="header-revision-link"
+            className={({ isActive }) =>
+              `hidden md:flex lg:hidden items-center gap-1 px-2 py-1.5 rounded-lg border text-xs font-mono transition-colors ${
+                isActive ? 'border-cyan-500/30 bg-cyan-500/15 text-cyan-300' : 'border-slate-700/60 bg-slate-900/80 text-slate-300 hover:border-cyan-500/50'
+              }`
+            }
+          >
+            <Bookmark className="w-4 h-4" aria-hidden="true" />
+            <span className="sr-only">Revision</span>
+            <RevisionBadge count={pendingRevisions} />
+          </NavLink>
+
           {/* AI Tutor Button */}
           <button
             id="header-ai-tutor-btn"
@@ -183,8 +226,14 @@ export const Header: React.FC = () => {
                   className="flex items-center gap-1 sm:gap-2 px-1 sm:pl-1.5 sm:pr-3 py-1 rounded-lg bg-slate-900/80 border border-slate-700/60 hover:border-cyan-500/50 transition-all text-xs font-mono text-slate-300"
                 >
                   {/* Avatar */}
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                  <div className="relative w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
                     {initials}
+                    {/* below 768px: the only place the header has room for the pending count; the menu's Revision item names it */}
+                    {pendingRevisions > 0 && (
+                      <span aria-hidden="true" data-testid="revision-badge-phone" className="md:hidden absolute -top-1 -right-1.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-purple-600 text-white text-[9px] leading-[14px] font-mono text-center ring-1 ring-page">
+                        {pendingRevisions > 99 ? '99+' : pendingRevisions}
+                      </span>
+                    )}
                   </div>
                   <span className="hidden sm:inline lg:max-xl:hidden max-w-[80px] truncate">{displayName}</span>
                   {/* the visible name is hidden on phones and beside the compact navigation (1024–1279px); keep it in
@@ -241,6 +290,15 @@ export const Header: React.FC = () => {
 
                     {/* Menu items */}
                     <div className="p-2 space-y-0.5">
+                      <button
+                        id="header-menu-revision-btn"
+                        onClick={() => { setShowProfileModal(false); navigate('/revision'); }}
+                        className="md:hidden w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-ink transition-colors"
+                      >
+                        <Bookmark className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                        Revision
+                        <RevisionBadge count={pendingRevisions} className="ml-auto" />
+                      </button>
                       <button
                         onClick={() => { setShowProfileModal(false); navigate('/progress'); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-ink transition-colors"

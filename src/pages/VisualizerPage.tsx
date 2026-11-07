@@ -21,6 +21,7 @@ import { BoardVisualizer } from '../components/visualizer/BoardVisualizer';
 import { BitVisualizer } from '../components/visualizer/BitVisualizer';
 import { SubsetsVisualizer } from '../components/visualizer/SubsetsVisualizer';
 import { PermutationsVisualizer } from '../components/visualizer/PermutationsVisualizer';
+import { RevisionBookmark } from '../components/visualizer/RevisionBookmark';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
 import { getAlgorithmDefinition, visualKindOf } from '../engine/AlgorithmRegistry';
@@ -105,7 +106,7 @@ export const VisualizerPage: React.FC = () => {
           </button>
 
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-bold font-mono text-ink flex items-center gap-2">
                 {algorithmMeta.name}
               </h1>
@@ -116,6 +117,8 @@ export const VisualizerPage: React.FC = () => {
               }`}>
                 {algorithmMeta.category} {executionError ? '• ERROR' : isImplemented ? '' : '• COMING SOON'}
               </span>
+              {/* keyed: an open form and its unsaved choice belong to one algorithm */}
+              <RevisionBookmark key={selectedAlgorithm} algorithmId={selectedAlgorithm} algorithmName={algorithmMeta.name} />
             </div>
             <p className="text-xs text-slate-400 hidden sm:block">
               "{algorithmMeta.subtitle}"

@@ -32,7 +32,7 @@ test.describe('Resources page', () => {
     void app;
     await page.goto('/dashboard');
     const labels = (await nav(page).getByRole('link').allTextContents()).map(t => t.trim());
-    expect(labels).toEqual(['Dashboard', 'Visualizer', 'Playground', 'Patterns', 'Notes', 'Resources', 'Progress']);
+    expect(labels).toEqual(['Dashboard', 'Visualizer', 'Revision', 'Playground', 'Patterns', 'Notes', 'Resources', 'Progress']);
   });
 
   for (const from of ['/dashboard', '/visualizer', '/playground', '/patterns', '/notes']) {

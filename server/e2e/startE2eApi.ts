@@ -185,6 +185,7 @@ async function main() {
 
   const { User } = await import('../models/User');
   const { Note } = await import('../models/Note');
+  const { Revision } = await import('../models/Revision');
   const { ProgressTrack } = await import('../models/ProgressTrack');
   const { ActivityLog } = await import('../models/ActivityLog');
   const { Submission } = await import('../models/Submission');
@@ -201,7 +202,7 @@ async function main() {
   const ids = (await User.find({ email: suiteEmail }).select('_id').lean()).map(u => u._id);
   if (ids.length) {
     // the driver's collections: the filter is the same for every model
-    await Promise.all([Note, ProgressTrack, ActivityLog, Submission].map(m => m.collection.deleteMany({ userId: { $in: ids } })));
+    await Promise.all([Note, Revision, ProgressTrack, ActivityLog, Submission].map(m => m.collection.deleteMany({ userId: { $in: ids } })));
     // code execution's and the AI Tutor's daily counters (same store, separate keys)
     await ExecutionQuota.collection.deleteMany({ key: { $in: ids.flatMap(id => [`user:${String(id)}`, `tutor:user:${String(id)}`]) } });
     await User.collection.deleteMany({ _id: { $in: ids } });
@@ -212,7 +213,7 @@ async function main() {
   // deterministic practice problems (the database holds only the suite's data, checked above)
   await Problem.collection.deleteMany({});
   await Problem.insertMany(E2E_PRACTICE_PROBLEMS);
-  await Promise.all([User.init(), Note.init(), ProgressTrack.init(), ActivityLog.init(), Submission.init(), ExecutionQuota.init(), Problem.init()]);
+  await Promise.all([User.init(), Note.init(), Revision.init(), ProgressTrack.init(), ActivityLog.init(), Submission.init(), ExecutionQuota.init(), Problem.init()]);
 
   const { app } = await import('../app');
   const server = app.listen(API_PORT, '127.0.0.1', () => {

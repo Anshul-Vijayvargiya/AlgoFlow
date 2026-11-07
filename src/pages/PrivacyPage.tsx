@@ -52,6 +52,7 @@ export const PrivacyPage: React.FC = () => (
           <li>Visualizer activity: which algorithms you step through, how far, and on which day.</li>
           <li>Your progress and Learning Paths status, derived from that activity.</li>
           <li>Notes you write.</li>
+          <li>Algorithms you mark for revision, with the reason you chose and their status.</li>
           <li>Practice submissions: your code, its language and the verdict.</li>
           <li>How many code runs and AI Tutor questions you used each day (to apply daily limits).</li>
         </ul>
