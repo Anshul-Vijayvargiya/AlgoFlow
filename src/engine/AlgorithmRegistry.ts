@@ -94,6 +94,7 @@ import { bitClearRangeDefinition } from './algorithms/bits/bitClearRange';
 import { nQueensDefinition } from './algorithms/backtracking/nQueens';
 import { subsetsDefinition } from './algorithms/backtracking/subsets';
 import { permutationsDefinition } from './algorithms/backtracking/permutations';
+import { lastStoneWeightDefinition } from './algorithms/heap/lastStoneWeight';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ register(bstBalanceDefinition);
 register(bstPrintInRangeDefinition);
 register(treeValidateBstDefinition);
 register(bstMirrorDefinition);
+register(lastStoneWeightDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
 register(permutationsDefinition);

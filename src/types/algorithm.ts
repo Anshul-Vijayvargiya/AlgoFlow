@@ -14,7 +14,8 @@ export type AlgorithmCategory =
   | 'GREEDY'
   | 'BACKTRACKING'
   | 'BIT_MANIPULATION'
-  | 'FUNDAMENTALS';
+  | 'FUNDAMENTALS'
+  | 'HEAP';
 
 export type AlgorithmId =
   | 'bubble-sort'
@@ -104,7 +105,8 @@ export type AlgorithmId =
   | 'bit-clear-last-i'
   | 'bit-clear-range'
   | 'backtracking-subsets'
-  | 'backtracking-permutations';
+  | 'backtracking-permutations'
+  | 'heap-last-stone-weight';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -298,6 +300,12 @@ export interface ExecutionStep {
    * in progress and the permutations saved so far. `state` is empty: the input array is shown by the visualizer itself.
    */
   permutations?: PermutationsView;
+
+  /**
+   * Last Stone Weight only (visual: 'heap'): the max heap as an array (drawn as a tree and as the array), what this step
+   * did to it, the two stones being smashed and the smashes so far. `state` holds the same heap array.
+   */
+  heap?: MaxHeapView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -798,7 +806,62 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap';
+
+/** A named index variable of the heap code (i, l, r, largest, parent) and the heap position it holds. */
+export interface HeapPointer {
+  readonly name: string;
+  readonly index: number;
+}
+
+/** One smash of Last Stone Weight: the heaviest stone y, the second heaviest x, and what is left of y (0: both destroyed). */
+export interface HeapSmash {
+  readonly y: number;
+  readonly x: number;
+  readonly left: number;
+}
+
+/**
+ * Last Stone Weight: the max heap as one step leaves it. heap[0] is the root; the children of heap[k] are heap[2k + 1] and
+ * heap[2k + 2]. Indexes in the fields below are heap positions.
+ */
+export interface MaxHeapView {
+  /** the input stones, in input order (the same array on every step) */
+  readonly stones: readonly number[];
+  /** the heap array after this step (its length is the heap's size) */
+  readonly heap: readonly number[];
+  /** copy: copying the stones; build: turning the copy into a max heap; smash: the smashing loop; done: the answer */
+  readonly phase: 'copy' | 'build' | 'smash' | 'done';
+  /** the function calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly string[];
+  /** the index variables that hold a heap position at this step */
+  readonly pointers: readonly HeapPointer[];
+  /** the positions whose values this step compares */
+  readonly compared?: readonly number[];
+  /** the two positions this step swapped */
+  readonly swapped?: readonly [number, number];
+  /** popMax: heap[to] = heap[from] (the last stone moved to the root) */
+  readonly moved?: { readonly from: number; readonly to: number };
+  /** popMax: the value of the last slot, removed by this step (it was copied to the root just before) */
+  readonly removed?: number;
+  /** the position of the stone this step appended (y - x) */
+  readonly inserted?: number;
+  /** popMax's top: the root's value it took, until the caller stores it */
+  readonly top: number | null;
+  /** which stone popMax is fetching: the heaviest (y) or the second heaviest (x) */
+  readonly popping: 'y' | 'x' | null;
+  /** the stones being smashed in this round; null before they are taken */
+  readonly y: number | null;
+  readonly x: number | null;
+  /** y - x, on the step that appends it */
+  readonly diff?: number;
+  /** this round's smash, from its y != x check until the next round starts */
+  readonly smash?: HeapSmash;
+  /** the smashes decided so far, in order */
+  readonly smashes: readonly HeapSmash[];
+  /** the final answer, on the last step only */
+  readonly result?: { readonly value: number; readonly text: string };
+}
 
 /**
  * Subsets: the recursion as one step leaves it. A node of the decision tree is named by its path from the root: '' is the
@@ -968,7 +1031,8 @@ export interface AlgorithmDefinition {
    * values declared by inputSpec.numbers). 'text' and 'tree' take strings (inputSpec.texts); 'board' (N-Queens: an
    * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers', as does
    * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets and Find All Permutations: every step then carries `subsets` or `permutations`)
-   * takes the array form. Existing
+   * takes the array form, as does 'heap' (Last Stone Weight: a max heap drawn as a tree and as its array; every step
+   * then carries `heap`). Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

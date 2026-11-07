@@ -44,6 +44,7 @@ export const ALGORITHM_CATEGORIES: { id: AlgorithmCategory; label: string }[] = 
   { id: 'LINKED_LIST', label: 'LINKED LIST' },
   { id: 'STACK_QUEUE', label: 'STACK & QUEUE' },
   { id: 'TREES', label: 'TREES' },
+  { id: 'HEAP', label: 'HEAP & PRIORITY QUEUE' },
   { id: 'GRAPHS', label: 'GRAPHS' },
   { id: 'DP', label: 'DYNAMIC PROGRAMMING' },
   { id: 'GREEDY', label: 'GREEDY' },
@@ -481,6 +482,15 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     category: 'TREES',
     subtitle: 'Search and insert in binary search tree.',
     implemented: false,
+  },
+
+  // ─── HEAP & PRIORITY QUEUE ──────────────────────────────
+  {
+    id: 'heap-last-stone-weight',
+    name: 'Last Stone Weight',
+    category: 'HEAP',
+    subtitle: 'Smash the two heaviest stones, taken from a max heap, until at most one is left.',
+    implemented: true,
   },
 
   // ─── GRAPHS ─────────────────────────────────────────────

@@ -61,6 +61,8 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   // takes an array, but is drawn as a decision tree
   'backtracking-subsets': { id: 'backtracking-subsets', label: 'Subsets (Power Set)', heading: 'Subsets (Power Set)' },
   'backtracking-permutations': { id: 'backtracking-permutations', label: 'Find All Permutations', heading: 'Find All Permutations' },
+  // takes an array, but is drawn as a max heap
+  'heap-last-stone-weight': { id: 'heap-last-stone-weight', label: 'Last Stone Weight', heading: 'Last Stone Weight' },
 };
 
 /** Bit manipulation (visual 'bits'): their input is named values, like the number algorithms, drawn as 32-bit rows. */
