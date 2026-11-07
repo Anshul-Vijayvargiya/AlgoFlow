@@ -117,8 +117,10 @@ test.describe('Last Stone Weight', () => {
     await expect(app.heading).toHaveText('Last Stone Weight');
     await expect(page.getByTestId('heap-visualizer')).toBeVisible();
     await expect(field(page)).toHaveValue('2, 7, 4, 1, 8, 1');
-    await expect(page.locator('[data-heap-node]')).toHaveCount(6);
-    await expect(page.locator('[data-heap-index]')).toHaveCount(6);
+    // the heap starts empty; the stones go in one at a time
+    await expect(page.locator('[data-stone]')).toHaveCount(6);
+    await expect(page.getByTestId('heap-empty')).toBeVisible();
+    await expect(page.locator('[data-heap-index]')).toHaveCount(0);
     await expect(page.locator('#input-hint')).toContainText('Up to 10 whole numbers (1 to 999)');
   });
 
@@ -127,15 +129,15 @@ test.describe('Last Stone Weight', () => {
     await enter(page, [2, 7, 4]);
     const steps = engine([2, 7, 4]);
     expect(steps.length).toBeLessThan(150);
-    // it builds with a swap, moves the last stone to the root, smashes unequal stones and sifts the difference up
-    for (const ref of ['sd-swap', 'pop-move-last', 'push-diff', 'su-swap']) expect(steps.some(s => s.codeRef === ref), ref).toBe(true);
+    // an inserted stone moves up, popMax moves the last stone to the root, unequal stones leave a difference that moves up
+    for (const ref of ['su-swap@stone', 'pop-move-last@y', 'insert-diff', 'su-swap@diff']) expect(steps.some(s => s.codeRef === ref), ref).toBe(true);
     const shown = await collect(page, steps.length);
     expect(shown.map(u => u.step)).toEqual(steps.map((_, k) => k + 1));
     for (const [k, s] of steps.entries()) expect(shown[k], `step ${k + 1}: ${s.message}`).toEqual(expected('cpp', s, k));
     await expect(page.getByTestId('heap-result')).toHaveText('The last stone weighs 1');
   });
 
-  test('the example step by step: the swap while building, popMax, the smash, the new stone and its siftUp', async ({ app, page }) => {
+  test('the example step by step: a stone moving up while building, popMax, the smash and the new stone', async ({ app, page }) => {
     await app.selectAlgorithm(ID);
     const steps = engine([2, 7, 4, 1, 8, 1]);
     const node = (k: number) => page.locator(`[data-heap-node="${k}"]`);
@@ -145,44 +147,47 @@ test.describe('Last Stone Weight', () => {
       await app.expectStep(index + 1);
     };
 
-    await go(steps.findIndex(s => s.codeRef === 'sd-swap'));
-    await expect(page.getByTestId('heap-operation')).toHaveText('Swap down');
+    // inserting 7 under 2: 7 is heavier, so they swap
+    await go(steps.findIndex(s => s.codeRef === 'su-swap@stone'));
+    await expect(page.getByTestId('heap-operation')).toHaveText('Swap up');
+    await expect(node(0)).toHaveAttribute('data-state', 'swapped');
     await expect(node(1)).toHaveAttribute('data-state', 'swapped');
-    await expect(node(4)).toHaveAttribute('data-state', 'swapped');
-    await expect(cell(1)).toHaveAttribute('data-value', '8');
+    await expect(cell(0)).toHaveAttribute('data-value', '7');
     await expect(page.getByTestId('heap-legend')).toContainText('just swapped');
 
     await go(steps.findIndex(s => s.codeRef === 'build-loop' && s.result === 'false'));
     await expect(page.getByTestId('heap-array')).toHaveAttribute('data-values', '8,7,4,1,2,1');
 
-    await go(steps.findIndex(s => s.codeRef === 'pop-move-last'));
+    await go(steps.findIndex(s => s.codeRef === 'pop-move-last@y'));
     await expect(node(0)).toHaveAttribute('data-state', 'moved');
     await expect(node(5)).toHaveAttribute('data-state', 'leaving');
-    await expect(page.getByTestId('heap-smash')).toContainText('popMax for y: top = 8');
+    await expect(page.getByTestId('heap-smash')).toContainText('popMax for y: max = 8');
     await app.next(); // the last slot goes
     await expect(page.locator('[data-heap-node]')).toHaveCount(5);
 
     await go(steps.findIndex(s => s.codeRef === 'check-equal'));
     await expect(page.getByTestId('heap-smash')).toHaveAttribute('data-outcome', 'unequal');
     await expect(page.getByTestId('heap-smash-outcome')).toHaveText('y − x = 8 − 7 = 1: 7 destroyed, 1 goes back');
-    await app.next(); // append y - x
+    await go(steps.findIndex(s => s.codeRef === 'ins-store@diff')); // insert stores y - x in the first free slot
     await expect(node(4)).toHaveAttribute('data-state', 'inserted');
     await expect(node(4)).toHaveAttribute('data-value', '1');
     await expect(page.locator('[data-smash]')).toHaveCount(1);
   });
 
   for (const lang of ['c', 'cpp', 'java', 'python'] as const) {
-    test(`the ${lang} code panel shows the hand-written heap, and the highlighted line follows the trace`, async ({ app, page }) => {
+    test(`the ${lang} code panel shows its listing, and the highlighted line follows the trace`, async ({ app, page }) => {
       await app.selectAlgorithm(ID);
       await app.setLanguage(lang);
       await enter(page, [9, 4, 4]);
       const def = definition(ID);
-      for (const [ref, code] of [
-        ['sd-check-left', lang === 'python' ? 'if l < n and heap[l] > heap[largest]:' : lang === 'java' ? 'heap.get(l) > heap.get(largest)' : 'heap[l] > heap[largest]'],
-        ['su-check', lang === 'java' ? 'heap.get(parent) >= heap.get(i)' : 'heap[parent] >= heap[i]'],
-        ['pop-shrink', lang === 'c' ? '(*size)--' : lang === 'cpp' ? 'heap.pop_back()' : lang === 'java' ? 'heap.remove(heap.size() - 1)' : 'heap.pop()'],
-        ['check-equal', 'y != x'],
-      ] as const) {
+      // C writes the heap out; the others highlight the library call a step inside insert or popMax belongs to
+      const LINES: Record<typeof lang, [string, string][]> = {
+        c: [['sd-check-left@y', 'heap[l] > heap[largest]'], ['su-check@stone', 'heap[parent] >= heap[i]'], ['pop-shrink@y', 'heap[0] = heap[--(*size)];']],
+        cpp: [['sd-check-left@y', 'pq.pop();'], ['su-check@stone', 'pq.push(s);'], ['pop-max@y', 'int y = pq.top();']],
+        java: [['sd-check-left@y', 'int y = pq.poll();'], ['su-check@stone', 'pq.add(s);'], ['su-check@diff', 'pq.add(y - x);']],
+        python: [['sd-check-left@y', 'y = -heapq.heappop(heap)'], ['su-check@stone', 'heapq.heapify(heap)'], ['su-check@diff', 'heapq.heappush(heap, -(y - x))']],
+      };
+      for (const [ref, code] of [...LINES[lang], ['check-equal', 'y != x']]) {
         await expect(page.locator(`[data-line="${def.lineMap[lang]![ref]}"]`)).toContainText(code);
       }
       const steps = engine([9, 4, 4]);
@@ -212,11 +217,12 @@ test.describe('Last Stone Weight', () => {
     await app.selectAlgorithm(ID);
     const stones = [999, 1, 500, 250, 125, 62, 31, 15, 7, 3];
     await enter(page, stones);
-    await expect(page.locator('[data-heap-node]')).toHaveCount(10);
-    await expect(page.getByTestId('heap-array')).toHaveAttribute('data-values', stones.join(','));
+    await expect(page.locator('[data-stone]')).toHaveCount(10);
+    await expect(page.getByTestId('heap-array')).toHaveAttribute('data-values', '');
     const steps = engine(stones);
     expect(steps.length).toBeLessThanOrEqual(750);
     await app.advance(steps.findIndex(s => s.codeRef === 'build-loop' && s.result === 'false'));
+    await expect(page.locator('[data-heap-node]')).toHaveCount(10);
     await expect(page.getByTestId('heap-array')).toHaveAttribute('data-values', steps.find(s => s.codeRef === 'build-loop' && s.result === 'false')!.heap!.heap.join(','));
   });
 
@@ -254,7 +260,7 @@ test.describe('Last Stone Weight', () => {
       expect(values).toHaveLength(10);
       expect(values.every(v => Number.isInteger(v) && v >= 1 && v <= 20)).toBe(true);
     }
-    await expect(page.locator('[data-heap-node]')).toHaveCount(10);
+    await expect(page.locator('[data-stone]')).toHaveCount(10);
   });
 
   test('Play runs to the result; Previous, Next and Reset move through the steps', async ({ app, page }) => {
@@ -273,14 +279,20 @@ test.describe('Last Stone Weight', () => {
     await expect(page.getByTestId('heap-result')).toHaveText('The last stone weighs 6');
     await app.reset();
     await app.expectStep(1);
-    await expect(page.getByTestId('heap-array')).toHaveAttribute('data-values', '9,3');
+    await expect(page.getByTestId('heap-array')).toHaveAttribute('data-values', '');
+    await expect(page.locator('[data-stone]')).toHaveCount(2);
     await expect(page.locator('[data-smash]')).toHaveCount(0);
   });
 
   test('phone width: no horizontal page scroll; the 10-stone tree scales down to fit, and the result can be reached', async ({ app, page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await app.selectAlgorithm(ID);
-    await enter(page, [999, 1, 500, 250, 125, 62, 31, 15, 7, 3]);
+    const stones = [999, 1, 500, 250, 125, 62, 31, 15, 7, 3];
+    await enter(page, stones);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    // the heap starts empty: the full tree is there once every stone is in
+    await app.advance(engine(stones).findIndex(s => s.codeRef === 'build-loop' && s.result === 'false'));
+    await expect(page.locator('[data-heap-node]')).toHaveCount(10);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     const tree = (await page.getByTestId('heap-tree').boundingBox())!;
     expect(tree.x).toBeGreaterThanOrEqual(0);
@@ -307,7 +319,7 @@ test.describe('Last Stone Weight', () => {
       const steps = engine([2, 7, 4]);
       const settle = () => page.evaluate(() => Promise.allSettled(document.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished)));
       let at = 0;
-      for (const ref of ['sd-swap', 'pop-move-last', 'push-diff']) {
+      for (const ref of ['su-swap@stone', 'pop-move-last@y', 'ins-store@diff']) {
         const index = steps.findIndex(s => s.codeRef === ref);
         await app.advance(index - at);
         at = index;

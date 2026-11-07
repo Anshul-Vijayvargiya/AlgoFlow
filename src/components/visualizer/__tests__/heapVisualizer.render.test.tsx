@@ -30,7 +30,9 @@ describe('HeapVisualizer', () => {
   });
 
   it('a position is drawn in the same place on every step: level by level, children below their parent', () => {
-    const first = place(render(STEPS[0]));
+    // the heap starts empty: measure on the step where every stone is in
+    const first = place(render(STEPS.find(s => s.codeRef === 'build-loop' && s.result === 'false')!));
+    expect(first).toHaveLength(6);
     const byIndex = new Map(first.map(p => [Number(p.split(':')[0]), p.split(':')[1].split(',').map(Number)]));
     for (const s of STEPS.filter((_, k) => k % 17 === 0)) {
       for (const p of place(render(s))) expect(p).toBe(first.find(q => q.startsWith(`${p.split(':')[0]}:`)));
@@ -43,45 +45,45 @@ describe('HeapVisualizer', () => {
     }
   });
 
-  it('siftDown compares a child with largest: both are marked, with the index variables at their positions, in the tree and the array', () => {
-    const s = STEPS.find(x => x.codeRef === 'sd-check-right' && x.result === 'true')!; // r=4 (8) > largest=1 (7)
+  it('the sift down compares a child with largest: both are marked, with the index variables at their positions, in the tree and the array', () => {
+    const s = STEPS.find(x => x.codeRef === 'sd-check-right@y' && x.result === 'true')!; // r=4 (2) > largest=1 (1)
     const html = render(s);
-    expect(tree(html)).toContain('1=7:compared:i,largest');
-    expect(tree(html)).toContain('4=8:compared:r');
+    expect(tree(html)).toContain('1=1:compared:i,largest');
+    expect(tree(html)).toContain('4=2:compared:r');
     expect(tree(html)).toContain('3=1:normal:l');
-    expect(cells(html)).toContain('4=8:compared:r');
+    expect(cells(html)).toContain('4=2:compared:r');
     expect(html).toMatch(/data-heap-edge="4" data-tone="compared"/);
-    expect(decode(html)).toContain('heap[1] = 7 being compared; heap[4] = 8 being compared.');
+    expect(decode(html)).toContain('heap[1] = 1 being compared; heap[4] = 2 being compared.');
     expect(decode(html)).toContain('Index variables: i = 1, l = 3, r = 4, largest = 1.');
   });
 
   it('a swap is marked on both stones and on the edge between them; the legend says what it means', () => {
-    const html = decode(render(at('sd-swap')));
+    const html = decode(render(at('sd-swap@y')));
     // largest is already the child's position here
-    expect(tree(html)).toContain('1=8:swapped:i');
-    expect(tree(html)).toContain('4=7:swapped:r,largest');
-    expect(html).toMatch(/data-heap-edge="4" data-tone="swapped"/);
+    expect(tree(html)).toContain('0=7:swapped:i');
+    expect(tree(html)).toContain('1=1:swapped:l,largest');
+    expect(html).toMatch(/data-heap-edge="1" data-tone="swapped"/);
     expect(html).toMatch(/data-legend="swapped"[^>]*>.*just swapped/);
     expect(html).not.toContain('data-legend="compared"');
   });
 
-  it('popMax: top is held in the smash panel, the last stone moves to the root (its old slot dashed), then the slot goes', () => {
-    const top = decode(render(at('pop-top')));
+  it('popMax: max is held in the smash panel, the last stone moves to the root (its old slot dashed), then the slot goes', () => {
+    const top = decode(render(at('pop-max@y')));
     expect(top).toMatch(/data-testid="heap-smash" data-y="" data-x="" data-top="8" data-popping="y"/);
-    expect(top).toContain('popMax for y: top = 8');
-    const moved = render(at('pop-move-last'));
+    expect(top).toContain('popMax for y: max = 8');
+    const moved = render(at('pop-move-last@y'));
     expect(tree(moved)).toEqual(['0=1:moved:', '1=7:normal:', '2=4:normal:', '3=1:normal:', '4=2:normal:', '5=1:leaving:']);
     expect(moved).toMatch(/data-heap-edge="5" data-tone="normal"[^>]*stroke-dasharray="4 3"/);
     expect(decode(moved)).toContain('heap[0] = 1 moved to the root; heap[5] = 1 about to be removed.');
-    expect(tree(render(at('pop-shrink')))).toHaveLength(5);
+    expect(tree(render(at('pop-shrink@y')))).toHaveLength(5);
   });
 
   it('the two stones of the round, then the smash: the difference goes back as a new stone, marked as inserted', () => {
     const decided = decode(render(at('check-equal')));
     expect(decided).toMatch(/data-y="8" data-x="7" data-top="" data-popping="" data-outcome="unequal"/);
     expect(decided).toContain('y − x = 8 − 7 = 1: 7 destroyed, 1 goes back');
-    const inserted = render(at('push-diff'));
-    expect(tree(inserted)).toContain('4=1:inserted:');
+    const inserted = render(at('ins-store@diff'));
+    expect(tree(inserted)).toContain('4=1:inserted:i');
     expect(decode(inserted)).toContain('heap[4] = 1 just inserted');
     // before the check, nothing is decided yet
     expect(render(at('pop-x', 1))).toMatch(/data-outcome=""/);
@@ -100,14 +102,15 @@ describe('HeapVisualizer', () => {
     expect([...html.matchAll(/data-smash="([^"]*)"/g)].map(m => m[1])).toEqual(['8,7,1', '4,2,2', '2,1,1', '1,1,0']);
     expect(html).toContain('8 vs 7 → 1');
     expect(html).toContain('1 vs 1 → both destroyed');
-    const inner = decode(render(STEPS.find(s => s.codeRef === 'sd-largest' && s.heap!.phase === 'smash')!));
-    expect(inner).toContain('lastStoneWeight(stones) › popMax(heap) › siftDown(heap, 5, 0)');
-    expect(inner).toMatch(/data-testid="heap-calls" data-depth="3"/);
+    const inner = decode(render(at('sd-largest@y')));
+    expect(inner).toContain('lastStoneWeight(stones, n) › popMax(heap, &size)');
+    expect(inner).toMatch(/data-testid="heap-calls" data-depth="2"/);
+    expect(decode(render(at('su-loop@stone')))).toContain('lastStoneWeight(stones, n) › insert(heap, &size, 2)');
   });
 
-  it('the phase is named: copy, build, smash, done', () => {
-    expect(render(STEPS[0])).toMatch(/data-testid="heap-phase" data-phase="copy"[^>]*>Copy the stones</);
-    expect(render(at('call-build'))).toMatch(/data-phase="build"[^>]*>Build the max heap</);
+  it('the phase is named: build (from the empty heap on), smash, done', () => {
+    expect(render(STEPS[0])).toMatch(/data-testid="heap-phase" data-phase="build"[^>]*>Build the max heap</);
+    expect(render(at('call-insert'))).toMatch(/data-phase="build"[^>]*>Build the max heap</);
     expect(render(at('smash-loop'))).toMatch(/data-phase="smash"[^>]*>Smash the two heaviest</);
     expect(render(STEPS.at(-1)!)).toMatch(/data-phase="done"[^>]*>Done</);
   });
@@ -129,11 +132,15 @@ describe('HeapVisualizer', () => {
   });
 
   it('the drawing scales down to fit instead of scrolling, and is hidden from assistive technology, which gets it in words', () => {
-    const html = render(run(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)[0]);
+    const steps = run(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    // the same drawing size from the empty heap on: it depends on the number of stones, not on the heap's size yet
+    expect(render(steps[0])).toContain('data-testid="heap-empty"');
+    const built = steps.find(s => s.codeRef === 'build-loop' && s.result === 'false')!;
+    const html = render(built);
     // 10 stones: four levels, eight slots of 54 px on the bottom level, plus 16 px each side
     expect(html).toMatch(/<svg viewBox="0 0 464 [\d.]+" width="464" height="[\d.]+" style="max-width:100%;height:auto" aria-hidden="true" data-testid="heap-tree"/);
     expect(html).not.toContain('overflow-x-auto');
-    expect(decode(html)).toContain('aria-label="Heap array: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"');
+    expect(decode(html)).toContain(`aria-label="Heap array: [${built.heap!.heap.join(', ')}]"`);
     expect(decode(html)).toContain('aria-label="Stones as given: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"');
   });
 

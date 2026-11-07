@@ -830,8 +830,8 @@ export interface MaxHeapView {
   readonly stones: readonly number[];
   /** the heap array after this step (its length is the heap's size) */
   readonly heap: readonly number[];
-  /** copy: copying the stones; build: turning the copy into a max heap; smash: the smashing loop; done: the answer */
-  readonly phase: 'copy' | 'build' | 'smash' | 'done';
+  /** build: inserting the stones one at a time; smash: the smashing loop; done: the answer */
+  readonly phase: 'build' | 'smash' | 'done';
   /** the function calls in progress, outermost first (the last is the one running) */
   readonly calls: readonly string[];
   /** the index variables that hold a heap position at this step */
@@ -844,7 +844,7 @@ export interface MaxHeapView {
   readonly moved?: { readonly from: number; readonly to: number };
   /** popMax: the value of the last slot, removed by this step (it was copied to the root just before) */
   readonly removed?: number;
-  /** the position of the stone this step appended (y - x) */
+  /** the position of the stone this step stored (a stone, or y - x) */
   readonly inserted?: number;
   /** popMax's top: the root's value it took, until the caller stores it */
   readonly top: number | null;

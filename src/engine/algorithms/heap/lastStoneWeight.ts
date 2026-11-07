@@ -2,33 +2,68 @@ import type { AlgorithmDefinition, ExecutionStep, HeapPointer, HeapSmash, MaxHea
 import { validateAlgorithmInput } from '../../inputParsing';
 
 /**
- * Last Stone Weight with a hand-written array max heap (the same in all four listings, so every step is a statement the
- * listing really runs):
+ * Last Stone Weight with a max heap. The steps follow the C listing, which writes the heap out by hand:
  *
- *   copy the stones into heap; build a max heap bottom-up (siftDown every parent, the last parent first);
+ *   start with an empty heap; insert the stones one at a time;
  *   while the heap holds more than one stone: y = popMax(), x = popMax() (so y >= x);
- *     if y != x, append y - x and siftUp it; if y == x both are destroyed and nothing is appended;
+ *     if y != x, insert y - x; if y == x both are destroyed and nothing goes back;
  *   return the last stone, or 0 when none is left.
  *
- *   popMax:   top = heap[0]; heap[0] = heap[last]; remove the last slot; siftDown(heap, size, 0); return top
- *   siftDown: largest = i; l = 2i+1; r = 2i+2; the left, then the right child replaces largest when it exists and is
- *             strictly greater; stop when largest == i, else swap and continue at largest
- *   siftUp:   while i > 0: parent = (i-1)/2; stop when heap[parent] >= heap[i], else swap and continue at parent
+ *   insert:  i = size++; heap[i] = val; while i > 0: parent = (i-1)/2; break when heap[parent] >= heap[i], else swap
+ *            and continue at parent
+ *   popMax:  max = heap[0]; heap[0] = heap[--size]; i = 0; then sift down: largest = i; l = 2i+1; r = 2i+2; the left,
+ *            then the right child replaces largest when it exists and is strictly greater; break when largest == i, else
+ *            swap and continue at largest; return max
  *
- * Ties: a child must be strictly greater to move up in siftDown (so the left child wins a tie between the children, and
- * a child equal to its parent stays below it); siftUp stops at a parent that is at least as large. The `while (true)`
- * and `while True` lines of siftDown have no step of their own: their condition is constant.
+ * The Java, C++ and Python listings use their library priority queue (Python's heapq is a min heap, so it stores the
+ * weights negated). Their heap work happens inside a library call, so each step inside insert or popMax highlights the
+ * call it belongs to there: such a step's codeRef names its call site, e.g. 'su-check@stone' (inserting a stone),
+ * 'su-check@diff' (inserting y - x), 'sd-swap@y' and 'sd-swap@x' (the two popMax calls of a round). In C every site maps
+ * to the same line of insert or popMax. What every listing takes out is the same (the two heaviest stones, so the same
+ * rounds and answer); the order inside the heap array is the C listing's (Java's PriorityQueue breaks ties the same way).
  *
- * The child checks short-circuit like the code: a child outside the heap (l >= n) is never read. A call is the call
+ * Ties: a child must be strictly greater to move up when sifting down (so the left child wins a tie between the
+ * children, and a child equal to its parent stays below it); the insert loop stops at a parent that is at least as
+ * large. The `while (1)` line has no step of its own: its condition is constant. swap(&a, &b) is one step at its call.
+ *
+ * The child checks short-circuit like the code: a child outside the heap (l >= size) is never read. A call is the call
  * statement, followed by the callee's first statement; a returning popMax is followed by the caller's assignment
- * (y = … / x = …) on the same line as the call. siftUp falls off its end when i reaches 0: no return step.
+ * (y = … / x = …) on the same line as the call. insert falls off its end when i reaches 0: no step for that.
  *
- * Building the heap is O(n); each popMax and each insertion is O(log n), and there are at most n - 1 rounds, so the whole
- * run is O(n log n) (O(n) when every sift stops at once, e.g. all stones equal), with O(n) space for the heap copy.
+ * Each insertion and each popMax is O(log n): n insertions, then at most n - 1 rounds, give O(n log n) (O(n) when every
+ * sift stops at once, e.g. all stones equal), with O(n) space for the heap.
  */
 
-/** 10 stones: a heap of four levels, still readable at phone width, and at most about 600 steps. */
+/** 10 stones: a heap of four levels, still readable at phone width, and at most about 700 steps. */
 export const MAX_STONES = 10;
+
+/** the steps inside insert and inside popMax; their codeRefs carry the call site: `${ref}@${site}` */
+export const INSERT_REFS = ['ins-index', 'ins-store', 'su-loop', 'su-parent', 'su-check', 'su-break', 'su-swap', 'su-move'] as const;
+export const POP_REFS = [
+  'pop-max',
+  'pop-move-last',
+  'pop-shrink',
+  'pop-set-i',
+  'sd-largest',
+  'sd-left',
+  'sd-right',
+  'sd-check-left',
+  'sd-take-left',
+  'sd-check-right',
+  'sd-take-right',
+  'sd-check-done',
+  'sd-break',
+  'sd-swap',
+  'sd-move',
+  'pop-return',
+] as const;
+type InsertRef = (typeof INSERT_REFS)[number];
+type PopRef = (typeof POP_REFS)[number];
+/** where insert is called from: the loop over the stones, or the smash (y - x); popMax: for y or for x */
+export type InsertSite = 'stone' | 'diff';
+export type PopSite = 'y' | 'x';
+export const INSERT_SITES: readonly InsertSite[] = ['stone', 'diff'];
+export const POP_SITES: readonly PopSite[] = ['y', 'x'];
 
 const list = (xs: readonly number[]) => `[${xs.join(', ')}]`;
 const stonesWord = (k: number) => `${k} stone${k === 1 ? '' : 's'}`;
@@ -42,7 +77,7 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
   const steps: ExecutionStep[] = [];
   const smashes: HeapSmash[] = [];
   const calls: string[] = [];
-  let phase: MaxHeapView['phase'] = 'copy';
+  let phase: MaxHeapView['phase'] = 'build';
   let y: number | null = null;
   let x: number | null = null;
   let top: number | null = null;
@@ -78,168 +113,45 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
       .filter(([, index]) => index >= 0 && index < size)
       .map(([name, index]) => ({ name, index }));
 
-  /** siftDown(heap, size, start), as the listings write it */
-  function siftDown(size: number, start: number) {
-    calls.push(`siftDown(heap, ${size}, ${start})`);
-    let i = start;
-    for (;;) {
-      let largest = i;
-      const inHeap = i < size;
-      push(
-        {
-          type: 'assign',
-          codeRef: 'sd-largest',
-          variables: { n: size, i, largest },
-          message: `largest = i = ${i}${inHeap ? `  (heap[${i}] = ${h[i]})` : ''}`,
-          explanation: inHeap
-            ? `Assume heap[${i}] = ${h[i]} is the largest of itself and its children.`
-            : `The heap is empty (n = ${size}), so there is nothing to sift down.`,
-          actionLabel: 'largest = i',
-        },
-        { pointers: pointers(size, { i, largest }) }
-      );
-
-      const l = 2 * i + 1;
-      const r = 2 * i + 2;
-      const named = () => pointers(size, { i, l, r, largest });
-      push(
-        {
-          type: 'assign',
-          codeRef: 'sd-left',
-          variables: { n: size, i, l },
-          message: `l = 2 * ${i} + 1 = ${l}`,
-          explanation: l < size ? `The left child of position ${i} is position ${l}.` : `Position ${l} is outside the heap (n = ${size}): no left child.`,
-          actionLabel: 'l = 2i+1',
-        },
-        { pointers: named() }
-      );
-      push(
-        {
-          type: 'assign',
-          codeRef: 'sd-right',
-          variables: { n: size, i, l, r },
-          message: `r = 2 * ${i} + 2 = ${r}`,
-          explanation: r < size ? `The right child of position ${i} is position ${r}.` : `Position ${r} is outside the heap (n = ${size}): no right child.`,
-          actionLabel: 'r = 2i+2',
-        },
-        { pointers: named() }
-      );
-
-      for (const side of ['left', 'right'] as const) {
-        const c = side === 'left' ? l : r;
-        const name = side === 'left' ? 'l' : 'r';
-        const exists = c < size;
-        const greater = exists && h[c] > h[largest];
-        push(
-          {
-            type: 'condition',
-            codeRef: side === 'left' ? 'sd-check-left' : 'sd-check-right',
-            variables: exists
-              ? { n: size, [name]: c, largest, [`heap[${name}]`]: h[c], 'heap[largest]': h[largest] }
-              : { n: size, [name]: c, largest },
-            result: greater ? 'true' : 'false',
-            message: exists
-              ? `${name}=${c} < n=${size} && heap[${c}]=${h[c]} > heap[largest=${largest}]=${h[largest]} → ${greater ? 'TRUE' : 'FALSE'}`
-              : `${name}=${c} < n=${size} → FALSE — no ${side} child, heap[${c}] is not read`,
-            explanation: !exists
-              ? `The ${side} child position ${c} is outside the heap, so the && stops before comparing anything.`
-              : greater
-                ? `The ${side} child ${h[c]} is heavier than ${h[largest]}.`
-                : `The ${side} child ${h[c]} is not heavier than ${h[largest]}${h[c] === h[largest] ? ' (equal does not count: the stone above stays)' : ''}.`,
-            actionLabel: greater ? 'Child heavier' : exists ? 'Not heavier' : `No ${side} child`,
-          },
-          { pointers: named(), compared: exists ? [c, largest] : [] }
-        );
-        if (greater) {
-          largest = c;
-          push(
-            {
-              type: 'assign',
-              codeRef: side === 'left' ? 'sd-take-left' : 'sd-take-right',
-              variables: { n: size, i, largest, 'heap[largest]': h[largest] },
-              message: `largest = ${name} = ${c}  (heap[${c}] = ${h[c]})`,
-              explanation: `The ${side} child is the heaviest so far.`,
-              actionLabel: `largest = ${name}`,
-            },
-            { pointers: named() }
-          );
-        }
-      }
-
-      const done = largest === i;
-      push(
-        {
-          type: 'condition',
-          codeRef: 'sd-check-done',
-          variables: { n: size, i, largest },
-          result: done ? 'true' : 'false',
-          message: `largest(${largest}) == i(${i}) → ${done ? 'TRUE' : 'FALSE — a child is heavier'}`,
-          explanation: done
-            ? inHeap
-              ? `heap[${i}] = ${h[i]} is at least as heavy as its children: this part of the heap is a max heap again.`
-              : 'There is no stone to move.'
-            : `The child heap[${largest}] = ${h[largest]} is heavier than heap[${i}] = ${h[i]}, so they swap.`,
-          actionLabel: done ? 'In place' : 'Swap needed',
-        },
-        { pointers: named() }
-      );
-      if (done) {
-        push(
-          {
-            type: 'return',
-            codeRef: 'sd-return',
-            variables: { n: size, i },
-            message: 'return — siftDown ends',
-            explanation: 'Back to the caller.',
-            actionLabel: 'Return',
-          },
-          { pointers: pointers(size, { i }) }
-        );
-        calls.pop();
-        return;
-      }
-
-      [h[i], h[largest]] = [h[largest], h[i]];
-      push(
-        {
-          type: 'swap',
-          codeRef: 'sd-swap',
-          variables: { n: size, i, largest, 'heap[i]': h[i], 'heap[largest]': h[largest] },
-          message: `Swapped heap[${i}] ↔ heap[${largest}]  (now ${h[i]}, ${h[largest]})`,
-          explanation: `The heavier stone ${h[i]} moves up. ${h[largest]} may still be lighter than its new children, so the sift continues at position ${largest}.`,
-          actionLabel: 'Swap down',
-        },
-        { pointers: named(), swapped: [i, largest] }
-      );
-      i = largest;
-      push(
-        {
-          type: 'assign',
-          codeRef: 'sd-move',
-          variables: { n: size, i },
-          message: `i = largest = ${i}`,
-          explanation: `Continue sifting heap[${i}] = ${h[i]} down from position ${i}.`,
-          actionLabel: 'i = largest',
-        },
-        { pointers: pointers(size, { i }) }
-      );
-    }
-  }
-
-  /** siftUp(heap, start), as the listings write it */
-  function siftUp(start: number) {
-    calls.push(`siftUp(heap, ${start})`);
-    let i = start;
+  /** insert(heap, &size, val), as the C listing writes it */
+  function insert(val: number, site: InsertSite) {
+    const at = (ref: InsertRef) => `${ref}@${site}`;
+    const diff = site === 'diff' ? { diff: val } : {};
+    calls.push(`insert(heap, &size, ${val})`);
+    let i = h.length;
+    push(
+      {
+        type: 'assign',
+        codeRef: at('ins-index'),
+        variables: { i, size: i + 1, val },
+        message: `i = size = ${i}; size → ${i + 1}`,
+        explanation: `The new stone ${val} takes the first free slot, position ${i}, so the tree stays complete.`,
+        actionLabel: 'i = size++',
+      },
+      { ...diff }
+    );
+    h.push(val);
+    push(
+      {
+        type: 'update',
+        codeRef: at('ins-store'),
+        variables: { i, val, size: h.length },
+        message: `heap[${i}] = ${val}`,
+        explanation: i === 0 ? `${val} is the only stone in the heap: it is the root.` : `${val} may be heavier than its parent: the loop moves it up while it is.`,
+        actionLabel: `Insert ${val}`,
+      },
+      { pointers: pointers(h.length, { i }), inserted: i, ...diff }
+    );
     for (;;) {
       const go = i > 0;
       push(
         {
           type: 'loop-condition',
-          codeRef: 'su-loop',
+          codeRef: at('su-loop'),
           variables: { i },
           result: go ? 'true' : 'false',
           message: `i=${i} > 0 → ${go ? 'true' : 'false'}`,
-          explanation: go ? `heap[${i}] = ${h[i]} has a parent: compare them.` : `heap[${i}] = ${h[i]} is the root: siftUp ends here.`,
+          explanation: go ? `heap[${i}] = ${h[i]} has a parent: compare them.` : `heap[${i}] = ${h[i]} is the root: insert ends here.`,
           actionLabel: go ? 'Has parent' : 'At root',
         },
         { pointers: pointers(h.length, { i }) }
@@ -252,7 +164,7 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
       push(
         {
           type: 'assign',
-          codeRef: 'su-parent',
+          codeRef: at('su-parent'),
           variables: { i, parent },
           message: `parent = (${i} - 1) / 2 = ${parent}`,
           explanation: `The parent of position ${i} is position ${parent} (heap[${parent}] = ${h[parent]}).`,
@@ -264,7 +176,7 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
       push(
         {
           type: 'condition',
-          codeRef: 'su-check',
+          codeRef: at('su-check'),
           variables: { i, parent, 'heap[parent]': h[parent], 'heap[i]': h[i] },
           result: stop ? 'true' : 'false',
           message: `heap[${parent}]=${h[parent]} >= heap[${i}]=${h[i]} → ${stop ? 'TRUE' : 'FALSE'}`,
@@ -279,11 +191,11 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
         push(
           {
             type: 'return',
-            codeRef: 'su-return',
+            codeRef: at('su-break'),
             variables: { i },
-            message: 'return — siftUp ends',
-            explanation: 'Back to the caller.',
-            actionLabel: 'Return',
+            message: 'break — insert ends',
+            explanation: 'The new stone has found its place. Back to the caller.',
+            actionLabel: 'Break',
           },
           { pointers: pointers(h.length, { i }) }
         );
@@ -294,7 +206,7 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
       push(
         {
           type: 'swap',
-          codeRef: 'su-swap',
+          codeRef: at('su-swap'),
           variables: { i, parent, 'heap[parent]': h[parent], 'heap[i]': h[i] },
           message: `Swapped heap[${parent}] ↔ heap[${i}]  (now ${h[parent]}, ${h[i]})`,
           explanation: `${h[parent]} moves up to position ${parent}; ${h[i]} moves down to position ${i}.`,
@@ -306,7 +218,7 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
       push(
         {
           type: 'assign',
-          codeRef: 'su-move',
+          codeRef: at('su-move'),
           variables: { i },
           message: `i = parent = ${i}`,
           explanation: `Continue from position ${i}.`,
@@ -317,19 +229,20 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
     }
   }
 
-  /** popMax(heap), then the caller's assignment to y or x */
-  function popMax(which: 'y' | 'x'): number {
-    calls.push('popMax(heap)');
+  /** popMax(heap, &size), as the C listing writes it, then the caller's assignment to y or x */
+  function popMax(which: PopSite): number {
+    const at = (ref: PopRef) => `${ref}@${which}`;
+    calls.push('popMax(heap, &size)');
     popping = which;
     top = h[0];
     push(
       {
         type: 'assign',
-        codeRef: 'pop-top',
-        variables: { top },
-        message: `top = heap[0] = ${top}`,
+        codeRef: at('pop-max'),
+        variables: { max: top },
+        message: `max = heap[0] = ${top}`,
         explanation: `The root of a max heap is its heaviest stone: ${top}.`,
-        actionLabel: 'top = root',
+        actionLabel: 'max = root',
       },
       { pointers: [] }
     );
@@ -338,13 +251,13 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
     push(
       {
         type: 'assign',
-        codeRef: 'pop-move-last',
-        variables: { last, 'heap[0]': h[0] },
-        message: `heap[0] = heap[${last}] = ${h[0]}`,
+        codeRef: at('pop-move-last'),
+        variables: { size: last, 'heap[0]': h[0] },
+        message: `--size → ${last}; heap[0] = heap[${last}] = ${h[0]}`,
         explanation:
           last === 0
-            ? 'The root is also the last stone, so it is copied onto itself; the next statement removes it.'
-            : `The last stone moves to the root, so the tree stays complete. It is probably too light for the root: siftDown will move it.`,
+            ? 'The root is also the last stone, so it is copied onto itself; its slot is no longer part of the heap.'
+            : `The last stone moves to the root, so the tree stays complete. It is probably too light for the root: the loop below sifts it down.`,
         actionLabel: 'Last to root',
       },
       { moved: { from: last, to: 0 } }
@@ -353,34 +266,176 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
     push(
       {
         type: 'update',
-        codeRef: 'pop-shrink',
+        codeRef: at('pop-shrink'),
         variables: { size: h.length },
-        message: `remove the last slot — the heap now holds ${stonesWord(h.length)}`,
+        message: `slot ${last} is outside the heap now — it holds ${stonesWord(h.length)}`,
         explanation: `Its stone (${removed}) is already at the root, so the slot is no longer needed.`,
         actionLabel: 'Shrink',
       },
       { removed }
     );
+    const size = h.length;
+    let i = 0;
     push(
       {
-        type: 'loop-start',
-        codeRef: 'pop-call-sift',
-        variables: { n: h.length },
-        message: `Call siftDown(heap, ${h.length}, 0)`,
-        explanation: h.length > 0 ? `Move the new root ${h[0]} down until it is at least as heavy as its children.` : 'The heap is empty now: siftDown has nothing to do.',
-        actionLabel: 'Call siftDown',
+        type: 'assign',
+        codeRef: at('pop-set-i'),
+        variables: { i, size },
+        message: 'i = 0',
+        explanation: size > 0 ? `Sift the new root ${h[0]} down until it is at least as heavy as its children.` : 'The heap is empty now: there is nothing to sift down.',
+        actionLabel: 'i = 0',
       },
-      { pointers: pointers(h.length, { i: 0 }) }
+      { pointers: pointers(size, { i }) }
     );
-    siftDown(h.length, 0);
+    for (;;) {
+      let largest = i;
+      const inHeap = i < size;
+      push(
+        {
+          type: 'assign',
+          codeRef: at('sd-largest'),
+          variables: { size, i, largest },
+          message: `largest = i = ${i}${inHeap ? `  (heap[${i}] = ${h[i]})` : ''}`,
+          explanation: inHeap
+            ? `Assume heap[${i}] = ${h[i]} is the largest of itself and its children.`
+            : `The heap is empty (size = ${size}), so there is nothing to sift down.`,
+          actionLabel: 'largest = i',
+        },
+        { pointers: pointers(size, { i, largest }) }
+      );
+
+      const l = 2 * i + 1;
+      const r = 2 * i + 2;
+      const named = () => pointers(size, { i, l, r, largest });
+      push(
+        {
+          type: 'assign',
+          codeRef: at('sd-left'),
+          variables: { size, i, l },
+          message: `l = 2 * ${i} + 1 = ${l}`,
+          explanation: l < size ? `The left child of position ${i} is position ${l}.` : `Position ${l} is outside the heap (size = ${size}): no left child.`,
+          actionLabel: 'l = 2i+1',
+        },
+        { pointers: named() }
+      );
+      push(
+        {
+          type: 'assign',
+          codeRef: at('sd-right'),
+          variables: { size, i, l, r },
+          message: `r = 2 * ${i} + 2 = ${r}`,
+          explanation: r < size ? `The right child of position ${i} is position ${r}.` : `Position ${r} is outside the heap (size = ${size}): no right child.`,
+          actionLabel: 'r = 2i+2',
+        },
+        { pointers: named() }
+      );
+
+      for (const side of ['left', 'right'] as const) {
+        const c = side === 'left' ? l : r;
+        const name = side === 'left' ? 'l' : 'r';
+        const exists = c < size;
+        const greater = exists && h[c] > h[largest];
+        push(
+          {
+            type: 'condition',
+            codeRef: at(side === 'left' ? 'sd-check-left' : 'sd-check-right'),
+            variables: exists
+              ? { size, [name]: c, largest, [`heap[${name}]`]: h[c], 'heap[largest]': h[largest] }
+              : { size, [name]: c, largest },
+            result: greater ? 'true' : 'false',
+            message: exists
+              ? `${name}=${c} < size=${size} && heap[${c}]=${h[c]} > heap[largest=${largest}]=${h[largest]} → ${greater ? 'TRUE' : 'FALSE'}`
+              : `${name}=${c} < size=${size} → FALSE — no ${side} child, heap[${c}] is not read`,
+            explanation: !exists
+              ? `The ${side} child position ${c} is outside the heap, so the && stops before comparing anything.`
+              : greater
+                ? `The ${side} child ${h[c]} is heavier than ${h[largest]}.`
+                : `The ${side} child ${h[c]} is not heavier than ${h[largest]}${h[c] === h[largest] ? ' (equal does not count: the stone above stays)' : ''}.`,
+            actionLabel: greater ? 'Child heavier' : exists ? 'Not heavier' : `No ${side} child`,
+          },
+          { pointers: named(), compared: exists ? [c, largest] : [] }
+        );
+        if (greater) {
+          largest = c;
+          push(
+            {
+              type: 'assign',
+              codeRef: at(side === 'left' ? 'sd-take-left' : 'sd-take-right'),
+              variables: { size, i, largest, 'heap[largest]': h[largest] },
+              message: `largest = ${name} = ${c}  (heap[${c}] = ${h[c]})`,
+              explanation: `The ${side} child is the heaviest so far.`,
+              actionLabel: `largest = ${name}`,
+            },
+            { pointers: named() }
+          );
+        }
+      }
+
+      const done = largest === i;
+      push(
+        {
+          type: 'condition',
+          codeRef: at('sd-check-done'),
+          variables: { size, i, largest },
+          result: done ? 'true' : 'false',
+          message: `largest(${largest}) == i(${i}) → ${done ? 'TRUE' : 'FALSE — a child is heavier'}`,
+          explanation: done
+            ? inHeap
+              ? `heap[${i}] = ${h[i]} is at least as heavy as its children: the heap is a max heap again.`
+              : 'There is no stone to move.'
+            : `The child heap[${largest}] = ${h[largest]} is heavier than heap[${i}] = ${h[i]}, so they swap.`,
+          actionLabel: done ? 'In place' : 'Swap needed',
+        },
+        { pointers: named() }
+      );
+      if (done) {
+        push(
+          {
+            type: 'return',
+            codeRef: at('sd-break'),
+            variables: { size, i },
+            message: 'break — the sift down ends',
+            explanation: 'Leave the loop; popMax returns the stone it took.',
+            actionLabel: 'Break',
+          },
+          { pointers: pointers(size, { i }) }
+        );
+        break;
+      }
+
+      [h[i], h[largest]] = [h[largest], h[i]];
+      push(
+        {
+          type: 'swap',
+          codeRef: at('sd-swap'),
+          variables: { size, i, largest, 'heap[i]': h[i], 'heap[largest]': h[largest] },
+          message: `Swapped heap[${i}] ↔ heap[${largest}]  (now ${h[i]}, ${h[largest]})`,
+          explanation: `The heavier stone ${h[i]} moves up. ${h[largest]} may still be lighter than its new children, so the sift continues at position ${largest}.`,
+          actionLabel: 'Swap down',
+        },
+        { pointers: named(), swapped: [i, largest] }
+      );
+      i = largest;
+      push(
+        {
+          type: 'assign',
+          codeRef: at('sd-move'),
+          variables: { size, i },
+          message: `i = largest = ${i}`,
+          explanation: `Continue sifting heap[${i}] = ${h[i]} down from position ${i}.`,
+          actionLabel: 'i = largest',
+        },
+        { pointers: pointers(size, { i }) }
+      );
+    }
     push(
       {
         type: 'return',
-        codeRef: 'pop-return',
-        variables: { top },
+        codeRef: at('pop-return'),
+        variables: { max: top },
         message: `return ${top}`,
         explanation: `popMax hands back the heaviest stone, ${top}.`,
-        actionLabel: 'Return top',
+        actionLabel: 'Return max',
       },
       { pointers: [] }
     );
@@ -404,75 +459,67 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
     return value;
   }
 
-  calls.push('lastStoneWeight(stones)');
-  h.push(...stones);
+  calls.push('lastStoneWeight(stones, n)');
   push({
     type: 'init',
     codeRef: 'init-heap',
-    variables: { stones: list(stones) },
-    message: `heap = a copy of stones ${list(stones)}`,
+    variables: { n, stones: list(stones) },
+    message: `heap = an empty array with room for ${stonesWord(Math.max(n, 1))}`,
     explanation:
       n === 0
-        ? 'There are no stones. The copy is empty.'
-        : `The stones are copied into the heap array. It is not a max heap yet: next, every parent is sifted down, the last parent first.`,
-    actionLabel: 'Copy stones',
+        ? 'There are no stones. The array still gets one slot (C does not allow an array of 0 elements), and it stays empty.'
+        : `Room for all ${n} stones. The heap starts empty: the stones go in one at a time.`,
+    actionLabel: 'Empty heap',
   });
   push({
     type: 'assign',
-    codeRef: 'set-n',
-    variables: { n },
-    message: `n = ${n}`,
-    explanation: `The heap starts with ${stonesWord(n)}.`,
-    actionLabel: 'n',
+    codeRef: 'set-size',
+    variables: { size: 0 },
+    message: 'size = 0',
+    explanation: 'The heap holds no stone yet.',
+    actionLabel: 'size = 0',
   });
 
-  // ── Build the max heap: for (i = n / 2 - 1; i >= 0; i--) siftDown(heap, n, i)
-  phase = 'build';
-  for (let i = Math.floor(n / 2) - 1; ; i--) {
-    const go = i >= 0;
-    push(
-      {
-        type: 'loop-condition',
-        codeRef: 'build-loop',
-        variables: { i, n },
-        result: go ? 'true' : 'false',
-        message: `Build: i=${i} >= 0 → ${go ? 'true' : 'false'}${go ? '' : ' — max heap built'}`,
-        explanation: go
-          ? `Position ${i} is a parent. Sift it down so the part of the tree below it is a max heap.`
-          : n > 1
-            ? `Every parent has been sifted down: the array is a max heap, and heap[0] = ${h[0]} is the heaviest stone.`
-            : `With ${stonesWord(n)} there is no parent to sift down.`,
-        actionLabel: go ? `Build i=${i}` : 'Heap built',
-      },
-      { pointers: pointers(n, { i }) }
-    );
+  // ── Build the max heap: for (i = 0; i < n; i++) insert(heap, &size, stones[i])
+  for (let i = 0; ; i++) {
+    const go = i < n;
+    push({
+      type: 'loop-condition',
+      codeRef: 'build-loop',
+      variables: { i, n },
+      result: go ? 'true' : 'false',
+      message: `Build: i=${i} < n=${n} → ${go ? 'true' : 'false'}${go ? '' : ' — max heap built'}`,
+      explanation: go
+        ? `Next stone: stones[${i}] = ${stones[i]}.`
+        : n > 0
+          ? `Every stone is in: the array is a max heap, and heap[0] = ${h[0]} is the heaviest stone.`
+          : 'There are no stones to insert.',
+      actionLabel: go ? `Stone ${i + 1}` : 'Heap built',
+    });
     if (!go) break;
+    push({
+      type: 'loop-start',
+      codeRef: 'call-insert',
+      variables: { i, 'stones[i]': stones[i] },
+      message: `Call insert(heap, &size, ${stones[i]})`,
+      explanation: `Insert ${stones[i]} into the heap of ${stonesWord(h.length)}.`,
+      actionLabel: 'Call insert',
+    });
+    insert(stones[i], 'stone');
     push(
       {
-        type: 'loop-start',
-        codeRef: 'call-build',
-        variables: { n, i },
-        message: `Call siftDown(heap, ${n}, ${i})`,
-        explanation: `Sift heap[${i}] = ${h[i]} down within the whole heap (n = ${n}).`,
-        actionLabel: 'Call siftDown',
-      },
-      { pointers: pointers(n, { i }) }
-    );
-    siftDown(n, i);
-    push(
-      {
-        type: 'decrement',
+        type: 'increment',
         codeRef: 'build-loop',
-        variables: { i: i - 1, n },
-        message: `i-- → i=${i - 1}`,
-        explanation: 'Move to the previous parent.',
-        actionLabel: 'i--',
+        variables: { i: i + 1, n },
+        message: `i++ → i=${i + 1}`,
+        explanation: 'Move to the next stone.',
+        actionLabel: 'i++',
       },
-      { pointers: pointers(n, { i: i - 1 }) }
+      { pointers: [] }
     );
   }
 
-  // ── Smash: while (size > 1) { y = popMax; x = popMax; if (y != x) { append y - x; siftUp } }
+  // ── Smash: while (size > 1) { y = popMax; x = popMax; if (y != x) insert(y - x) }
   phase = 'smash';
   for (;;) {
     y = null;
@@ -494,13 +541,13 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
     });
     if (!go) break;
 
-    for (const which of ['y', 'x'] as const) {
+    for (const which of POP_SITES) {
       push(
         {
           type: 'loop-start',
           codeRef: which === 'y' ? 'pop-y' : 'pop-x',
           variables: which === 'y' ? { size: h.length } : { y, size: h.length },
-          message: `Call popMax(heap) for ${which}`,
+          message: `Call popMax(heap, &size) for ${which}`,
           explanation: which === 'y' ? 'Take the heaviest stone from the root.' : `Take the next heaviest stone: after the first popMax, it is at the root again.`,
           actionLabel: `popMax → ${which}`,
         },
@@ -528,30 +575,18 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
     if (!differ) continue;
 
     const diff = yv - xv;
-    h.push(diff);
-    push(
-      {
-        type: 'update',
-        codeRef: 'push-diff',
-        variables: { y: yv, x: xv, 'y - x': diff, size: h.length },
-        message: `append y - x = ${yv} - ${xv} = ${diff} at heap[${h.length - 1}]`,
-        explanation: `The new stone ${diff} goes into the first free slot, so the tree stays complete. It may be heavier than its parent: siftUp moves it.`,
-        actionLabel: `Insert ${diff}`,
-      },
-      { inserted: h.length - 1, diff }
-    );
     push(
       {
         type: 'loop-start',
-        codeRef: 'call-siftup',
-        variables: { i: h.length - 1 },
-        message: `Call siftUp(heap, ${h.length - 1})`,
-        explanation: `Move ${diff} up while it is heavier than its parent.`,
-        actionLabel: 'Call siftUp',
+        codeRef: 'insert-diff',
+        variables: { y: yv, x: xv, 'y - x': diff },
+        message: `Call insert(heap, &size, y - x = ${diff})`,
+        explanation: `The new stone ${diff} goes back into the heap.`,
+        actionLabel: `Insert ${diff}`,
       },
-      { pointers: pointers(h.length, { i: h.length - 1 }), diff }
+      { diff }
     );
-    siftUp(h.length - 1);
+    insert(diff, 'diff');
   }
 
   phase = 'done';
@@ -568,7 +603,7 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
       explanation:
         n === 0
           ? 'With no stones, nothing is smashed and the answer is 0.'
-          : `${smashes.length} smash${smashes.length === 1 ? '' : 'es'}. Building the heap took O(n); each smash took at most two popMax and one siftUp, O(log n) each, so the whole run is O(n log n).`,
+          : `${smashes.length} smash${smashes.length === 1 ? '' : 'es'}. Each insertion and each popMax took O(log n): n insertions and at most n − 1 rounds make O(n log n).`,
       actionLabel: 'Done',
       outcomeText: text,
     },
@@ -577,6 +612,46 @@ function generateLastStoneWeightSteps(input: number[]): ExecutionStep[] {
   return steps;
 }
 
+/**
+ * A line map for the steps inside insert and popMax, from where each call site's steps go in a listing: C maps every
+ * site to the line of the statement itself; the library listings map each site to its library call.
+ */
+function siteLines(insertLine: (ref: InsertRef, site: InsertSite) => number, popLine: (ref: PopRef, site: PopSite) => number): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const site of INSERT_SITES) for (const ref of INSERT_REFS) map[`${ref}@${site}`] = insertLine(ref, site);
+  for (const site of POP_SITES) for (const ref of POP_REFS) map[`${ref}@${site}`] = popLine(ref, site);
+  return map;
+}
+
+const C_INSERT: Record<InsertRef, number> = {
+  'ins-index': 12,
+  'ins-store': 13,
+  'su-loop': 15,
+  'su-parent': 16,
+  'su-check': 18,
+  'su-break': 19,
+  'su-swap': 21,
+  'su-move': 22,
+};
+const C_POP: Record<PopRef, number> = {
+  'pop-max': 28,
+  'pop-move-last': 30,
+  'pop-shrink': 30,
+  'pop-set-i': 32,
+  'sd-largest': 35,
+  'sd-left': 36,
+  'sd-right': 37,
+  'sd-check-left': 39,
+  'sd-take-left': 40,
+  'sd-check-right': 42,
+  'sd-take-right': 43,
+  'sd-check-done': 45,
+  'sd-break': 46,
+  'sd-swap': 48,
+  'sd-move': 49,
+  'pop-return': 52,
+};
+
 export const lastStoneWeightDefinition: AlgorithmDefinition = {
   id: 'heap-last-stone-weight',
   name: 'Last Stone Weight',
@@ -584,13 +659,13 @@ export const lastStoneWeightDefinition: AlgorithmDefinition = {
   visual: 'heap',
   subtitle: 'Smash the two heaviest stones, taken from a max heap, until at most one is left.',
   description:
-    'Each round takes the two heaviest stones y ≥ x. If they weigh the same, both are destroyed; otherwise x is destroyed and a stone of y − x goes back. The answer is the weight of the last stone, or 0 when none is left. A max heap gives the heaviest stone in O(log n): the stones are copied into an array and turned into a max heap bottom-up in O(n), then each round makes two popMax calls (move the last stone to the root and sift it down) and, for unequal stones, appends the difference and sifts it up. At most n − 1 rounds of O(log n) work give O(n log n) time, with O(n) space for the heap.',
+    'Each round takes the two heaviest stones y ≥ x. If they weigh the same, both are destroyed; otherwise x is destroyed and a stone of y − x goes back. The answer is the weight of the last stone, or 0 when none is left. A max heap gives the heaviest stone in O(log n): the stones are inserted one at a time (each new stone moves up while it is heavier than its parent), then each round makes two popMax calls (move the last stone to the root and sift it down) and, for unequal stones, inserts the difference. n insertions and at most n − 1 rounds of O(log n) work give O(n log n) time, with O(n) space for the heap. The C listing writes the heap out and the steps follow it; Java and C++ use their priority queue, and Python uses heapq, a min heap, with the weights negated.',
   complexity: {
     best: 'O(n)',
     average: 'O(n log n)',
     worst: 'O(n log n)',
     space: 'O(n)',
-    bestFor: 'Repeatedly taking the largest item: build a heap in O(n), then O(log n) per removal or insertion',
+    bestFor: 'Repeatedly taking the largest item: O(log n) per insertion or removal',
   },
   defaultInput: [2, 7, 4, 1, 8, 1],
   inputSpec: {
@@ -600,358 +675,234 @@ export const lastStoneWeightDefinition: AlgorithmDefinition = {
   },
 
   code: {
-    c: `#include <string.h>
+    c: `#include <stdio.h>
+#include <stdlib.h>
 
-#define MAX_STONES 10
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
 
-void siftDown(int heap[], int n, int i) {
+// Insert element into Max Heap
+void insert(int heap[], int *size, int val) {
+    int i = (*size)++;
+    heap[i] = val;
+
+    while (i > 0) {
+        int parent = (i - 1) / 2;
+
+        if (heap[parent] >= heap[i])
+            break;
+
+        swap(&heap[parent], &heap[i]);
+        i = parent;
+    }
+}
+
+// Remove maximum element
+int popMax(int heap[], int *size) {
+    int max = heap[0];
+
+    heap[0] = heap[--(*size)];
+
+    int i = 0;
+
     while (1) {
         int largest = i;
         int l = 2 * i + 1;
         int r = 2 * i + 2;
-        if (l < n && heap[l] > heap[largest]) largest = l;
-        if (r < n && heap[r] > heap[largest]) largest = r;
-        if (largest == i) return;
-        int temp = heap[i];
-        heap[i] = heap[largest];
-        heap[largest] = temp;
+
+        if (l < *size && heap[l] > heap[largest])
+            largest = l;
+
+        if (r < *size && heap[r] > heap[largest])
+            largest = r;
+
+        if (largest == i)
+            break;
+
+        swap(&heap[i], &heap[largest]);
         i = largest;
     }
-}
 
-void siftUp(int heap[], int i) {
-    while (i > 0) {
-        int parent = (i - 1) / 2;
-        if (heap[parent] >= heap[i]) return;
-        int temp = heap[parent];
-        heap[parent] = heap[i];
-        heap[i] = temp;
-        i = parent;
-    }
-}
-
-int popMax(int heap[], int *size) {
-    int top = heap[0];
-    heap[0] = heap[*size - 1];
-    (*size)--;
-    siftDown(heap, *size, 0);
-    return top;
+    return max;
 }
 
 int lastStoneWeight(int stones[], int n) {
-    int heap[MAX_STONES];
-    memcpy(heap, stones, n * sizeof(int));
-    int size = n;
-    for (int i = n / 2 - 1; i >= 0; i--)
-        siftDown(heap, n, i);
+
+    int heap[n > 0 ? n : 1];
+    int size = 0;
+
+    // Insert all stones
+    for (int i = 0; i < n; i++) {
+        insert(heap, &size, stones[i]);
+    }
+
     while (size > 1) {
+
         int y = popMax(heap, &size);
         int x = popMax(heap, &size);
+
         if (y != x) {
-            heap[size++] = y - x;
-            siftUp(heap, size - 1);
+            insert(heap, &size, y - x);
         }
     }
+
     return size == 0 ? 0 : heap[0];
 }`,
-    cpp: `#include <utility>
+    cpp: `#include <iostream>
 #include <vector>
+#include <queue>
 using namespace std;
 
-void siftDown(vector<int>& heap, int n, int i) {
-    while (true) {
-        int largest = i;
-        int l = 2 * i + 1;
-        int r = 2 * i + 2;
-        if (l < n && heap[l] > heap[largest]) largest = l;
-        if (r < n && heap[r] > heap[largest]) largest = r;
-        if (largest == i) return;
-        swap(heap[i], heap[largest]);
-        i = largest;
-    }
-}
+class Solution {
+public:
+    int lastStoneWeight(vector<int>& stones) {
 
-void siftUp(vector<int>& heap, int i) {
-    while (i > 0) {
-        int parent = (i - 1) / 2;
-        if (heap[parent] >= heap[i]) return;
-        swap(heap[parent], heap[i]);
-        i = parent;
-    }
-}
+        priority_queue<int> pq;
 
-int popMax(vector<int>& heap) {
-    int top = heap[0];
-    heap[0] = heap.back();
-    heap.pop_back();
-    siftDown(heap, heap.size(), 0);
-    return top;
-}
-
-int lastStoneWeight(const vector<int>& stones) {
-    vector<int> heap = stones;
-    int n = heap.size();
-    for (int i = n / 2 - 1; i >= 0; i--)
-        siftDown(heap, n, i);
-    while (heap.size() > 1) {
-        int y = popMax(heap);
-        int x = popMax(heap);
-        if (y != x) {
-            heap.push_back(y - x);
-            siftUp(heap, heap.size() - 1);
+        // Add all stones
+        for (int s : stones) {
+            pq.push(s);
         }
-    }
-    return heap.empty() ? 0 : heap[0];
-}`,
-    java: `import java.util.ArrayList;
-import java.util.List;
 
-public class LastStoneWeight {
-    static void siftDown(List<Integer> heap, int n, int i) {
-        while (true) {
-            int largest = i;
-            int l = 2 * i + 1;
-            int r = 2 * i + 2;
-            if (l < n && heap.get(l) > heap.get(largest)) largest = l;
-            if (r < n && heap.get(r) > heap.get(largest)) largest = r;
-            if (largest == i) return;
-            int temp = heap.get(i);
-            heap.set(i, heap.get(largest));
-            heap.set(largest, temp);
-            i = largest;
-        }
-    }
+        while (pq.size() > 1) {
 
-    static void siftUp(List<Integer> heap, int i) {
-        while (i > 0) {
-            int parent = (i - 1) / 2;
-            if (heap.get(parent) >= heap.get(i)) return;
-            int temp = heap.get(parent);
-            heap.set(parent, heap.get(i));
-            heap.set(i, temp);
-            i = parent;
-        }
-    }
+            int y = pq.top();
+            pq.pop();
 
-    static int popMax(List<Integer> heap) {
-        int top = heap.get(0);
-        heap.set(0, heap.get(heap.size() - 1));
-        heap.remove(heap.size() - 1);
-        siftDown(heap, heap.size(), 0);
-        return top;
-    }
+            int x = pq.top();
+            pq.pop();
 
-    public static int lastStoneWeight(int[] stones) {
-        List<Integer> heap = new ArrayList<>();
-        for (int s : stones) heap.add(s);
-        int n = heap.size();
-        for (int i = n / 2 - 1; i >= 0; i--)
-            siftDown(heap, n, i);
-        while (heap.size() > 1) {
-            int y = popMax(heap);
-            int x = popMax(heap);
             if (y != x) {
-                heap.add(y - x);
-                siftUp(heap, heap.size() - 1);
+                pq.push(y - x);
             }
         }
-        return heap.isEmpty() ? 0 : heap.get(0);
+
+        return pq.empty() ? 0 : pq.top();
+    }
+};`,
+    java: `import java.util.*;
+
+class Solution {
+    public int lastStoneWeight(int[] stones) {
+
+        PriorityQueue<Integer> pq =
+            new PriorityQueue<>(Collections.reverseOrder());
+
+        // Add all stones
+        for (int s : stones) {
+            pq.add(s);
+        }
+
+        while (pq.size() > 1) {
+
+            int y = pq.poll();
+            int x = pq.poll();
+
+            if (y != x) {
+                pq.add(y - x);
+            }
+        }
+
+        return pq.isEmpty() ? 0 : pq.poll();
     }
 }`,
-    python: `def sift_down(heap, n, i):
-    while True:
-        largest = i
-        l = 2 * i + 1
-        r = 2 * i + 2
-        if l < n and heap[l] > heap[largest]:
-            largest = l
-        if r < n and heap[r] > heap[largest]:
-            largest = r
-        if largest == i:
-            return
-        heap[i], heap[largest] = heap[largest], heap[i]
-        i = largest
+    python: `import heapq
 
-def sift_up(heap, i):
-    while i > 0:
-        parent = (i - 1) // 2
-        if heap[parent] >= heap[i]:
-            return
-        heap[parent], heap[i] = heap[i], heap[parent]
-        i = parent
+class Solution:
+    def lastStoneWeight(self, stones):
 
-def pop_max(heap):
-    top = heap[0]
-    heap[0] = heap[-1]
-    heap.pop()
-    sift_down(heap, len(heap), 0)
-    return top
+        # Convert into negative values
+        heap = [-s for s in stones]
 
-def last_stone_weight(stones):
-    heap = stones[:]
-    n = len(heap)
-    for i in range(n // 2 - 1, -1, -1):
-        sift_down(heap, n, i)
-    while len(heap) > 1:
-        y = pop_max(heap)
-        x = pop_max(heap)
-        if y != x:
-            heap.append(y - x)
-            sift_up(heap, len(heap) - 1)
-    return heap[0] if heap else 0`,
+        heapq.heapify(heap)
+
+        while len(heap) > 1:
+
+            y = -heapq.heappop(heap)
+            x = -heapq.heappop(heap)
+
+            if y != x:
+                heapq.heappush(heap, -(y - x))
+
+        return -heap[0] if heap else 0`,
   },
 
-  // C++ and Java write `if (child < n && …) largest = child;` and `if (largest == i) return;` on one line, so the check
-  // and the statement it guards share that line there; Python puts the guarded statement on its own line.
+  // C: every step on its own statement. The library listings: a step inside insert or popMax highlights the library call
+  // it belongs to (C++ reads y and x with top() and removes them with pop(): popMax's first step is the top() line, the
+  // rest the pop() line). Python builds its list of negated weights and heapifies it: the build's steps highlight those.
   lineMap: {
     c: {
-      'init-heap': 40,
-      'set-n': 42,
-      'build-loop': 43,
-      'call-build': 44,
-      'smash-loop': 45,
-      'pop-y': 46,
-      'pop-x': 47,
-      'check-equal': 48,
-      'push-diff': 49,
-      'call-siftup': 50,
-      'return-result': 53,
-      'pop-top': 32,
-      'pop-move-last': 33,
-      'pop-shrink': 34,
-      'pop-call-sift': 35,
-      'pop-return': 36,
-      'sd-largest': 7,
-      'sd-left': 8,
-      'sd-right': 9,
-      'sd-check-left': 10,
-      'sd-take-left': 10,
-      'sd-check-right': 11,
-      'sd-take-right': 11,
-      'sd-check-done': 12,
-      'sd-return': 12,
-      'sd-swap': 13,
-      'sd-move': 16,
-      'su-loop': 21,
-      'su-parent': 22,
-      'su-check': 23,
-      'su-return': 23,
-      'su-swap': 24,
-      'su-move': 27,
+      'init-heap': 57,
+      'set-size': 58,
+      'build-loop': 61,
+      'call-insert': 62,
+      'smash-loop': 65,
+      'pop-y': 67,
+      'pop-x': 68,
+      'check-equal': 70,
+      'insert-diff': 71,
+      'return-result': 75,
+      ...siteLines(
+        ref => C_INSERT[ref],
+        ref => C_POP[ref]
+      ),
     },
     cpp: {
-      'init-heap': 36,
-      'set-n': 37,
-      'build-loop': 38,
-      'call-build': 39,
-      'smash-loop': 40,
-      'pop-y': 41,
-      'pop-x': 42,
-      'check-equal': 43,
-      'push-diff': 44,
-      'call-siftup': 45,
-      'return-result': 48,
-      'pop-top': 28,
-      'pop-move-last': 29,
-      'pop-shrink': 30,
-      'pop-call-sift': 31,
-      'pop-return': 32,
-      'sd-largest': 7,
-      'sd-left': 8,
-      'sd-right': 9,
-      'sd-check-left': 10,
-      'sd-take-left': 10,
-      'sd-check-right': 11,
-      'sd-take-right': 11,
-      'sd-check-done': 12,
-      'sd-return': 12,
-      'sd-swap': 13,
-      'sd-move': 14,
-      'su-loop': 19,
-      'su-parent': 20,
-      'su-check': 21,
-      'su-return': 21,
-      'su-swap': 22,
-      'su-move': 23,
+      'init-heap': 10,
+      'set-size': 10,
+      'build-loop': 13,
+      'call-insert': 14,
+      'smash-loop': 17,
+      'pop-y': 19,
+      'pop-x': 22,
+      'check-equal': 25,
+      'insert-diff': 26,
+      'return-result': 30,
+      ...siteLines(
+        (_ref, site) => (site === 'stone' ? 14 : 26),
+        (ref, site) => (site === 'y' ? 19 : 22) + (ref === 'pop-max' ? 0 : 1)
+      ),
     },
     java: {
-      'init-heap': 40,
-      'set-n': 42,
-      'build-loop': 43,
-      'call-build': 44,
-      'smash-loop': 45,
-      'pop-y': 46,
-      'pop-x': 47,
-      'check-equal': 48,
-      'push-diff': 49,
-      'call-siftup': 50,
-      'return-result': 53,
-      'pop-top': 32,
-      'pop-move-last': 33,
-      'pop-shrink': 34,
-      'pop-call-sift': 35,
-      'pop-return': 36,
-      'sd-largest': 7,
-      'sd-left': 8,
-      'sd-right': 9,
-      'sd-check-left': 10,
-      'sd-take-left': 10,
-      'sd-check-right': 11,
-      'sd-take-right': 11,
-      'sd-check-done': 12,
-      'sd-return': 12,
-      'sd-swap': 13,
-      'sd-move': 16,
-      'su-loop': 21,
-      'su-parent': 22,
-      'su-check': 23,
-      'su-return': 23,
-      'su-swap': 24,
-      'su-move': 27,
+      'init-heap': 6,
+      'set-size': 6,
+      'build-loop': 10,
+      'call-insert': 11,
+      'smash-loop': 14,
+      'pop-y': 16,
+      'pop-x': 17,
+      'check-equal': 19,
+      'insert-diff': 20,
+      'return-result': 24,
+      ...siteLines(
+        (_ref, site) => (site === 'stone' ? 11 : 20),
+        (_ref, site) => (site === 'y' ? 16 : 17)
+      ),
     },
     python: {
-      'init-heap': 31,
-      'set-n': 32,
-      'build-loop': 33,
-      'call-build': 34,
-      'smash-loop': 35,
-      'pop-y': 36,
-      'pop-x': 37,
-      'check-equal': 38,
-      'push-diff': 39,
-      'call-siftup': 40,
-      'return-result': 41,
-      'pop-top': 24,
-      'pop-move-last': 25,
-      'pop-shrink': 26,
-      'pop-call-sift': 27,
-      'pop-return': 28,
-      'sd-largest': 3,
-      'sd-left': 4,
-      'sd-right': 5,
-      'sd-check-left': 6,
-      'sd-take-left': 7,
-      'sd-check-right': 8,
-      'sd-take-right': 9,
-      'sd-check-done': 10,
-      'sd-return': 11,
-      'sd-swap': 12,
-      'sd-move': 13,
-      'su-loop': 16,
-      'su-parent': 17,
-      'su-check': 18,
-      'su-return': 19,
-      'su-swap': 20,
-      'su-move': 21,
+      'init-heap': 7,
+      'set-size': 7,
+      'build-loop': 9,
+      'call-insert': 9,
+      'smash-loop': 11,
+      'pop-y': 13,
+      'pop-x': 14,
+      'check-equal': 16,
+      'insert-diff': 17,
+      'return-result': 19,
+      ...siteLines(
+        (_ref, site) => (site === 'stone' ? 9 : 17),
+        (_ref, site) => (site === 'y' ? 13 : 14)
+      ),
     },
   },
 
-  // C and Java swap through a temporary over three lines, where C++ calls swap() and Python uses a tuple assignment; the
-  // copy is a declaration plus memcpy (C) or a declaration plus a for-each loop (Java), where C++ and Python copy in one
-  // statement. The single step of each highlights all of its lines.
+  // Java declares its priority queue over two lines: the step that creates it highlights both.
   lineSpans: {
-    c: { 'init-heap': 2, 'sd-swap': 3, 'su-swap': 3 },
-    java: { 'init-heap': 2, 'sd-swap': 3, 'su-swap': 3 },
+    java: { 'init-heap': 2, 'set-size': 2 },
   },
 
   generateSteps: generateLastStoneWeightSteps,

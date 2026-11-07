@@ -19,7 +19,7 @@ const PAD_BOTTOM = 24;
 
 /**
  * compared: its value is being compared; swapped: this step swapped it; moved: popMax copied the last stone here;
- * leaving: the last slot, copied to the root and about to be removed; inserted: the stone just appended; focus: the
+ * leaving: the last slot, copied to the root and about to be removed; inserted: the stone just stored; focus: the
  * position being sifted (i); result: the last stone; normal: anything else
  */
 type NodeState = 'compared' | 'swapped' | 'moved' | 'leaving' | 'inserted' | 'focus' | 'result' | 'normal';
@@ -47,7 +47,6 @@ const HEAP_STATE_TEXT: Record<Exclude<NodeState, 'normal'>, string> = {
 };
 
 const PHASE_TEXT: Record<MaxHeapView['phase'], string> = {
-  copy: 'Copy the stones',
   build: 'Build the max heap',
   smash: 'Smash the two heaviest',
   done: 'Done',
@@ -289,7 +288,7 @@ export const HeapVisualizer: React.FC<HeapVisualizerProps> = ({ currentStep, ste
             </span>
             {view.popping && view.top !== null && (
               <span className="font-bold text-purple-200">
-                popMax for {view.popping}: top = {view.top}
+                popMax for {view.popping}: max = {view.top}
               </span>
             )}
             {smash && (

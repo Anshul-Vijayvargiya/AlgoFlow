@@ -9,7 +9,7 @@ describe('Last Stone Weight in the visualizer store', () => {
   it('opening it loads the example and runs it', () => {
     st().setAlgorithm('heap-last-stone-weight');
     expect(st()).toMatchObject({ array: [2, 7, 4, 1, 8, 1], executionStatus: 'ok', inputSource: 'default', arraySize: 6 });
-    expect(st().steps).toHaveLength(244);
+    expect(st().steps).toHaveLength(250);
     expect(st().steps.at(-1)!.outcomeText).toBe('The last stone weighs 1');
   });
 

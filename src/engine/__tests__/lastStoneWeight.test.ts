@@ -161,25 +161,34 @@ describe('Last Stone Weight: the answer', () => {
   });
 });
 
+/** the codeRef without its call site: 'su-check@diff' → 'su-check' */
+const base = (s: ExecutionStep) => s.codeRef!.split('@')[0];
+const site = (s: ExecutionStep) => s.codeRef!.split('@')[1];
+
 describe('Last Stone Weight: the heap at every step', () => {
   const ALL = [...EDGE, ...randomInputs(120)];
 
-  it('the copy holds the stones in input order; after the build the array is a max heap of the same stones', () => {
+  it('the heap starts empty, each stone is inserted in input order, and after the build it is a max heap of the same stones', () => {
     for (const stones of ALL) {
       const steps = run(...stones);
-      expect(view(steps[0]).heap, JSON.stringify(stones)).toEqual(stones);
-      expect(view(steps[0]).phase).toBe('copy');
+      expect(view(steps[0]).heap, JSON.stringify(stones)).toEqual([]);
+      expect(view(steps[0]).phase).toBe('build');
+      const stored = steps.filter(s => s.codeRef === 'ins-store@stone').map(s => view(s).heap[view(s).inserted!]);
+      expect(stored, JSON.stringify(stones)).toEqual(stones);
       const built = steps.find(s => s.codeRef === 'build-loop' && s.result === 'false')!;
       expect(isMaxHeap(view(built).heap), JSON.stringify(stones)).toBe(true);
       expect(sorted(view(built).heap)).toEqual(sorted(stones));
     }
   });
 
-  it('the heap property holds whenever no sift is running: at each round, after each popMax and after each siftUp', () => {
+  it('the heap property holds whenever no sift is running: between insertions, at each round, after each popMax and after each insert', () => {
     for (const stones of ALL) {
       for (const s of run(...stones)) {
-        const atRest = ['smash-loop', 'pop-return', 'pop-y', 'pop-x', 'check-equal', 'return-result'].includes(s.codeRef!) || (s.codeRef === 'su-loop' && s.result === 'false') || s.codeRef === 'su-return';
-        if (atRest && view(s).phase !== 'copy') expect(isMaxHeap(view(s).heap), `${JSON.stringify(stones)} step ${s.id} ${s.codeRef}`).toBe(true);
+        const atRest =
+          ['init-heap', 'set-size', 'build-loop', 'call-insert', 'smash-loop', 'pop-return', 'pop-y', 'pop-x', 'check-equal', 'insert-diff', 'return-result'].includes(base(s)) ||
+          (base(s) === 'su-loop' && s.result === 'false') ||
+          base(s) === 'su-break';
+        if (atRest) expect(isMaxHeap(view(s).heap), `${JSON.stringify(stones)} step ${s.id} ${s.codeRef}`).toBe(true);
       }
     }
   });
@@ -194,9 +203,9 @@ describe('Last Stone Weight: the heap at every step', () => {
       const xs = steps.filter(s => s.codeRef === 'pop-x' && s.type === 'assign').map(s => view(s).x);
       expect(ys).toEqual(ref.pairs.map(p => p.y));
       expect(xs).toEqual(ref.pairs.map(p => p.x));
-      // popMax returns the root, which is the largest stone in the heap at that moment
+      // popMax takes the root, which is the largest stone in the heap at that moment
       for (const [k, s] of steps.entries()) {
-        if (s.codeRef === 'pop-top') expect(view(s).top).toBe(Math.max(...view(steps[k - 1]).heap));
+        if (base(s) === 'pop-max') expect(view(s).top).toBe(Math.max(...view(steps[k - 1]).heap));
       }
     }
   });
@@ -220,9 +229,24 @@ describe('Last Stone Weight: the heap at every step', () => {
     }
   });
 
+  it('every step inside insert or popMax names its call site: a stone or y − x for insert, y or x for popMax', () => {
+    for (const stones of ALL) {
+      const steps = run(...stones);
+      for (const s of steps) {
+        const calls = view(s).calls;
+        if (calls.length < 2) {
+          expect(site(s), `${s.id} ${s.codeRef}`).toBeUndefined();
+          continue;
+        }
+        if (calls[1].startsWith('insert')) expect(site(s), `${s.id} ${s.codeRef}`).toBe(view(s).phase === 'build' ? 'stone' : 'diff');
+        else expect(site(s), `${s.id} ${s.codeRef}`).toBe(view(s).popping);
+      }
+    }
+  });
+
   it('a check of a missing child reads nothing: no comparison, and the message says so', () => {
     const steps = run(2, 7, 4, 1, 8, 1);
-    const missing = steps.filter(s => (s.codeRef === 'sd-check-left' || s.codeRef === 'sd-check-right') && !view(s).compared?.length);
+    const missing = steps.filter(s => (base(s) === 'sd-check-left' || base(s) === 'sd-check-right') && !view(s).compared?.length);
     expect(missing.length).toBeGreaterThan(0);
     for (const s of missing) {
       expect(s.result).toBe('false');
@@ -230,61 +254,75 @@ describe('Last Stone Weight: the heap at every step', () => {
     }
   });
 
-  it('ties: an equal child does not move up in siftDown, and siftUp stops at an equal parent', () => {
-    // [5, 5]: the left child equals the root, so the build does not swap
-    const build = run(5, 5).filter(s => s.codeRef === 'sd-swap' && view(s).phase === 'build');
-    expect(build).toEqual([]);
+  it('ties: an equal child does not move up when sifting down, and insert stops at an equal parent', () => {
+    // [5, 5]: the second 5 goes in under the first; it is not heavier, so it stays
+    const equal = run(5, 5);
+    expect(equal.find(s => s.codeRef === 'su-check@stone' && s.heap!.heap.length === 2)!.result).toBe('true');
+    expect(equal.filter(s => base(s) === 'su-swap')).toEqual([]);
     // [9, 5, 4]: 9 - 5 = 4 goes in under the 4 left at the root; it is not heavier, so it stays
     const steps = run(9, 5, 4);
-    const append = steps.find(s => s.codeRef === 'push-diff')!;
-    expect(view(append).heap).toEqual([4, 4]);
-    const check = steps.find(s => s.codeRef === 'su-check')!;
-    expect(check.result).toBe('true');
-    expect(steps.filter(s => s.codeRef === 'su-swap')).toEqual([]);
+    const store = steps.find(s => s.codeRef === 'ins-store@diff')!;
+    expect(view(store).heap).toEqual([4, 4]);
+    expect(steps.find(s => s.codeRef === 'su-check@diff')!.result).toBe('true');
+    expect(steps.filter(s => s.codeRef === 'su-swap@diff')).toEqual([]);
+    // [9, 5, 5, 1]: the first popMax moves 1 to the root, under two equal children 5 and 5; the left one wins the tie
+    const pops = run(9, 5, 5, 1);
+    expect(pops.find(s => s.codeRef === 'sd-check-right@y')).toMatchObject({ result: 'false', message: 'r=2 < size=3 && heap[2]=5 > heap[largest=1]=5 → FALSE' });
+    expect(view(pops.find(s => s.codeRef === 'sd-swap@y')!).swapped).toEqual([0, 1]);
   });
 
-  it('popMax: the last stone moves to the root, its slot goes, then siftDown; an unequal smash appends y − x and sifts it up', () => {
+  it('popMax: the last stone moves to the root, its slot goes, then i = 0 and the sift down; an unequal smash inserts y − x', () => {
     const steps = run(2, 7, 4, 1, 8, 1);
-    const k = steps.findIndex(s => s.codeRef === 'pop-move-last');
+    const k = steps.findIndex(s => s.codeRef === 'pop-move-last@y');
     expect(view(steps[k - 1]).heap).toEqual([8, 7, 4, 1, 2, 1]);
     expect(view(steps[k])).toMatchObject({ heap: [1, 7, 4, 1, 2, 1], moved: { from: 5, to: 0 }, top: 8, popping: 'y' });
     expect(view(steps[k + 1])).toMatchObject({ heap: [1, 7, 4, 1, 2], removed: 1 });
-    expect(steps[k + 2]).toMatchObject({ codeRef: 'pop-call-sift', message: 'Call siftDown(heap, 5, 0)' });
-    const append = steps.find(s => s.codeRef === 'push-diff')!;
+    expect(steps[k + 2]).toMatchObject({ codeRef: 'pop-set-i@y', message: 'i = 0' });
+    const store = steps.find(s => s.codeRef === 'ins-store@diff')!;
     // two stones out of six, one back in: it goes into the fifth slot
-    expect(view(append)).toMatchObject({ y: 8, x: 7, diff: 1, inserted: 4 });
-    expect(view(append).heap).toHaveLength(5);
-    expect(view(append).heap[4]).toBe(1);
-    // equal stones: nothing is appended
+    expect(view(store)).toMatchObject({ y: 8, x: 7, diff: 1, inserted: 4 });
+    expect(view(store).heap).toHaveLength(5);
+    expect(view(store).heap[4]).toBe(1);
+    // equal stones: nothing is inserted
     const equal = run(4, 4);
-    expect(equal.filter(s => s.codeRef === 'push-diff')).toEqual([]);
+    expect(equal.filter(s => s.codeRef === 'insert-diff')).toEqual([]);
     expect(equal.find(s => s.codeRef === 'check-equal')).toMatchObject({ result: 'false', message: 'y=4 != x=4 → FALSE — both destroyed' });
   });
 
-  it('the calls in progress: lastStoneWeight, then popMax, then siftDown, outermost first', () => {
+  it('the calls in progress: lastStoneWeight, then insert or popMax, outermost first', () => {
     const steps = run(2, 7, 4, 1, 8, 1);
-    const inner = steps.find(s => s.codeRef === 'sd-largest' && view(s).phase === 'smash')!;
-    expect(view(inner).calls).toEqual(['lastStoneWeight(stones)', 'popMax(heap)', 'siftDown(heap, 5, 0)']);
-    expect(view(steps.find(s => s.codeRef === 'su-loop')!).calls).toEqual(['lastStoneWeight(stones)', 'siftUp(heap, 4)']);
+    expect(view(steps.find(s => s.codeRef === 'su-loop@stone')!).calls).toEqual(['lastStoneWeight(stones, n)', 'insert(heap, &size, 2)']);
+    expect(view(steps.find(s => s.codeRef === 'sd-largest@y')!).calls).toEqual(['lastStoneWeight(stones, n)', 'popMax(heap, &size)']);
+    expect(view(steps.find(s => s.codeRef === 'su-loop@diff')!).calls).toEqual(['lastStoneWeight(stones, n)', 'insert(heap, &size, 1)']);
     expect(view(steps.at(-1)!).calls).toEqual([]);
   });
 });
 
 describe('Last Stone Weight: the steps', () => {
-  it('the empty input and one stone: copy, n, the build check, the loop check, the return', () => {
-    for (const stones of [[], [5]]) {
-      expect(run(...stones).map(s => s.codeRef)).toEqual(['init-heap', 'set-n', 'build-loop', 'smash-loop', 'return-result']);
-    }
+  it('the empty input: the empty heap, size = 0, the build check, the loop check, the return', () => {
+    expect(run().map(s => s.codeRef)).toEqual(['init-heap', 'set-size', 'build-loop', 'smash-loop', 'return-result']);
     expect(run().map(s => s.state)).toEqual([[], [], [], [], []]);
+    expect(run()[0].message).toBe('heap = an empty array with room for 1 stone');
   });
 
-  it('[4, 4]: the exact order of statements, through both popMax calls', () => {
+  it('one stone: inserted at the root, then nothing to smash', () => {
+    expect(run(5).map(s => s.codeRef)).toEqual(['init-heap', 'set-size', 'build-loop', 'call-insert', 'ins-index@stone', 'ins-store@stone', 'su-loop@stone', 'build-loop', 'build-loop', 'smash-loop', 'return-result']);
+  });
+
+  it('[4, 4]: the exact order of statements, through both insertions and both popMax calls', () => {
+    const pop = (w: 'y' | 'x') => [
+      `pop-${w}`, `pop-max@${w}`, `pop-move-last@${w}`, `pop-shrink@${w}`, `pop-set-i@${w}`,
+      `sd-largest@${w}`, `sd-left@${w}`, `sd-right@${w}`, `sd-check-left@${w}`, `sd-check-right@${w}`, `sd-check-done@${w}`, `sd-break@${w}`,
+      `pop-return@${w}`, `pop-${w}`,
+    ];
     expect(run(4, 4).map(s => s.codeRef)).toEqual([
-      'init-heap', 'set-n',
-      'build-loop', 'call-build', 'sd-largest', 'sd-left', 'sd-right', 'sd-check-left', 'sd-check-right', 'sd-check-done', 'sd-return', 'build-loop', 'build-loop',
+      'init-heap', 'set-size',
+      'build-loop', 'call-insert', 'ins-index@stone', 'ins-store@stone', 'su-loop@stone', 'build-loop',
+      'build-loop', 'call-insert', 'ins-index@stone', 'ins-store@stone', 'su-loop@stone', 'su-parent@stone', 'su-check@stone', 'su-break@stone', 'build-loop',
+      'build-loop',
       'smash-loop',
-      'pop-y', 'pop-top', 'pop-move-last', 'pop-shrink', 'pop-call-sift', 'sd-largest', 'sd-left', 'sd-right', 'sd-check-left', 'sd-check-right', 'sd-check-done', 'sd-return', 'pop-return', 'pop-y',
-      'pop-x', 'pop-top', 'pop-move-last', 'pop-shrink', 'pop-call-sift', 'sd-largest', 'sd-left', 'sd-right', 'sd-check-left', 'sd-check-right', 'sd-check-done', 'sd-return', 'pop-return', 'pop-x',
+      ...pop('y'),
+      ...pop('x'),
       'check-equal', 'smash-loop', 'return-result',
     ]);
   });
@@ -298,6 +336,7 @@ describe('Last Stone Weight: the steps', () => {
       }
     }
     expect([...reached].sort()).toEqual(Object.keys(def.lineMap.cpp).sort());
+    for (const lang of LANGUAGES) expect(Object.keys(def.lineMap[lang]).sort(), lang).toEqual(Object.keys(def.lineMap.cpp).sort());
   });
 
   it('no message or explanation shows undefined or NaN', () => {
@@ -312,7 +351,7 @@ describe('Last Stone Weight: the steps', () => {
     for (const stones of EDGE.filter(a => a.length === 10)) most = Math.max(most, run(...stones).length);
     expect(most).toBeGreaterThan(300);
     expect(most).toBeLessThanOrEqual(750);
-    expect(run(2, 7, 4, 1, 8, 1)).toHaveLength(244);
+    expect(run(2, 7, 4, 1, 8, 1)).toHaveLength(250);
   });
 });
 
@@ -336,56 +375,86 @@ describe('Last Stone Weight: the input', () => {
 
 describe('Last Stone Weight: the four listings', () => {
   const code = (lang: ProgrammingLanguage) => def.code[lang];
-  const line = (lang: ProgrammingLanguage, ref: string) => code(lang).split('\n')[def.lineMap[lang][ref] - 1].trim();
+  const lineAt = (lang: ProgrammingLanguage, n: number) => code(lang).split('\n')[n - 1].trim();
+  const line = (lang: ProgrammingLanguage, ref: string) => lineAt(lang, def.lineMap[lang][ref]);
+  const INSERT = ['ins-index', 'ins-store', 'su-loop', 'su-parent', 'su-check', 'su-break', 'su-swap', 'su-move'];
+  const POP = ['pop-max', 'pop-move-last', 'pop-shrink', 'pop-set-i', 'sd-largest', 'sd-left', 'sd-right', 'sd-check-left', 'sd-take-left', 'sd-check-right', 'sd-take-right', 'sd-check-done', 'sd-break', 'sd-swap', 'sd-move', 'pop-return'];
+  const TOP = ['init-heap', 'set-size', 'build-loop', 'call-insert', 'smash-loop', 'pop-y', 'pop-x', 'check-equal', 'insert-diff', 'return-result'];
 
-  it('hand-written heap operations in every language: no library priority queue or heap module', () => {
-    for (const lang of LANGUAGES) {
-      expect(code(lang), lang).not.toMatch(/priority_queue|PriorityQueue|heapq|make_heap|push_heap|pop_heap/);
-      expect(code(lang), lang).toMatch(/sift_?[dD]own/);
-      expect(code(lang), lang).toMatch(/sift_?[uU]p/);
-      expect(code(lang), lang).toMatch(/pop_?[mM]ax/);
-    }
+  it('C writes the heap out (insert, popMax, swap); Java and C++ use their priority queue, Python heapq', () => {
+    expect(code('c')).not.toMatch(/priority_queue|PriorityQueue|heapq/);
+    for (const fn of ['void swap(int *a, int *b) {', 'void insert(int heap[], int *size, int val) {', 'int popMax(int heap[], int *size) {', 'int lastStoneWeight(int stones[], int n) {']) expect(code('c')).toContain(fn);
+    expect(code('cpp')).toContain('priority_queue<int> pq;');
+    expect(code('java')).toContain('new PriorityQueue<>(Collections.reverseOrder());');
+    expect(code('python')).toContain('heapq.heapify(heap)');
+    expect(code('python')).toContain('heap = [-s for s in stones]');
   });
 
-  it('the same tie-breaking everywhere: a child must be strictly greater, siftUp stops at a parent that is at least as large', () => {
-    for (const lang of LANGUAGES) {
-      expect(line(lang, 'sd-check-left'), lang).toMatch(/heap(\[l\]|\.get\(l\)) > heap(\[largest\]|\.get\(largest\))/);
-      expect(line(lang, 'sd-check-right'), lang).toMatch(/heap(\[r\]|\.get\(r\)) > heap(\[largest\]|\.get\(largest\))/);
-      expect(line(lang, 'su-check'), lang).toMatch(/heap(\[parent\]|\.get\(parent\)) >= heap(\[i\]|\.get\(i\))/);
+  it('C: a child must be strictly greater, insert stops at a parent that is at least as large (the trace\'s tie-breaking)', () => {
+    for (const w of ['y', 'x']) {
+      expect(line('c', `sd-check-left@${w}`)).toBe('if (l < *size && heap[l] > heap[largest])');
+      expect(line('c', `sd-check-right@${w}`)).toBe('if (r < *size && heap[r] > heap[largest])');
     }
+    for (const s of ['stone', 'diff']) expect(line('c', `su-check@${s}`)).toBe('if (heap[parent] >= heap[i])');
   });
 
-  it('the functions come in the same order, and each listing runs the statements in trace order', () => {
-    const order = ['sd-largest', 'sd-left', 'sd-right', 'sd-check-left', 'sd-check-right', 'sd-check-done', 'sd-swap', 'sd-move', 'su-loop', 'su-parent', 'su-check', 'su-swap', 'su-move', 'pop-top', 'pop-move-last', 'pop-shrink', 'pop-call-sift', 'pop-return', 'init-heap', 'set-n', 'build-loop', 'call-build', 'smash-loop', 'pop-y', 'pop-x', 'check-equal', 'push-diff', 'call-siftup', 'return-result'];
-    for (const lang of LANGUAGES) {
-      const lines = order.map(ref => def.lineMap[lang][ref]);
+  it('C: both call sites of insert, and of popMax, highlight the same statements, in trace order', () => {
+    for (const ref of INSERT) expect(def.lineMap.c[`${ref}@stone`], ref).toBe(def.lineMap.c[`${ref}@diff`]);
+    for (const ref of POP) expect(def.lineMap.c[`${ref}@y`], ref).toBe(def.lineMap.c[`${ref}@x`]);
+    const order = [...INSERT.map(r => `${r}@stone`), ...POP.map(r => `${r}@y`), ...TOP];
+    const lines = order.map(ref => def.lineMap.c[ref]);
+    expect(lines).toEqual([...lines].sort((a, b) => a - b));
+  });
+
+  it('the library listings: each step inside insert or popMax highlights the library call of its call site', () => {
+    const SITE_LINES: Record<'cpp' | 'java' | 'python', Record<string, string>> = {
+      cpp: { stone: 'pq.push(s);', diff: 'pq.push(y - x);', y: 'pq.pop();', x: 'pq.pop();' },
+      java: { stone: 'pq.add(s);', diff: 'pq.add(y - x);', y: 'int y = pq.poll();', x: 'int x = pq.poll();' },
+      python: { stone: 'heapq.heapify(heap)', diff: 'heapq.heappush(heap, -(y - x))', y: 'y = -heapq.heappop(heap)', x: 'x = -heapq.heappop(heap)' },
+    };
+    for (const lang of ['cpp', 'java', 'python'] as const) {
+      for (const s of ['stone', 'diff']) for (const ref of INSERT) expect(line(lang, `${ref}@${s}`), `${lang} ${ref}@${s}`).toBe(SITE_LINES[lang][s]);
+      for (const w of ['y', 'x']) {
+        for (const ref of POP) {
+          // C++ reads the root with top() before pop() removes it
+          const expected = lang === 'cpp' && ref === 'pop-max' ? `int ${w} = pq.top();` : SITE_LINES[lang][w];
+          expect(line(lang, `${ref}@${w}`), `${lang} ${ref}@${w}`).toBe(expected);
+        }
+      }
+      // the y pop() comes before the x pop()
+      expect(def.lineMap[lang]['sd-swap@y'], lang).toBeLessThan(def.lineMap[lang]['sd-swap@x']);
+      const lines = TOP.map(ref => def.lineMap[lang][ref]);
       expect(lines, lang).toEqual([...lines].sort((a, b) => a - b));
     }
   });
 
-  it('C++ computes n / 2 - 1 on an int, never on the unsigned heap.size() (an empty heap would wrap around)', () => {
-    expect(line('cpp', 'set-n')).toBe('int n = heap.size();');
-    expect(line('cpp', 'build-loop')).toBe('for (int i = n / 2 - 1; i >= 0; i--)');
-    expect(code('cpp')).not.toMatch(/heap\.size\(\) \/ 2/);
+  it('the top-level statements, in every language', () => {
+    const EXPECTED: Record<string, Record<ProgrammingLanguage, string>> = {
+      'init-heap': { c: 'int heap[n > 0 ? n : 1];', cpp: 'priority_queue<int> pq;', java: 'PriorityQueue<Integer> pq =', python: 'heap = [-s for s in stones]' },
+      'build-loop': { c: 'for (int i = 0; i < n; i++) {', cpp: 'for (int s : stones) {', java: 'for (int s : stones) {', python: 'heapq.heapify(heap)' },
+      'smash-loop': { c: 'while (size > 1) {', cpp: 'while (pq.size() > 1) {', java: 'while (pq.size() > 1) {', python: 'while len(heap) > 1:' },
+      'pop-y': { c: 'int y = popMax(heap, &size);', cpp: 'int y = pq.top();', java: 'int y = pq.poll();', python: 'y = -heapq.heappop(heap)' },
+      'check-equal': { c: 'if (y != x) {', cpp: 'if (y != x) {', java: 'if (y != x) {', python: 'if y != x:' },
+      'insert-diff': { c: 'insert(heap, &size, y - x);', cpp: 'pq.push(y - x);', java: 'pq.add(y - x);', python: 'heapq.heappush(heap, -(y - x))' },
+      'return-result': { c: 'return size == 0 ? 0 : heap[0];', cpp: 'return pq.empty() ? 0 : pq.top();', java: 'return pq.isEmpty() ? 0 : pq.poll();', python: 'return -heap[0] if heap else 0' },
+    };
+    for (const [ref, byLang] of Object.entries(EXPECTED)) for (const lang of LANGUAGES) expect(line(lang, ref), `${lang} ${ref}`).toBe(byLang[lang]);
   });
 
-  it('C and Java swap through a temporary over three lines, and copy over two; each such step highlights all of them', () => {
-    for (const lang of ['c', 'java'] as const) {
-      for (const ref of ['sd-swap', 'su-swap']) {
-        const r = resolveCodeRange(def, lang, ref)!;
-        expect(r.end - r.start, `${lang} ${ref}`).toBe(2);
-        expect(code(lang).split('\n')[r.end - 1], `${lang} ${ref}`).toMatch(/= temp;|, temp\);/);
+  it('Java creates its priority queue over two lines: that step highlights both; every other step one line', () => {
+    const r = resolveCodeRange(def, 'java', 'init-heap')!;
+    expect(code('java').split('\n').slice(r.start - 1, r.end).map(l => l.trim())).toEqual(['PriorityQueue<Integer> pq =', 'new PriorityQueue<>(Collections.reverseOrder());']);
+    for (const lang of LANGUAGES) {
+      for (const ref of Object.keys(def.lineMap[lang])) {
+        if (lang === 'java' && (ref === 'init-heap' || ref === 'set-size')) continue;
+        const range = resolveCodeRange(def, lang, ref)!;
+        expect(range.end - range.start, `${lang} ${ref}`).toBe(0);
       }
-      const copy = resolveCodeRange(def, lang, 'init-heap')!;
-      expect(code(lang).split('\n').slice(copy.start - 1, copy.end).join('\n'), lang).toMatch(lang === 'c' ? /memcpy\(heap, stones/ : /for \(int s : stones\) heap\.add\(s\);/);
-    }
-    for (const lang of ['cpp', 'python'] as const) {
-      for (const ref of ['sd-swap', 'su-swap', 'init-heap']) expect(resolveCodeRange(def, lang, ref)!.end - resolveCodeRange(def, lang, ref)!.start, `${lang} ${ref}`).toBe(0);
     }
   });
 
-  it('C holds up to MAX_STONES = 10 stones, the same limit as the visualizer', () => {
-    expect(code('c')).toContain('#define MAX_STONES 10');
-    expect(code('c')).toContain('int heap[MAX_STONES];');
+  it('C: the heap array has at least one slot (an array of 0 elements is undefined in C), and no main()', () => {
+    expect(code('c')).toContain('int heap[n > 0 ? n : 1];');
+    expect(code('c')).not.toMatch(/\bmain\s*\(/);
   });
 });

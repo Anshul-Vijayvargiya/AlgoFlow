@@ -10,6 +10,65 @@ const FOR_J = /for\s*\(?\s*(int\s+)?j\b/;
 /** the declaration of a traversal's output list (C: a buffer; C++: a vector; Java: a list; Python: []) */
 const TREE_RESULT = /\bresult = (malloc|new ArrayList|\[\])|vector<int> result;/;
 
+/**
+ * Last Stone Weight: a step inside insert or popMax highlights its statement in C, and in Java, C++ and Python (library
+ * priority queues) the library call of its call site (the codeRef's `@stone`, `@diff`, `@y` or `@x`).
+ */
+function lastStoneWeightAnchors(): Record<string, RegExp> {
+  const C_INSERT: Record<string, RegExp> = {
+    'ins-index': /^\s*int i = \(\*size\)\+\+;$/,
+    'ins-store': /^\s*heap\[i\] = val;$/,
+    'su-loop': /^\s*while \(i > 0\) \{$/,
+    'su-parent': /^\s*int parent = \(i - 1\) \/ 2;$/,
+    'su-check': /^\s*if \(heap\[parent\] >= heap\[i\]\)$/,
+    'su-break': /^\s*break;$/,
+    'su-swap': /^\s*swap\(&heap\[parent\], &heap\[i\]\);$/,
+    'su-move': /^\s*i = parent;$/,
+  };
+  const C_POP: Record<string, RegExp> = {
+    'pop-max': /^\s*int max = heap\[0\];$/,
+    'pop-move-last': /^\s*heap\[0\] = heap\[--\(\*size\)\];$/,
+    'pop-shrink': /^\s*heap\[0\] = heap\[--\(\*size\)\];$/,
+    'pop-set-i': /^\s*int i = 0;$/,
+    'sd-largest': /^\s*int largest = i;$/,
+    'sd-left': /^\s*int l = 2 \* i \+ 1;$/,
+    'sd-right': /^\s*int r = 2 \* i \+ 2;$/,
+    'sd-check-left': /^\s*if \(l < \*size && heap\[l\] > heap\[largest\]\)$/,
+    'sd-take-left': /^\s*largest = l;$/,
+    'sd-check-right': /^\s*if \(r < \*size && heap\[r\] > heap\[largest\]\)$/,
+    'sd-take-right': /^\s*largest = r;$/,
+    'sd-check-done': /^\s*if \(largest == i\)$/,
+    'sd-break': /^\s*break;$/,
+    'sd-swap': /^\s*swap\(&heap\[i\], &heap\[largest\]\);$/,
+    'sd-move': /^\s*i = largest;$/,
+    'pop-return': /^\s*return max;$/,
+  };
+  const LIBRARY: Record<string, RegExp> = {
+    stone: /^\s*(pq\.(push|add)\(s\);|heapq\.heapify\(heap\))$/,
+    diff: /^\s*(pq\.(push|add)\(y - x\);|heapq\.heappush\(heap, -\(y - x\)\))$/,
+    y: /^\s*(int y = pq\.(top|poll)\(\);|pq\.pop\(\);|y = -heapq\.heappop\(heap\))$/,
+    x: /^\s*(int x = pq\.(top|poll)\(\);|pq\.pop\(\);|x = -heapq\.heappop\(heap\))$/,
+  };
+  const anchors: Record<string, RegExp> = {
+    'init-heap': /^\s*(int heap\[n > 0 \? n : 1\];|priority_queue<int> pq;|PriorityQueue<Integer> pq =|heap = \[-s for s in stones\])$/,
+    'set-size': /^\s*(int size = 0;|priority_queue<int> pq;|PriorityQueue<Integer> pq =|heap = \[-s for s in stones\])$/,
+    'build-loop': /^\s*(for \(int i = 0; i < n; i\+\+\) \{|for \(int s : stones\) \{|heapq\.heapify\(heap\))$/,
+    'call-insert': /^\s*(insert\(heap, &size, stones\[i\]\);|pq\.(push|add)\(s\);|heapq\.heapify\(heap\))$/,
+    'smash-loop': /^\s*while \(?(size > 1|pq\.size\(\) > 1|len\(heap\) > 1)\)?( \{|:)$/,
+    'pop-y': /^\s*(int )?y = (popMax\(heap, &size\)|pq\.(top|poll)\(\)|-heapq\.heappop\(heap\));?$/,
+    'pop-x': /^\s*(int )?x = (popMax\(heap, &size\)|pq\.(top|poll)\(\)|-heapq\.heappop\(heap\));?$/,
+    'check-equal': /^\s*if \(?y != x\)?( \{|:)$/,
+    'insert-diff': /^\s*(insert\(heap, &size, y - x\);|pq\.(push|add)\(y - x\);|heapq\.heappush\(heap, -\(y - x\)\))$/,
+    'return-result': /^\s*return (size == 0 \? 0 : heap\[0\]|pq\.empty\(\) \? 0 : pq\.top\(\)|pq\.isEmpty\(\) \? 0 : pq\.poll\(\)|-heap\[0\] if heap else 0);?$/,
+  };
+  const add = (inner: Record<string, RegExp>, sites: string[]) => {
+    for (const site of sites) for (const [ref, c] of Object.entries(inner)) anchors[`${ref}@${site}`] = new RegExp(`${c.source}|${LIBRARY[site].source}`);
+  };
+  add(C_INSERT, ['stone', 'diff']);
+  add(C_POP, ['y', 'x']);
+  return anchors;
+}
+
 export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
   'tree-inorder': {
     'fn-entry': /\binorder_?[Tt]raversal\(/,
@@ -813,43 +872,7 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     apply: /^\s*(int32_t |int )?result = .*& mask\)*;?$/,
     done: /^\s*return result;?$/,
   },
-  'heap-last-stone-weight': {
-    // the copy is a declaration (C, Java: then memcpy / a for-each loop, covered by lineSpans) or one statement
-    'init-heap': /^\s*(int heap\[MAX_STONES\];|vector<int> heap = stones;|List<Integer> heap = new ArrayList<>\(\);|heap = stones\[:\])$/,
-    'set-n': /^\s*(int size = n;|int n = heap\.size\(\);|n = len\(heap\))$/,
-    'build-loop': /^\s*for (\(int i = n \/ 2 - 1; i >= 0; i--\)|i in range\(n \/\/ 2 - 1, -1, -1\):)$/,
-    'call-build': /^\s*sift_?[dD]own\(heap, n, i\);?$/,
-    'smash-loop': /^\s*while \(?(size > 1|heap\.size\(\) > 1|len\(heap\) > 1)\)?( \{|:)$/,
-    'pop-y': /^\s*(int )?y = pop_?[mM]ax\(heap(, &size)?\);?$/,
-    'pop-x': /^\s*(int )?x = pop_?[mM]ax\(heap(, &size)?\);?$/,
-    'check-equal': /^\s*if \(?y != x\)?( \{|:)$/,
-    'push-diff': /^\s*(heap\[size\+\+\] = y - x;|heap\.(push_back|add|append)\(y - x\);?)$/,
-    'call-siftup': /^\s*sift_?[uU]p\(heap, (size - 1|heap\.size\(\) - 1|len\(heap\) - 1)\);?$/,
-    'return-result': /^\s*return (size == 0 \? 0 : heap\[0\]|heap\.empty\(\) \? 0 : heap\[0\]|heap\.isEmpty\(\) \? 0 : heap\.get\(0\)|heap\[0\] if heap else 0);?$/,
-    'pop-top': /^\s*(int )?top = heap(\[0\]|\.get\(0\));?$/,
-    'pop-move-last': /^\s*(heap\[0\] = heap\[(\*size - 1|-1)\]|heap\[0\] = heap\.back\(\)|heap\.set\(0, heap\.get\(heap\.size\(\) - 1\)\));?$/,
-    'pop-shrink': /^\s*(\(\*size\)--|heap\.pop_back\(\)|heap\.remove\(heap\.size\(\) - 1\)|heap\.pop\(\));?$/,
-    'pop-call-sift': /^\s*sift_?[dD]own\(heap, (\*size|heap\.size\(\)|len\(heap\)), 0\);?$/,
-    'pop-return': /^\s*return top;?$/,
-    'sd-largest': /^\s*(int )?largest = i;?$/,
-    'sd-left': /^\s*(int )?l = 2 \* i \+ 1;?$/,
-    'sd-right': /^\s*(int )?r = 2 \* i \+ 2;?$/,
-    // C, C++ and Java put the guarded assignment on the check's line; Python on the next line
-    'sd-check-left': /^\s*if \(?l < n (&&|and) heap(\[l\]|\.get\(l\)) > heap(\[largest\]|\.get\(largest\))/,
-    'sd-take-left': /largest = l;?$/,
-    'sd-check-right': /^\s*if \(?r < n (&&|and) heap(\[r\]|\.get\(r\)) > heap(\[largest\]|\.get\(largest\))/,
-    'sd-take-right': /largest = r;?$/,
-    'sd-check-done': /^\s*if \(?largest == i\)?/,
-    'sd-return': /^\s*(if \(largest == i\) )?return;?$/,
-    'sd-swap': /swap\(heap\[i\], heap\[largest\]\)|int temp = heap(\[i\]|\.get\(i\));|heap\[i\], heap\[largest\] = heap\[largest\], heap\[i\]/,
-    'sd-move': /^\s*i = largest;?$/,
-    'su-loop': /^\s*while \(?i > 0\)?( \{|:)$/,
-    'su-parent': /^\s*(int )?parent = \(i - 1\) \/\/? 2;?$/,
-    'su-check': /^\s*if \(?heap(\[parent\]|\.get\(parent\)) >= heap(\[i\]|\.get\(i\))\)?/,
-    'su-return': /^\s*(if \(heap(\[parent\]|\.get\(parent\)) >= heap(\[i\]|\.get\(i\))\) )?return;?$/,
-    'su-swap': /swap\(heap\[parent\], heap\[i\]\)|int temp = heap(\[parent\]|\.get\(parent\));|heap\[parent\], heap\[i\] = heap\[i\], heap\[parent\]/,
-    'su-move': /^\s*i = parent;?$/,
-  },
+  'heap-last-stone-weight': lastStoneWeightAnchors(),
   'backtracking-permutations': {
     start: /bool used\[MAX_N\] = \{false\}|vector<bool> used\(nums\.size\(\), false\)|List<List<Integer>> result = new ArrayList<>\(\)|^\s*result = \[\]$/,
     'call-root': /^\s*dfs\(nums, (n, )?(used|new boolean\[nums\.length\]|\[False\] \* len\(nums\)), (current|new ArrayList<>\(\)|\[\]), (&size, )?result(, &count)?\);?$/,
