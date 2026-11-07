@@ -272,14 +272,33 @@ export class VisualizerApp {
   }
 
   /**
-   * Moves forward `count` steps by clicking the app's real Next button inside the page (see collectStates). Use this
-   * instead of `next()` in a loop: one round trip instead of one per step (per-step clicks timed out in WebKit on a
-   * loaded machine).
+   * Moves forward `count` steps by clicking the app's real Next button inside the page. Use this instead of `next()` in
+   * a loop: one round trip instead of one per step (per-step clicks timed out in WebKit on a loaded machine).
    */
   async advance(count: number) {
     const start = await this.stepNumber();
-    if (count > 0) await this.collectStates(count + 1);
+    if (count > 0) await this.clickNext(count);
     await this.expectStep(Math.min(start + count, await this.totalSteps()));
+  }
+
+  /**
+   * Clicks Next `count` times in one in-page pass, as collectStates does, waiting for each step to render, but reads
+   * nothing: collectStates reads the whole UI at every step, which made long walks (e.g. 2^31 - 1) time out in WebKit.
+   */
+  private clickNext(count: number) {
+    return this.page.evaluate(async count => {
+      const step = () => document.querySelector('[data-testid="step-counter"]')?.getAttribute('data-step');
+      for (let i = 0; i < count; i++) {
+        const next = [...document.querySelectorAll('button')].find(b => b.textContent?.trim().startsWith('Next'));
+        if (!next || next.disabled) break;
+        const before = step();
+        next.click();
+        // React commits the re-render after the click handler returns: wait (by observation) for the counter to change
+        for (let tries = 0; tries < 500 && step() === before; tries++) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+    }, count);
   }
 
   async goToLastStep() {
