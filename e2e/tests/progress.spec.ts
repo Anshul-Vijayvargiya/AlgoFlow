@@ -155,22 +155,38 @@ test.describe('Progress', () => {
     });
   }
 
-  test('mobile: the topic radar has no crowded scale labels and nothing scrolls sideways', async ({ app, page }) => {
-    void app;
-    await page.setViewportSize({ width: 360, height: 800 });
-    await openProgress(page);
-    const radar = page.getByTestId('topic-coverage').locator('.recharts-polar-radius-axis');
-    const ticks = page.getByTestId('topic-coverage').locator('.recharts-polar-angle-axis-tick');
-    await expect(ticks).toHaveCount(IMPLEMENTED_TOPICS.length);
-    // every topic name is drawn whole, inside the chart (a long name beside a side vertex was cut off at the edge)
-    const chart = await page.getByTestId('topic-coverage').locator('svg.recharts-surface').boundingBox();
-    for (const box of await ticks.locator('text').evaluateAll(els => els.map(e => e.getBoundingClientRect()).map(r => ({ left: r.left, right: r.right })))) {
-      expect(box.left).toBeGreaterThanOrEqual(chart!.x - 0.5);
-      expect(box.right).toBeLessThanOrEqual(chart!.x + chart!.width + 0.5);
-    }
-    await expect(radar.locator('.recharts-polar-radius-axis-tick')).toHaveCount(0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await expect(page.getByTestId('topic-coverage-list')).toContainText('Linked List');
-    await expect(page.getByTestId('topic-coverage-list')).toContainText('Fundamentals');
-  });
+  // the names drawn on two lines: "Heap & Priority Queue" only; on a 320px phone also "Bit Manipulation"
+  for (const [width, wrapped] of [
+    [390, ['Heap &Priority Queue']],
+    [360, ['Heap &Priority Queue']],
+    [320, ['Heap &Priority Queue', 'BitManipulation']],
+  ] as const) {
+    test(`mobile (${width}px): the topic radar has no crowded scale labels, long names wrap inside it, and nothing scrolls sideways`, async ({ app, page }) => {
+      void app;
+      await page.setViewportSize({ width, height: 800 });
+      await openProgress(page);
+      const radar = page.getByTestId('topic-coverage').locator('.recharts-polar-radius-axis');
+      const ticks = page.getByTestId('topic-coverage').locator('.recharts-polar-angle-axis-tick');
+      await expect(ticks).toHaveCount(IMPLEMENTED_TOPICS.length);
+      // every topic name is drawn whole, inside the chart (a long name beside a side vertex was cut off at the edge)
+      const chart = (await page.getByTestId('topic-coverage').locator('svg.recharts-surface').boundingBox())!;
+      const boxes = await ticks.locator('text').evaluateAll(els =>
+        els.map(e => ({ text: e.textContent, lines: e.querySelectorAll('tspan').length, ...JSON.parse(JSON.stringify(e.getBoundingClientRect())) }))
+      );
+      for (const box of boxes) {
+        expect(box.left, box.text).toBeGreaterThanOrEqual(chart.x - 0.5);
+        expect(box.right, box.text).toBeLessThanOrEqual(chart.x + chart.width + 0.5);
+        expect(box.top, box.text).toBeGreaterThanOrEqual(chart.y - 0.5);
+        expect(box.bottom, box.text).toBeLessThanOrEqual(chart.y + chart.height + 0.5);
+      }
+      // only the names too long for the chart's width wrap; every other name keeps its one line
+      expect(boxes.filter(b => b.lines === 2).map(b => b.text)).toEqual([...wrapped]);
+      expect(boxes.filter(b => b.lines === 1)).toHaveLength(IMPLEMENTED_TOPICS.length - wrapped.length);
+      await expect(radar.locator('.recharts-polar-radius-axis-tick')).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await expect(page.getByTestId('topic-coverage-list')).toContainText('Linked List');
+      await expect(page.getByTestId('topic-coverage-list')).toContainText('Fundamentals');
+      await expect(page.getByTestId('topic-coverage-list')).toContainText('Heap & Priority Queue');
+    });
+  }
 });

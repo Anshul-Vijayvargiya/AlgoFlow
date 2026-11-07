@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   BarChart2,
   Trophy,
@@ -26,7 +26,8 @@ import {
 } from 'recharts';
 import { useChartColors } from '../theme/chartColors';
 import { useProgressStore } from '../store/useProgressStore';
-import { algorithmTotals, dailyStepsSummary, percent, radarOuterRadius, topicCoverageSummary } from './progress/progressData';
+import { algorithmTotals, dailyStepsSummary, percent, radarLineChars, radarOuterRadius, topicCoverageSummary } from './progress/progressData';
+import { RadarTopicTick, type RadarTopicTickProps } from './progress/RadarTopicTick';
 
 const card = 'bg-surface border border-cyan-500/15 rounded-2xl shadow-lg';
 const sectionHeading = 'text-sm font-mono font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2';
@@ -57,6 +58,13 @@ export const ProgressPage: React.FC = () => {
   const { progress, isLoading, error, recordingError, fetchProgress } = useProgressStore();
   // the radar's drawn size, so its radius leaves room for the topic names on narrow screens
   const [radarSize, setRadarSize] = useState({ width: 0, height: 0 });
+  // ResponsiveContainer reports its size (onResize) only on a later resize callback, after the radar was first drawn
+  // with the default radius; measuring its box when it mounts (before paint) gives the first drawing the right radius
+  const measureRadar = useCallback((box: HTMLDivElement | null) => {
+    if (!box) return;
+    const { width, height } = box.getBoundingClientRect();
+    setRadarSize(s => (s.width === width && s.height === height ? s : { width, height }));
+  }, []);
 
   useEffect(() => {
     fetchProgress();
@@ -71,6 +79,7 @@ export const ProgressPage: React.FC = () => {
   const daily = dailyStepsSummary(progress?.weeklyActivity);
   const topics = topicCoverageSummary(progress?.topicCoverage);
   const streakDays = progress?.streakDays ?? 0;
+  const lineChars = radarLineChars(radarSize.width);
 
   return (
     <div className="min-h-screen bg-page text-slate-200 p-4 lg:p-8 max-w-7xl mx-auto space-y-8">
@@ -272,17 +281,18 @@ export const ProgressPage: React.FC = () => {
                 <p id="topic-coverage-summary" className="sr-only">{topics.description}</p>
                 {/* a radar needs three or more axes; with fewer topics the list below is the whole view */}
                 {topics.topics.length >= 3 && (
-                  <div className="h-60 sm:h-72 w-full" aria-hidden="true">
+                  <div ref={measureRadar} className="h-60 sm:h-72 w-full" aria-hidden="true">
                     <ResponsiveContainer width="100%" height="100%" onResize={(width, height) => setRadarSize({ width, height })}>
                       <RadarChart
                         cx="50%"
                         cy="50%"
-                        outerRadius={radarOuterRadius(radarSize.width, radarSize.height, topics.topics.map(t => t.topic))}
+                        outerRadius={radarOuterRadius(radarSize.width, radarSize.height, topics.topics.map(t => t.topic), lineChars)}
                         data={topics.topics}
                         accessibilityLayer={false}
                       >
                         <PolarGrid stroke={chart.grid} />
-                        <PolarAngleAxis dataKey="topic" stroke={chart.polarAngle} fontSize={11} />
+                        {/* a long topic name ("Heap & Priority Queue"; on the narrowest phones a few more) is drawn on two lines so it fits beside its vertex */}
+                        <PolarAngleAxis dataKey="topic" stroke={chart.polarAngle} fontSize={11} tick={props => <RadarTopicTick {...(props as RadarTopicTickProps)} lineChars={lineChars} />} />
                         {/* no tick labels: they crowd the centre on small screens; the list gives the exact values */}
                         <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
                         <Radar name="Explored (%)" dataKey="exploredPercent" stroke={chart.radar} fill={chart.radar} fillOpacity={0.5} />
