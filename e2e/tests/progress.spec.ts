@@ -170,9 +170,21 @@ test.describe('Progress', () => {
       await expect(ticks).toHaveCount(IMPLEMENTED_TOPICS.length);
       // every topic name is drawn whole, inside the chart (a long name beside a side vertex was cut off at the edge)
       const chart = (await page.getByTestId('topic-coverage').locator('svg.recharts-surface').boundingBox())!;
-      const boxes = await ticks.locator('text').evaluateAll(els =>
-        els.map(e => ({ text: e.textContent, lines: e.querySelectorAll('tspan').length, ...JSON.parse(JSON.stringify(e.getBoundingClientRect())) }))
-      );
+      // recharts draws the axis through a portal and can redraw it (once the chart is measured), so the names may be off
+      // the page for a moment: wait until every name is drawn, and the long ones on two lines, then read them all at once.
+      // An empty read would pass the checks below without checking anything, so it is never accepted.
+      const labels = ticks.locator('text');
+      await expect(labels).toHaveCount(IMPLEMENTED_TOPICS.length);
+      await expect(ticks.locator('text[data-lines="2"]')).toHaveCount(wrapped.length);
+      let boxes: { text: string; lines: number; left: number; right: number; top: number; bottom: number }[] = [];
+      await expect
+        .poll(async () => {
+          boxes = await labels.evaluateAll(els =>
+            els.map(e => ({ text: e.textContent ?? '', lines: e.querySelectorAll('tspan').length, ...JSON.parse(JSON.stringify(e.getBoundingClientRect())) }))
+          );
+          return boxes.length;
+        })
+        .toBe(IMPLEMENTED_TOPICS.length);
       for (const box of boxes) {
         expect(box.left, box.text).toBeGreaterThanOrEqual(chart.x - 0.5);
         expect(box.right, box.text).toBeLessThanOrEqual(chart.x + chart.width + 0.5);
