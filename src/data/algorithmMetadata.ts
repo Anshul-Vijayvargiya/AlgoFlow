@@ -518,6 +518,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
 
   // ─── DYNAMIC PROGRAMMING ────────────────────────────────
   {
+    id: 'dp-pascals-triangle',
+    name: "Pascal's Triangle",
+    category: 'DP',
+    subtitle: 'Build each row from the row above it: every middle cell is the sum of the two cells over it.',
+    implemented: true,
+  },
+  {
     id: 'fibonacci',
     name: 'Fibonacci (DP)',
     category: 'DP',

@@ -873,6 +873,20 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     done: /^\s*return result;?$/,
   },
   'heap-last-stone-weight': lastStoneWeightAnchors(),
+  'dp-pascals-triangle': {
+    init: /^\s*(int\*\* triangle = malloc\(numRows \* sizeof\(int\*\)\);|vector<vector<int>> triangle;|List<List<Integer>> triangle = new ArrayList<>\(\);|triangle = \[\])$/,
+    'row-loop': /^\s*for (\(int i = 0; i < numRows; i\+\+\) \{|i in range\(num_rows\):)$/,
+    'create-row': /^\s*(int\* row = malloc\(\(i \+ 1\) \* sizeof\(int\)\);|vector<int> row\(i \+ 1\);|List<Integer> row = new ArrayList<>\(Collections\.nCopies\(i \+ 1, 0\)\);|row = \[0\] \* \(i \+ 1\))$/,
+    'set-first': /^\s*(row\[0\] = 1;?|row\.set\(0, 1\);)$/,
+    'set-last': /^\s*(row\[i\] = 1;?|row\.set\(i, 1\);)$/,
+    'col-loop': /^\s*for (\(int j = 1; j < i; j\+\+\) \{|j in range\(1, i\):)$/,
+    // the parents are read, added and the sum stored by one statement
+    'read-parents': /^\s*(row\[j\] = triangle\[i - 1\]\[j - 1\] \+ triangle\[i - 1\]\[j\];?|row\.set\(j, triangle\.get\(i - 1\)\.get\(j - 1\) \+ triangle\.get\(i - 1\)\.get\(j\)\);)$/,
+    'add-parents': /^\s*(row\[j\] = triangle\[i - 1\]\[j - 1\] \+ triangle\[i - 1\]\[j\];?|row\.set\(j, triangle\.get\(i - 1\)\.get\(j - 1\) \+ triangle\.get\(i - 1\)\.get\(j\)\);)$/,
+    'assign-cell': /^\s*(row\[j\] = triangle\[i - 1\]\[j - 1\] \+ triangle\[i - 1\]\[j\];?|row\.set\(j, triangle\.get\(i - 1\)\.get\(j - 1\) \+ triangle\.get\(i - 1\)\.get\(j\)\);)$/,
+    'add-row': /^\s*(triangle\[i\] = row;|triangle\.(push_back|add|append)\(row\);?)$/,
+    'return-result': /^\s*(\*returnSize = numRows;|return triangle;?)$/,
+  },
   'backtracking-permutations': {
     start: /bool used\[MAX_N\] = \{false\}|vector<bool> used\(nums\.size\(\), false\)|List<List<Integer>> result = new ArrayList<>\(\)|^\s*result = \[\]$/,
     'call-root': /^\s*dfs\(nums, (n, )?(used|new boolean\[nums\.length\]|\[False\] \* len\(nums\)), (current|new ArrayList<>\(\)|\[\]), (&size, )?result(, &count)?\);?$/,

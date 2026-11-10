@@ -58,6 +58,8 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   'arranging-coins': { id: 'arranging-coins', label: 'Arranging Coins', heading: 'Arranging Coins' },
   // takes n like the number algorithms, but is drawn as a board
   'backtracking-n-queens': { id: 'backtracking-n-queens', label: 'N-Queens Problem', heading: 'N-Queens Problem' },
+  // takes numRows like the number algorithms, but is drawn as a triangle
+  'dp-pascals-triangle': { id: 'dp-pascals-triangle', label: "Pascal's Triangle", heading: "Pascal's Triangle" },
   // takes an array, but is drawn as a decision tree
   'backtracking-subsets': { id: 'backtracking-subsets', label: 'Subsets (Power Set)', heading: 'Subsets (Power Set)' },
   'backtracking-permutations': { id: 'backtracking-permutations', label: 'Find All Permutations', heading: 'Find All Permutations' },

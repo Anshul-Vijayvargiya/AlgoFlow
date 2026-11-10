@@ -106,7 +106,8 @@ export type AlgorithmId =
   | 'bit-clear-range'
   | 'backtracking-subsets'
   | 'backtracking-permutations'
-  | 'heap-last-stone-weight';
+  | 'heap-last-stone-weight'
+  | 'dp-pascals-triangle';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -306,6 +307,12 @@ export interface ExecutionStep {
    * did to it, the two stones being smashed and the smashes so far. `state` holds the same heap array.
    */
   heap?: MaxHeapView;
+
+  /**
+   * Pascal's Triangle only (visual: 'triangle'): the rows built so far, the row being filled, the cell this step works on,
+   * its two parents and their sum. `state` is empty: the triangle has no single array.
+   */
+  triangle?: PascalTriangleView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -806,7 +813,45 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle';
+
+/** A cell of Pascal's Triangle: its row, its column in that row, and its value. */
+export interface TriangleCell {
+  readonly row: number;
+  readonly col: number;
+  readonly value: number;
+}
+
+/**
+ * Pascal's Triangle: the triangle as one step leaves it. Row i has i + 1 cells; triangle[i][j] for 0 < j < i is the sum
+ * of triangle[i - 1][j - 1] and triangle[i - 1][j], the two cells above it.
+ */
+export interface PascalTriangleView {
+  /** the number of rows asked for (the same on every step) */
+  readonly numRows: number;
+  /** the completed rows appended to the triangle so far, top first */
+  readonly triangle: readonly (readonly number[])[];
+  /** the row being filled (row index i), cells not set yet are null; null between rows */
+  readonly row: readonly (number | null)[] | null;
+  /** the loop variables: the row index i and the column index j (null when not in that loop) */
+  readonly i: number | null;
+  readonly j: number | null;
+  /**
+   * the cell of the current row this step works on, and what happens to it. boundary: the first or last cell is set to 1;
+   * parents: its two parents are read; sum: they are added; assigned: the sum is stored in it
+   */
+  readonly focus?: { readonly col: number; readonly kind: 'boundary' | 'parents' | 'sum' | 'assigned' };
+  /** the two cells above the focus cell (row i - 1, columns j - 1 and j), on its parents, sum and assigned steps */
+  readonly parents?: readonly [TriangleCell, TriangleCell];
+  /** the sum of the two parents, on the sum and assigned steps */
+  readonly sum?: number;
+  /** every cell of the current row is set (the column loop has ended) */
+  readonly rowComplete?: boolean;
+  /** the index of the row this step appended to the triangle */
+  readonly appended?: number;
+  /** the generated triangle, on the last step only */
+  readonly result?: readonly (readonly number[])[];
+}
 
 /** A named index variable of the heap code (i, l, r, largest, parent) and the heap position it holds. */
 export interface HeapPointer {
@@ -1032,7 +1077,8 @@ export interface AlgorithmDefinition {
    * n × n board; every step then carries `board`) takes its values from inputSpec.numbers, like 'numbers', as does
    * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets and Find All Permutations: every step then carries `subsets` or `permutations`)
    * takes the array form, as does 'heap' (Last Stone Weight: a max heap drawn as a tree and as its array; every step
-   * then carries `heap`). Existing
+   * then carries `heap`). 'triangle' (Pascal's Triangle: every step then carries `triangle`) takes numRows from
+   * inputSpec.numbers, like 'numbers'. Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;
