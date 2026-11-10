@@ -96,6 +96,7 @@ import { subsetsDefinition } from './algorithms/backtracking/subsets';
 import { permutationsDefinition } from './algorithms/backtracking/permutations';
 import { lastStoneWeightDefinition } from './algorithms/heap/lastStoneWeight';
 import { pascalsTriangleDefinition } from './algorithms/dp/pascalsTriangle';
+import { pascalsTriangleIIDefinition } from './algorithms/dp/pascalsTriangleII';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -167,6 +168,7 @@ register(treeValidateBstDefinition);
 register(bstMirrorDefinition);
 register(lastStoneWeightDefinition);
 register(pascalsTriangleDefinition);
+register(pascalsTriangleIIDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
 register(permutationsDefinition);

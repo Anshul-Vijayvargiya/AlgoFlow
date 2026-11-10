@@ -23,6 +23,7 @@ import { SubsetsVisualizer } from '../components/visualizer/SubsetsVisualizer';
 import { PermutationsVisualizer } from '../components/visualizer/PermutationsVisualizer';
 import { HeapVisualizer } from '../components/visualizer/HeapVisualizer';
 import { PascalsTriangleVisualizer } from '../components/visualizer/PascalsTriangleVisualizer';
+import { PascalsTriangleIIVisualizer } from '../components/visualizer/PascalsTriangleIIVisualizer';
 import { RevisionBookmark } from '../components/visualizer/RevisionBookmark';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
@@ -245,6 +246,7 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'decision-tree' && <PermutationsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'heap' && <HeapVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'triangle' && <PascalsTriangleVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'dp-row' && <PascalsTriangleIIVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"

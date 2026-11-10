@@ -525,6 +525,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'dp-pascals-triangle-ii',
+    name: "Pascal's Triangle II",
+    category: 'DP',
+    subtitle: 'One row, updated in place from right to left: each pass turns the row into the next one.',
+    implemented: true,
+  },
+  {
     id: 'fibonacci',
     name: 'Fibonacci (DP)',
     category: 'DP',

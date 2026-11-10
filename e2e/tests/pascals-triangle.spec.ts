@@ -103,7 +103,8 @@ test.describe("Pascal's Triangle", () => {
     expect(at('DYNAMIC PROGRAMMING')).toBeLessThan(at("Pascal's Triangle"));
     expect(at("Pascal's Triangle")).toBeLessThan(at('Fibonacci (DP)'));
     expect(at('Longest Common Subsequence')).toBeLessThan(at('GREEDY'));
-    const entry = app.sidebar.getByRole('button', { name: "Pascal's Triangle" });
+    // exact: "Pascal's Triangle II" is listed right after it
+    const entry = app.sidebar.getByRole('button', { name: "Pascal's Triangle", exact: true });
     await expect(entry).toHaveAttribute('title', definition(ID).subtitle);
     await app.selectAlgorithm(ID);
     await expect(app.heading).toHaveText("Pascal's Triangle");

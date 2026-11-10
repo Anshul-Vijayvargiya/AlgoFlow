@@ -107,7 +107,8 @@ export type AlgorithmId =
   | 'backtracking-subsets'
   | 'backtracking-permutations'
   | 'heap-last-stone-weight'
-  | 'dp-pascals-triangle';
+  | 'dp-pascals-triangle'
+  | 'dp-pascals-triangle-ii';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -313,6 +314,12 @@ export interface ExecutionStep {
    * its two parents and their sum. `state` is empty: the triangle has no single array.
    */
   triangle?: PascalTriangleView;
+
+  /**
+   * Pascal's Triangle II only (visual: 'dp-row'): the one-dimensional DP array, the cell this step works on, the two
+   * values it adds and their sum. `state` holds the same array.
+   */
+  dpRow?: PascalRowView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -813,7 +820,36 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row';
+
+/**
+ * Pascal's Triangle II: the one array that holds row i of the triangle, updated in place from right to left. Indexes in
+ * the fields below are positions in that array.
+ */
+export interface PascalRowView {
+  /** the row asked for (the same on every step) */
+  readonly rowIndex: number;
+  /** the array after this step: row i while it is being turned into row i of the triangle */
+  readonly row: readonly number[];
+  /** the loop variables: the row index i and the column index j (null when not in that loop) */
+  readonly i: number | null;
+  readonly j: number | null;
+  /**
+   * the cell this step works on, and what happens to it. appended: a 1 was added at the end; selected: the backward loop
+   * reached it; read: row[j] and row[j - 1] are read; sum: they are added; updated: the sum replaced row[j]
+   */
+  readonly focus?: { readonly index: number; readonly kind: 'appended' | 'selected' | 'read' | 'sum' | 'updated' };
+  /** the two values added, on the read, sum and updated steps: row[j] before it is replaced, and row[j - 1] */
+  readonly operands?: { readonly current: number; readonly left: number };
+  /** their sum, on the sum and updated steps */
+  readonly sum?: number;
+  /** the positions this pass of the backward loop has already updated (they hold row i's values now) */
+  readonly fresh: readonly number[];
+  /** the backward loop of row i has ended: the array is row i of the triangle */
+  readonly rowComplete?: boolean;
+  /** the requested row, on the last step only */
+  readonly result?: readonly number[];
+}
 
 /** A cell of Pascal's Triangle: its row, its column in that row, and its value. */
 export interface TriangleCell {
@@ -1078,7 +1114,7 @@ export interface AlgorithmDefinition {
    * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets and Find All Permutations: every step then carries `subsets` or `permutations`)
    * takes the array form, as does 'heap' (Last Stone Weight: a max heap drawn as a tree and as its array; every step
    * then carries `heap`). 'triangle' (Pascal's Triangle: every step then carries `triangle`) takes numRows from
-   * inputSpec.numbers, like 'numbers'. Existing
+   * inputSpec.numbers, like 'numbers', as does 'dp-row' (Pascal's Triangle II: every step then carries `dpRow`). Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

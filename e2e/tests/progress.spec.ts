@@ -33,11 +33,11 @@ test.describe('Progress', () => {
     await expect(main).not.toContainText('/ 26');
     await expect(main).not.toContainText(/cumulative algorithm executions/i);
     // only topics with visualized algorithms are listed (Graphs and Greedy have none yet; Dynamic Programming has Pascal's
-    // Triangle); Trees counts every visualized tree
+    // Triangle and Pascal's Triangle II); Trees counts every visualized tree
     // algorithm in the catalog (the four traversals, Root to Leaf Paths, the two BST builds, Convert BST to Balanced BST,
     // Print in Range, Validate BST and Mirror a BST), never a number typed here
     for (const gone of ['Graphs', 'Greedy']) await expect(page.getByTestId('topic-coverage')).not.toContainText(gone);
-    await expect(page.getByTestId('topic-coverage')).toContainText('Dynamic Programming 0 of 1');
+    await expect(page.getByTestId('topic-coverage')).toContainText('Dynamic Programming 0 of 2');
     const trees = IMPLEMENTED_TOPICS.find(t => t.topic === 'Trees')!.algorithmIds.length;
     expect(trees).toBe(11);
     await expect(page.getByTestId('topic-coverage')).toContainText(`Trees 0 of ${trees}`);

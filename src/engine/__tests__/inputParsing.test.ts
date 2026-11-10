@@ -257,11 +257,13 @@ describe('linked-list input validation (rejected before execution)', () => {
     expect(validateAlgorithmInput(def('bubble-sort'), list(11), null, -5).ok).toBe(true);
   });
 
-  it('exactly the LINKED_LIST operations are drawn as linked lists, the FUNDAMENTALS as numbers, the STRINGS as text, the TREES as trees, the BACKTRACKING as a board, the BIT_MANIPULATION as bits, the HEAP as a heap and the DP as a triangle; every other algorithm is still an array', () => {
+  it("exactly the LINKED_LIST operations are drawn as linked lists, the FUNDAMENTALS as numbers, the STRINGS as text, the TREES as trees, the BACKTRACKING as a board, the BIT_MANIPULATION as bits, the HEAP as a heap and the DP as a triangle (Pascal's Triangle II as one row); every other algorithm is still an array", () => {
     const kind = { LINKED_LIST: 'linked-list', FUNDAMENTALS: 'numbers', STRINGS: 'text', TREES: 'tree', BACKTRACKING: 'board', BIT_MANIPULATION: 'bits', HEAP: 'heap', DP: 'triangle' } as Record<string, string>;
     for (const d of getAllAlgorithms()) {
       // of the BACKTRACKING algorithms, Subsets and Find All Permutations have a decision tree, not a board
-      expect(visualKindOf(d), d.id).toBe(d.id === 'backtracking-subsets' || d.id === 'backtracking-permutations' ? 'decision-tree' : (kind[d.category] ?? 'array'));
+      // and of the DP algorithms, Pascal's Triangle II keeps one row, not a triangle
+      const own = d.id === 'backtracking-subsets' || d.id === 'backtracking-permutations' ? 'decision-tree' : d.id === 'dp-pascals-triangle-ii' ? 'dp-row' : null;
+      expect(visualKindOf(d), d.id).toBe(own ?? kind[d.category] ?? 'array');
     }
     expect(visualKindOf(undefined)).toBe('array');
     expect(visualKindOf(traverse)).toBe('linked-list');

@@ -887,6 +887,18 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'add-row': /^\s*(triangle\[i\] = row;|triangle\.(push_back|add|append)\(row\);?)$/,
     'return-result': /^\s*(\*returnSize = numRows;|return triangle;?)$/,
   },
+  'dp-pascals-triangle-ii': {
+    init: /^\s*(int\* row = malloc\(\(rowIndex \+ 1\) \* sizeof\(int\)\);|vector<int> row;|List<Integer> row = new ArrayList<>\(\);|row = \[\])$/,
+    'row-loop': /^\s*for (\(int i = 0; i <= rowIndex; i\+\+\) \{|i in range\(row_index \+ 1\):)$/,
+    'append-one': /^\s*(row\[size\+\+\] = 1;|row\.(push_back|add|append)\(1\);?)$/,
+    // the backward loop: from i - 1 down to 1
+    'col-loop': /^\s*for (\(int j = i - 1; j >= 1; j--\) \{|j in range\(i - 1, 0, -1\):)$/,
+    // row[j] and row[j - 1] are read, added and the sum stored by one statement
+    'read-values': /^\s*(row\[j\] = row\[j\] \+ row\[j - 1\];?|row\.set\(j, row\.get\(j\) \+ row\.get\(j - 1\)\);)$/,
+    'add-values': /^\s*(row\[j\] = row\[j\] \+ row\[j - 1\];?|row\.set\(j, row\.get\(j\) \+ row\.get\(j - 1\)\);)$/,
+    'update-cell': /^\s*(row\[j\] = row\[j\] \+ row\[j - 1\];?|row\.set\(j, row\.get\(j\) \+ row\.get\(j - 1\)\);)$/,
+    'return-result': /^\s*(\*returnSize = size;|return row;?)$/,
+  },
   'backtracking-permutations': {
     start: /bool used\[MAX_N\] = \{false\}|vector<bool> used\(nums\.size\(\), false\)|List<List<Integer>> result = new ArrayList<>\(\)|^\s*result = \[\]$/,
     'call-root': /^\s*dfs\(nums, (n, )?(used|new boolean\[nums\.length\]|\[False\] \* len\(nums\)), (current|new ArrayList<>\(\)|\[\]), (&size, )?result(, &count)?\);?$/,

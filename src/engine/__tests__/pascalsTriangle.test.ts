@@ -24,17 +24,18 @@ function binomialRows(numRows: number): number[][] {
 }
 
 describe("Pascal's Triangle: where it is listed and how it is drawn", () => {
-  it('the first implemented algorithm of DYNAMIC PROGRAMMING, not Coming Soon; the other DP entries keep their order', () => {
+  it("the first implemented algorithm of DYNAMIC PROGRAMMING (Pascal's Triangle II next), not Coming Soon; the other DP entries keep their order", () => {
     const dp = ALGORITHM_NAV.filter(a => a.category === 'DP');
     expect(dp.map(a => [a.id, a.implemented])).toEqual([
       [ID, true],
+      ['dp-pascals-triangle-ii', true],
       ['fibonacci', false],
       ['knapsack', false],
       ['lcs', false],
     ]);
     expect(dp[0].name).toBe("Pascal's Triangle");
     expect(ALGORITHM_CATEGORIES.find(c => c.id === 'DP')!.label).toBe('DYNAMIC PROGRAMMING');
-    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Dynamic Programming')!.algorithmIds).toEqual([ID]);
+    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Dynamic Programming')!.algorithmIds).toEqual([ID, 'dp-pascals-triangle-ii']);
   });
 
   it('one registered definition, drawn as a triangle, taking numRows: 1 to 10, default 5', () => {
