@@ -222,6 +222,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Slow/fast pointers keep one copy of each value, in place.',
     implemented: true,
   },
+  {
+    id: 'array-move-zeroes',
+    name: 'Move Zeroes',
+    category: 'ARRAYS',
+    subtitle: 'Two pointers, in place: non-zero values move left in order, zeroes end up at the back.',
+    implemented: true,
+  },
 
   // ─── STRINGS ────────────────────────────────────────────
   {
@@ -529,6 +536,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     name: "Pascal's Triangle II",
     category: 'DP',
     subtitle: 'One row, updated in place from right to left: each pass turns the row into the next one.',
+    implemented: true,
+  },
+  {
+    id: 'dp-climbing-stairs',
+    name: 'Climbing Stairs',
+    category: 'DP',
+    subtitle: 'Count the ways to the top: ways(i) = ways(i − 1) + ways(i − 2), kept in two rolling variables.',
     implemented: true,
   },
   {

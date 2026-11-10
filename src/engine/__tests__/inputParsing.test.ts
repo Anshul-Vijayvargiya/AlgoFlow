@@ -261,8 +261,16 @@ describe('linked-list input validation (rejected before execution)', () => {
     const kind = { LINKED_LIST: 'linked-list', FUNDAMENTALS: 'numbers', STRINGS: 'text', TREES: 'tree', BACKTRACKING: 'board', BIT_MANIPULATION: 'bits', HEAP: 'heap', DP: 'triangle' } as Record<string, string>;
     for (const d of getAllAlgorithms()) {
       // of the BACKTRACKING algorithms, Subsets and Find All Permutations have a decision tree, not a board
-      // and of the DP algorithms, Pascal's Triangle II keeps one row, not a triangle
-      const own = d.id === 'backtracking-subsets' || d.id === 'backtracking-permutations' ? 'decision-tree' : d.id === 'dp-pascals-triangle-ii' ? 'dp-row' : null;
+      // of the DP algorithms, Pascal's Triangle II keeps one row and Climbing Stairs is a staircase, not a triangle; of the
+      // ARRAYS, Move Zeroes is drawn as indexed cells, not bars
+      const OWN: Record<string, string> = {
+        'backtracking-subsets': 'decision-tree',
+        'backtracking-permutations': 'decision-tree',
+        'dp-pascals-triangle-ii': 'dp-row',
+        'dp-climbing-stairs': 'stairs',
+        'array-move-zeroes': 'cells',
+      };
+      const own = OWN[d.id] ?? null;
       expect(visualKindOf(d), d.id).toBe(own ?? kind[d.category] ?? 'array');
     }
     expect(visualKindOf(undefined)).toBe('array');

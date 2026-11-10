@@ -29,13 +29,14 @@ describe("Pascal's Triangle: where it is listed and how it is drawn", () => {
     expect(dp.map(a => [a.id, a.implemented])).toEqual([
       [ID, true],
       ['dp-pascals-triangle-ii', true],
+      ['dp-climbing-stairs', true],
       ['fibonacci', false],
       ['knapsack', false],
       ['lcs', false],
     ]);
     expect(dp[0].name).toBe("Pascal's Triangle");
     expect(ALGORITHM_CATEGORIES.find(c => c.id === 'DP')!.label).toBe('DYNAMIC PROGRAMMING');
-    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Dynamic Programming')!.algorithmIds).toEqual([ID, 'dp-pascals-triangle-ii']);
+    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Dynamic Programming')!.algorithmIds).toEqual([ID, 'dp-pascals-triangle-ii', 'dp-climbing-stairs']);
   });
 
   it('one registered definition, drawn as a triangle, taking numRows: 1 to 10, default 5', () => {

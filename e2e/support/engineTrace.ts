@@ -61,6 +61,10 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   // takes numRows like the number algorithms, but is drawn as a triangle
   'dp-pascals-triangle': { id: 'dp-pascals-triangle', label: "Pascal's Triangle", heading: "Pascal's Triangle" },
   'dp-pascals-triangle-ii': { id: 'dp-pascals-triangle-ii', label: "Pascal's Triangle II", heading: "Pascal's Triangle II" },
+  // takes n like the number algorithms, but is drawn as a staircase
+  'dp-climbing-stairs': { id: 'dp-climbing-stairs', label: 'Climbing Stairs', heading: 'Climbing Stairs' },
+  // takes an array, but is drawn as indexed cells (not bars: the specs of ALGORITHMS expect bars)
+  'array-move-zeroes': { id: 'array-move-zeroes', label: 'Move Zeroes', heading: 'Move Zeroes' },
   // takes an array, but is drawn as a decision tree
   'backtracking-subsets': { id: 'backtracking-subsets', label: 'Subsets (Power Set)', heading: 'Subsets (Power Set)' },
   'backtracking-permutations': { id: 'backtracking-permutations', label: 'Find All Permutations', heading: 'Find All Permutations' },

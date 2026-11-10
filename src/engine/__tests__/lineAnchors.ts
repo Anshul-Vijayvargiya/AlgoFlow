@@ -899,6 +899,31 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'update-cell': /^\s*(row\[j\] = row\[j\] \+ row\[j - 1\];?|row\.set\(j, row\.get\(j\) \+ row\.get\(j - 1\)\);)$/,
     'return-result': /^\s*(\*returnSize = size;|return row;?)$/,
   },
+  'dp-climbing-stairs': {
+    'fn-entry': /^\s*(int climbStairs\(int n\) \{|public static int climbStairs\(int n\) \{|def climb_stairs\(n\):)$/,
+    // C, C++ and Java return on the check's line; Python on the next line
+    'base-check': /^\s*if \(?n <= 2\)?/,
+    'base-return': /^\s*(if \(n <= 2\) )?return n;?$/,
+    'set-prev2': /^\s*(int )?prev2 = 1;?$/,
+    'set-prev1': /^\s*(int )?prev1 = 2;?$/,
+    'loop-condition': /^\s*for (\(int i = 3; i <= n; i\+\+\) \{|i in range\(3, n \+ 1\):)$/,
+    'compute-current': /^\s*(int )?current = prev1 \+ prev2;?$/,
+    'shift-prev2': /^\s*prev2 = prev1;?$/,
+    'shift-prev1': /^\s*prev1 = current;?$/,
+    'loop-return': /^\s*return prev1;?$/,
+  },
+  'array-move-zeroes': {
+    // the functions return nothing: the start and the end are shown on the header
+    'fn-entry': /^\s*(void moveZeroes\(int\* nums, int numsSize\) \{|void moveZeroes\(vector<int>& nums\) \{|public static void moveZeroes\(int\[\] nums\) \{|def move_zeroes\(nums\):)$/,
+    'fn-exit': /^\s*(void moveZeroes\(int\* nums, int numsSize\) \{|void moveZeroes\(vector<int>& nums\) \{|public static void moveZeroes\(int\[\] nums\) \{|def move_zeroes\(nums\):)$/,
+    'init-slow': /^\s*(int )?slow = 0;?$/,
+    'loop-condition': /^\s*for (\(int fast = 0; fast < (numsSize|\(int\)nums\.size\(\)|nums\.length); fast\+\+\) \{|fast in range\(len\(nums\)\):)$/,
+    'check-nonzero': /^\s*if \(?nums\[fast\] != 0\)?( \{|:)$/,
+    'check-distinct': /^\s*if \(?slow != fast\)?( \{|:)$/,
+    // C and Java start a three-line swap through temp; C++ calls swap(); Python swaps with a tuple assignment
+    swap: /^\s*(int temp = nums\[slow\];|swap\(nums\[slow\], nums\[fast\]\);|nums\[slow\], nums\[fast\] = nums\[fast\], nums\[slow\])$/,
+    'advance-slow': /^\s*slow(\+\+;| \+= 1)$/,
+  },
   'backtracking-permutations': {
     start: /bool used\[MAX_N\] = \{false\}|vector<bool> used\(nums\.size\(\), false\)|List<List<Integer>> result = new ArrayList<>\(\)|^\s*result = \[\]$/,
     'call-root': /^\s*dfs\(nums, (n, )?(used|new boolean\[nums\.length\]|\[False\] \* len\(nums\)), (current|new ArrayList<>\(\)|\[\]), (&size, )?result(, &count)?\);?$/,

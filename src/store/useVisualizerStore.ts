@@ -264,7 +264,7 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       // (a bit algorithm's fields differ from the next one's: a, b; n, i; n, i, bit; n, l, r: it always loads its own values)
       // (Subsets takes few, distinct values, so another algorithm's array may not fit: it loads its own example too)
       // (Last Stone Weight takes at most 10 positive weights, so another algorithm's array may not fit either)
-      const sameKindOfInput = toKind !== 'bits' && toKind !== 'decision-tree' && toKind !== 'heap' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
+      const sameKindOfInput = toKind !== 'bits' && toKind !== 'decision-tree' && toKind !== 'heap' && toKind !== 'cells' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
       // a second array is the algorithm's own: kept when switching between algorithms that take one, else its example
       const exampleSecond = spec?.secondArray ? [...spec.secondArray.defaultValue] : null;
       if (s.inputSource === 'custom' && sameKindOfInput) {

@@ -97,6 +97,8 @@ import { permutationsDefinition } from './algorithms/backtracking/permutations';
 import { lastStoneWeightDefinition } from './algorithms/heap/lastStoneWeight';
 import { pascalsTriangleDefinition } from './algorithms/dp/pascalsTriangle';
 import { pascalsTriangleIIDefinition } from './algorithms/dp/pascalsTriangleII';
+import { climbingStairsDefinition } from './algorithms/dp/climbingStairs';
+import { moveZeroesDefinition } from './algorithms/moveZeroes';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +171,8 @@ register(bstMirrorDefinition);
 register(lastStoneWeightDefinition);
 register(pascalsTriangleDefinition);
 register(pascalsTriangleIIDefinition);
+register(climbingStairsDefinition);
+register(moveZeroesDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
 register(permutationsDefinition);

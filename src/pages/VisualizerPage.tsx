@@ -24,6 +24,8 @@ import { PermutationsVisualizer } from '../components/visualizer/PermutationsVis
 import { HeapVisualizer } from '../components/visualizer/HeapVisualizer';
 import { PascalsTriangleVisualizer } from '../components/visualizer/PascalsTriangleVisualizer';
 import { PascalsTriangleIIVisualizer } from '../components/visualizer/PascalsTriangleIIVisualizer';
+import { ClimbingStairsVisualizer } from '../components/visualizer/ClimbingStairsVisualizer';
+import { MoveZeroesVisualizer } from '../components/visualizer/MoveZeroesVisualizer';
 import { RevisionBookmark } from '../components/visualizer/RevisionBookmark';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
@@ -247,6 +249,8 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'heap' && <HeapVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'triangle' && <PascalsTriangleVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'dp-row' && <PascalsTriangleIIVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'stairs' && <ClimbingStairsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'cells' && <MoveZeroesVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"
@@ -262,7 +266,7 @@ export const VisualizerPage: React.FC = () => {
 
                   {/* Array / target input, the linked-list form, a number algorithm's values, or the strings of a text or tree algorithm */}
                   {/* arrays, and a tree built from an array (Build a BST), take the array form; the traversals take their tree as text */}
-                  {visual === 'array' || visual === 'decision-tree' || visual === 'heap' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : takesNumbers(def) ? <NumberInputPanel /> : <TextInputPanel />}
+                  {visual === 'array' || visual === 'decision-tree' || visual === 'heap' || visual === 'cells' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : takesNumbers(def) ? <NumberInputPanel /> : <TextInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

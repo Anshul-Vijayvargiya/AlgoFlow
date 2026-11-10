@@ -108,7 +108,9 @@ export type AlgorithmId =
   | 'backtracking-permutations'
   | 'heap-last-stone-weight'
   | 'dp-pascals-triangle'
-  | 'dp-pascals-triangle-ii';
+  | 'dp-pascals-triangle-ii'
+  | 'dp-climbing-stairs'
+  | 'array-move-zeroes';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -320,6 +322,18 @@ export interface ExecutionStep {
    * values it adds and their sum. `state` holds the same array.
    */
   dpRow?: PascalRowView;
+
+  /**
+   * Climbing Stairs only (visual: 'stairs'): the two rolling variables, the loop index, what this step did, and the
+   * display-only history of the ways computed so far. `state` is empty: the code keeps no array.
+   */
+  stairs?: StairsView;
+
+  /**
+   * Move Zeroes only (visual: 'cells'): the array after this step, the two pointers, and what this step did (a value
+   * checked, a swap, a pointer moved). `state` holds the same array.
+   */
+  cells?: MoveZeroesView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -820,7 +834,63 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells';
+
+/** Climbing Stairs: where the run is. start: before the base check; base: prev2 and prev1 set; loop: the loop; done */
+export type StairsStage = 'start' | 'base' | 'loop' | 'done';
+
+/** Climbing Stairs: the state of the O(1)-space DP after one step. */
+export interface StairsView {
+  /** the number of steps asked for (the same on every step) */
+  readonly n: number;
+  /** the two rolling variables: prev2 = ways(i - 2), prev1 = ways(i - 1) (null before they are set) */
+  readonly prev2: number | null;
+  readonly prev1: number | null;
+  /** current = prev1 + prev2, on the step that computes it (null otherwise: the code reuses it each pass) */
+  readonly current: number | null;
+  /** which ways(step) each variable holds (null while it is unset): prev2 is ways(prev2Of), prev1 is ways(prev1Of) */
+  readonly prev2Of: number | null;
+  readonly prev1Of: number | null;
+  /** the loop index i (null outside the loop) */
+  readonly i: number | null;
+  readonly stage: StairsStage;
+  /** the variable or part this step works on */
+  readonly highlight?: 'base' | 'prev2' | 'prev1' | 'loop' | 'current' | 'result';
+  /** the addition, on the step that computes current */
+  readonly addition?: { readonly prev1: number; readonly prev2: number; readonly current: number };
+  /**
+   * DISPLAY ONLY: ways(step) for every value the run has established so far, in order (ways(1), ways(2), … in the
+   * loop; only ways(n) = n for n <= 2, which the code returns without computing anything else). The code never stores
+   * this: it keeps only prev2 and prev1. It lets the visualizer show how the answer was reached.
+   */
+  readonly history: readonly { readonly step: number; readonly ways: number }[];
+  /** the answer, on the last step only */
+  readonly result?: { readonly value: number; readonly text: string };
+}
+
+/** Move Zeroes: the array and the two pointers after one step. Indexes are positions in the array. */
+export interface MoveZeroesView {
+  /** the array as given (the same on every step) */
+  readonly input: readonly number[];
+  /** the array after this step */
+  readonly nums: readonly number[];
+  /** where the next non-zero value goes (null before it is set) */
+  readonly slow: number | null;
+  /** the position being checked (null before the loop and after it) */
+  readonly fast: number | null;
+  /** how many non-zero values are already in place, at the front (= slow) */
+  readonly kept: number;
+  /** the value this step checked, and whether it is a zero */
+  readonly examined?: { readonly index: number; readonly zero: boolean };
+  /** the slow != fast check: same is true when no swap is needed */
+  readonly pair?: { readonly slow: number; readonly fast: number; readonly same: boolean };
+  /** the two positions this step swapped (slow, fast) */
+  readonly swapped?: readonly [number, number];
+  /** the pointer this step set or moved */
+  readonly moved?: 'slow' | 'fast';
+  /** the final array, on the last step only */
+  readonly result?: readonly number[];
+}
 
 /**
  * Pascal's Triangle II: the one array that holds row i of the triangle, updated in place from right to left. Indexes in
@@ -1114,7 +1184,8 @@ export interface AlgorithmDefinition {
    * 'bits' (32-bit rows; every step then carries `bits`). 'decision-tree' (Subsets and Find All Permutations: every step then carries `subsets` or `permutations`)
    * takes the array form, as does 'heap' (Last Stone Weight: a max heap drawn as a tree and as its array; every step
    * then carries `heap`). 'triangle' (Pascal's Triangle: every step then carries `triangle`) takes numRows from
-   * inputSpec.numbers, like 'numbers', as does 'dp-row' (Pascal's Triangle II: every step then carries `dpRow`). Existing
+   * inputSpec.numbers, like 'numbers', as does 'dp-row' (Pascal's Triangle II: every step then carries `dpRow`) and 'stairs' (Climbing Stairs: every step then
+   * carries `stairs`). 'cells' (Move Zeroes: every step then carries `cells`) takes the array form. Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;
