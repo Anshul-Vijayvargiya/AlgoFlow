@@ -99,6 +99,7 @@ import { pascalsTriangleDefinition } from './algorithms/dp/pascalsTriangle';
 import { pascalsTriangleIIDefinition } from './algorithms/dp/pascalsTriangleII';
 import { climbingStairsDefinition } from './algorithms/dp/climbingStairs';
 import { moveZeroesDefinition } from './algorithms/moveZeroes';
+import { sortColorsDefinition } from './algorithms/sortColors';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -173,6 +174,7 @@ register(pascalsTriangleDefinition);
 register(pascalsTriangleIIDefinition);
 register(climbingStairsDefinition);
 register(moveZeroesDefinition);
+register(sortColorsDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
 register(permutationsDefinition);

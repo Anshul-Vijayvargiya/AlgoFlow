@@ -350,7 +350,18 @@ export function validateAlgorithmInput(
         ok: false,
         canSortCopy: false,
         field: 'array',
-        message: `Value ${i + 1} (${array[i]}) is below ${spec.minValue}: ${def.name} takes values from ${spec.minValue} to ${MAX_VALUE}.`,
+        message: `Value ${i + 1} (${array[i]}) is below ${spec.minValue}: ${def.name} takes values from ${spec.minValue} to ${spec.maxValue ?? MAX_VALUE}.`,
+      };
+    }
+  }
+  if (spec?.maxValue !== undefined) {
+    const i = array.findIndex(v => v > spec.maxValue!);
+    if (i !== -1) {
+      return {
+        ok: false,
+        canSortCopy: false,
+        field: 'array',
+        message: `Value ${i + 1} (${array[i]}) is above ${spec.maxValue}: ${def.name} takes values from ${spec.minValue ?? MIN_VALUE} to ${spec.maxValue}.`,
       };
     }
   }

@@ -26,6 +26,7 @@ import { PascalsTriangleVisualizer } from '../components/visualizer/PascalsTrian
 import { PascalsTriangleIIVisualizer } from '../components/visualizer/PascalsTriangleIIVisualizer';
 import { ClimbingStairsVisualizer } from '../components/visualizer/ClimbingStairsVisualizer';
 import { MoveZeroesVisualizer } from '../components/visualizer/MoveZeroesVisualizer';
+import { SortColorsVisualizer } from '../components/visualizer/SortColorsVisualizer';
 import { RevisionBookmark } from '../components/visualizer/RevisionBookmark';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
@@ -251,6 +252,7 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'dp-row' && <PascalsTriangleIIVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'stairs' && <ClimbingStairsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'cells' && <MoveZeroesVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'flag-cells' && <SortColorsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"
@@ -266,7 +268,7 @@ export const VisualizerPage: React.FC = () => {
 
                   {/* Array / target input, the linked-list form, a number algorithm's values, or the strings of a text or tree algorithm */}
                   {/* arrays, and a tree built from an array (Build a BST), take the array form; the traversals take their tree as text */}
-                  {visual === 'array' || visual === 'decision-tree' || visual === 'heap' || visual === 'cells' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : takesNumbers(def) ? <NumberInputPanel /> : <TextInputPanel />}
+                  {visual === 'array' || visual === 'decision-tree' || visual === 'heap' || visual === 'cells' || visual === 'flag-cells' || (visual === 'tree' && !takesTexts(def)) ? <InputPanel /> : visual === 'linked-list' ? <LinkedListInputPanel /> : takesNumbers(def) ? <NumberInputPanel /> : <TextInputPanel />}
 
                   {/* Execution Controls Toolbar */}
                   <ExecutionControls />

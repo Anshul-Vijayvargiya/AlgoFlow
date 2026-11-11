@@ -924,6 +924,25 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     swap: /^\s*(int temp = nums\[slow\];|swap\(nums\[slow\], nums\[fast\]\);|nums\[slow\], nums\[fast\] = nums\[fast\], nums\[slow\])$/,
     'advance-slow': /^\s*slow(\+\+;| \+= 1)$/,
   },
+  'array-sort-colors': {
+    // the functions return nothing: the start and the end are shown on the header
+    'fn-entry': /^\s*(void sortColors\(int\* nums, int numsSize\) \{|void sortColors\(vector<int>& nums\) \{|public static void sortColors\(int\[\] nums\) \{|def sort_colors\(nums\):)$/,
+    'fn-exit': /^\s*(void sortColors\(int\* nums, int numsSize\) \{|void sortColors\(vector<int>& nums\) \{|public static void sortColors\(int\[\] nums\) \{|def sort_colors\(nums\):)$/,
+    'init-low': /^\s*(int )?low = 0;?$/,
+    'init-mid': /^\s*(int )?mid = 0;?$/,
+    'init-high': /^\s*(int )?high = (numsSize|\(int\)nums\.size\(\)|nums\.length|len\(nums\)) - 1;?$/,
+    'loop-condition': /^\s*while \(?mid <= high\)?( \{|:)$/,
+    'check-zero': /^\s*if \(?nums\[mid\] == 0\)?( \{|:)$/,
+    // C and Java start a three-line swap through temp; C++ calls swap(); Python swaps with a tuple assignment
+    'swap-low': /^\s*(int temp = nums\[low\];|swap\(nums\[low\], nums\[mid\]\);|nums\[low\], nums\[mid\] = nums\[mid\], nums\[low\])$/,
+    'advance-low': /^\s*low(\+\+;| \+= 1)$/,
+    'advance-mid-zero': /^\s*mid(\+\+;| \+= 1)$/,
+    'check-one': /^\s*(\} else if \(nums\[mid\] == 1\) \{|elif nums\[mid\] == 1:)$/,
+    'advance-mid-one': /^\s*mid(\+\+;| \+= 1)$/,
+    'swap-high': /^\s*(int temp = nums\[mid\];|swap\(nums\[mid\], nums\[high\]\);|nums\[mid\], nums\[high\] = nums\[high\], nums\[mid\])$/,
+    // high moves left; mid is not incremented on this branch
+    'retreat-high': /^\s*high(--;| -= 1)$/,
+  },
   'backtracking-permutations': {
     start: /bool used\[MAX_N\] = \{false\}|vector<bool> used\(nums\.size\(\), false\)|List<List<Integer>> result = new ArrayList<>\(\)|^\s*result = \[\]$/,
     'call-root': /^\s*dfs\(nums, (n, )?(used|new boolean\[nums\.length\]|\[False\] \* len\(nums\)), (current|new ArrayList<>\(\)|\[\]), (&size, )?result(, &count)?\);?$/,

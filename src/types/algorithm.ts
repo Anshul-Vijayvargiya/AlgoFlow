@@ -110,7 +110,8 @@ export type AlgorithmId =
   | 'dp-pascals-triangle'
   | 'dp-pascals-triangle-ii'
   | 'dp-climbing-stairs'
-  | 'array-move-zeroes';
+  | 'array-move-zeroes'
+  | 'array-sort-colors';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -334,6 +335,12 @@ export interface ExecutionStep {
    * checked, a swap, a pointer moved). `state` holds the same array.
    */
   cells?: MoveZeroesView;
+
+  /**
+   * Sort Colors only (visual: 'flag-cells'): the array after this step, the three pointers, the value read, the swap
+   * made and the four regions (0s, 1s, not yet checked, 2s). `state` holds the same array.
+   */
+  sortColors?: SortColorsView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -747,6 +754,8 @@ export interface AlgorithmInputSpec {
   distinctValues?: boolean;
   /** Array algorithms: the smallest value allowed (heights cannot be negative: 0) */
   minValue?: number;
+  /** Array algorithms: the largest value allowed, when it is less than the visualizer's maximum (Sort Colors: 2) */
+  maxValue?: number;
   /** What the main array field is called when "Array" would be ambiguous (Merge Sorted Array: "nums1") */
   arrayLabel?: string;
   /**
@@ -834,7 +843,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells';
 
 /** Climbing Stairs: where the run is. start: before the base check; base: prev2 and prev1 set; loop: the loop; done */
 export type StairsStage = 'start' | 'base' | 'loop' | 'done';
@@ -866,6 +875,41 @@ export interface StairsView {
   readonly history: readonly { readonly step: number; readonly ways: number }[];
   /** the answer, on the last step only */
   readonly result?: { readonly value: number; readonly text: string };
+}
+
+/** Sort Colors: what a step did. start: before the pointers are set; done: the last step */
+export type SortColorsOperation = 'start' | 'init' | 'loop' | 'check' | 'swap-low' | 'advance-low' | 'advance-mid' | 'swap-high' | 'retreat-high' | 'done';
+
+/** Sort Colors: a run of positions, from start (included) to end (not included); empty when start equals end */
+export type IndexRange = readonly [start: number, end: number];
+
+/** Sort Colors (Dutch National Flag): the array and the three pointers after one step. Indexes are positions in the array. */
+export interface SortColorsView {
+  /** the array as given (the same on every step) */
+  readonly input: readonly number[];
+  /** the array after this step */
+  readonly nums: readonly number[];
+  /** where the next 0 goes (null before it is set) */
+  readonly low: number | null;
+  /** the position being checked (null before it is set; equal to the length once everything is checked) */
+  readonly mid: number | null;
+  /** where the next 2 goes (null before it is set; -1 once every position holds a 2) */
+  readonly high: number | null;
+  /** the value this step read at mid */
+  readonly current?: { readonly index: number; readonly value: number };
+  readonly operation: SortColorsOperation;
+  /** the two positions this step swapped (the same position twice when the value was already in place) */
+  readonly swapped?: readonly [number, number];
+  /** the pointers this step set or moved */
+  readonly moved?: readonly ('low' | 'mid' | 'high')[];
+  /**
+   * What is known about each position after this step: the 0s at the front, then the 1s, then the values not yet
+   * checked, then the 2s at the back. Every position is in exactly one of them. Right after a swap a region already
+   * includes the value just placed, one step before its pointer moves past it.
+   */
+  readonly regions: { readonly zeros: IndexRange; readonly ones: IndexRange; readonly unknown: IndexRange; readonly twos: IndexRange };
+  /** the sorted array, on the last step only */
+  readonly result?: readonly number[];
 }
 
 /** Move Zeroes: the array and the two pointers after one step. Indexes are positions in the array. */
@@ -1185,7 +1229,8 @@ export interface AlgorithmDefinition {
    * takes the array form, as does 'heap' (Last Stone Weight: a max heap drawn as a tree and as its array; every step
    * then carries `heap`). 'triangle' (Pascal's Triangle: every step then carries `triangle`) takes numRows from
    * inputSpec.numbers, like 'numbers', as does 'dp-row' (Pascal's Triangle II: every step then carries `dpRow`) and 'stairs' (Climbing Stairs: every step then
-   * carries `stairs`). 'cells' (Move Zeroes: every step then carries `cells`) takes the array form. Existing
+   * carries `stairs`). 'cells' (Move Zeroes: every step then carries `cells`) takes the array form, as does
+   * 'flag-cells' (Sort Colors: every step then carries `sortColors`). Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

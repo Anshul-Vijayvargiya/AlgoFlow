@@ -229,6 +229,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Two pointers, in place: non-zero values move left in order, zeroes end up at the back.',
     implemented: true,
   },
+  {
+    id: 'array-sort-colors',
+    name: 'Sort Colors',
+    category: 'ARRAYS',
+    subtitle: 'Dutch National Flag: three pointers sort the 0s, 1s and 2s in place, in one pass.',
+    implemented: true,
+  },
 
   // ─── STRINGS ────────────────────────────────────────────
   {

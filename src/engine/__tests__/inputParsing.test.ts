@@ -262,13 +262,14 @@ describe('linked-list input validation (rejected before execution)', () => {
     for (const d of getAllAlgorithms()) {
       // of the BACKTRACKING algorithms, Subsets and Find All Permutations have a decision tree, not a board
       // of the DP algorithms, Pascal's Triangle II keeps one row and Climbing Stairs is a staircase, not a triangle; of the
-      // ARRAYS, Move Zeroes is drawn as indexed cells, not bars
+      // ARRAYS, Move Zeroes and Sort Colors are drawn as indexed cells, not bars
       const OWN: Record<string, string> = {
         'backtracking-subsets': 'decision-tree',
         'backtracking-permutations': 'decision-tree',
         'dp-pascals-triangle-ii': 'dp-row',
         'dp-climbing-stairs': 'stairs',
         'array-move-zeroes': 'cells',
+        'array-sort-colors': 'flag-cells',
       };
       const own = OWN[d.id] ?? null;
       expect(visualKindOf(d), d.id).toBe(own ?? kind[d.category] ?? 'array');
