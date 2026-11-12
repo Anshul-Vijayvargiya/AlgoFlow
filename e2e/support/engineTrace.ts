@@ -117,6 +117,8 @@ export const TEXT_ALGORITHMS: Record<string, { id: AlgorithmId; label: string; h
   'add-binary': { id: 'add-binary', label: 'Add Binary', heading: 'Add Binary' },
   'valid-palindrome': { id: 'valid-palindrome', label: 'Valid Palindrome', heading: 'Valid Palindrome' },
   'valid-palindrome-ii': { id: 'valid-palindrome-ii', label: 'Valid Palindrome II', heading: 'Valid Palindrome II' },
+  // takes its lists as one string, like the text algorithms, but is drawn as lists, a min heap and the merged list
+  'heap-merge-k-sorted-lists': { id: 'heap-merge-k-sorted-lists', label: 'Merge k Sorted Lists', heading: 'Merge k Sorted Lists' },
 };
 
 /** The parameters a linked-list operation takes, as the app passes them ({ value } and/or { index }). */
