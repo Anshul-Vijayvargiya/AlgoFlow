@@ -27,6 +27,7 @@ import { PascalsTriangleIIVisualizer } from '../components/visualizer/PascalsTri
 import { ClimbingStairsVisualizer } from '../components/visualizer/ClimbingStairsVisualizer';
 import { MoveZeroesVisualizer } from '../components/visualizer/MoveZeroesVisualizer';
 import { SortColorsVisualizer } from '../components/visualizer/SortColorsVisualizer';
+import { MergeKListsVisualizer } from '../components/visualizer/MergeKListsVisualizer';
 import { RevisionBookmark } from '../components/visualizer/RevisionBookmark';
 import { useVisualizerStore } from '../store/useVisualizerStore';
 import { getAlgorithmById } from '../data/algorithmMetadata';
@@ -253,6 +254,7 @@ export const VisualizerPage: React.FC = () => {
                     {currentStep && visual === 'stairs' && <ClimbingStairsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'cells' && <MoveZeroesVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {currentStep && visual === 'flag-cells' && <SortColorsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
+                    {currentStep && visual === 'k-lists' && <MergeKListsVisualizer currentStep={currentStep} stepIntervalMs={speed} />}
                     {executionStatus === 'invalid-input' && (
                       <div
                         data-testid="input-issue"

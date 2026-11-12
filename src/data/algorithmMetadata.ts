@@ -506,6 +506,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Smash the two heaviest stones, taken from a max heap, until at most one is left.',
     implemented: true,
   },
+  {
+    id: 'heap-merge-k-sorted-lists',
+    name: 'Merge k Sorted Lists',
+    category: 'HEAP',
+    subtitle: 'A min heap of list heads gives the next smallest node in O(log k).',
+    implemented: true,
+  },
 
   // ─── GRAPHS ─────────────────────────────────────────────
   {

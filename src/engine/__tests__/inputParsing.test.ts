@@ -270,6 +270,8 @@ describe('linked-list input validation (rejected before execution)', () => {
         'dp-climbing-stairs': 'stairs',
         'array-move-zeroes': 'cells',
         'array-sort-colors': 'flag-cells',
+        // of the HEAP algorithms, Merge k Sorted Lists has its own lists, heap and merged list
+        'heap-merge-k-sorted-lists': 'k-lists',
       };
       const own = OWN[d.id] ?? null;
       expect(visualKindOf(d), d.id).toBe(own ?? kind[d.category] ?? 'array');

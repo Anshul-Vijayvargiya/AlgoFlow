@@ -8,6 +8,7 @@
  */
 import type { AlgorithmDefinition, AlgorithmInputSpec, NumberField, TextField } from '../types/algorithm';
 import { bstViolation, parseLevelOrderTree } from './tree/binaryTree';
+import { parseSortedLists } from './linkedList/sortedLists';
 
 /** Keeps bars and pointer labels legible; far above anything the traces need to demonstrate. */
 export const MAX_ARRAY_SIZE = 16;
@@ -174,6 +175,10 @@ export function validateTextField(value: string, field: TextField): ParseResult<
     if (!tree.ok) return { ok: false, message: tree.message };
     const notBst = field.rule === 'level-order-bst' ? bstViolation(tree.tree) : null;
     if (notBst) return { ok: false, message: notBst };
+  }
+  if (field.rule === 'sorted-lists') {
+    const lists = parseSortedLists(value);
+    if (!lists.ok) return { ok: false, message: lists.message };
   }
   if (field.rule === 'whole-number') {
     const t = value.trim();

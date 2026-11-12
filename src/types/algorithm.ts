@@ -111,7 +111,8 @@ export type AlgorithmId =
   | 'dp-pascals-triangle-ii'
   | 'dp-climbing-stairs'
   | 'array-move-zeroes'
-  | 'array-sort-colors';
+  | 'array-sort-colors'
+  | 'heap-merge-k-sorted-lists';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -341,6 +342,12 @@ export interface ExecutionStep {
    * made and the four regions (0s, 1s, not yet checked, 2s). `state` holds the same array.
    */
   sortColors?: SortColorsView;
+
+  /**
+   * Merge k Sorted Lists only (visual: 'k-lists'): the input lists and their nodes, the min heap of nodes, the node
+   * taken out, the tail and the merged chain. `state` is empty: the lists are not one array.
+   */
+  mergeK?: MergeKListsView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -830,8 +837,9 @@ export interface TextField {
    * checked against chars and itemMaxLength; minLength / maxLength then count items, not characters.
    */
   list?: { readonly itemMaxLength: number };
-  /** a rule beyond the characters: a canonical Roman numeral, a binary number without leading zeros, at least one word */
-  rule?: 'roman-numeral' | 'binary-number' | 'has-word' | 'level-order-tree' | 'level-order-bst' | 'whole-number';
+  /** a rule beyond the characters: a canonical Roman numeral, a binary number without leading zeros, at least one word,
+   *  sorted lists written as [[1, 4, 5], [1, 3, 4], [2, 6]] */
+  rule?: 'roman-numeral' | 'binary-number' | 'has-word' | 'level-order-tree' | 'level-order-bst' | 'whole-number' | 'sorted-lists';
 }
 
 export interface NumberField {
@@ -843,7 +851,68 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists';
+
+/**
+ * Merge k Sorted Lists: one node of an input list. The id is stable for the whole trace (l<list>n<index>); no node is
+ * ever created or copied, so the merged list is made of these same nodes.
+ */
+export interface MergeKNode {
+  readonly id: string;
+  readonly value: number;
+  /** the input list it came from (L0, L1, …) and its position there */
+  readonly list: number;
+  readonly index: number;
+  /** its next pointer after this step: a node id, or null for NULL */
+  readonly next: string | null;
+}
+
+/**
+ * Merge k Sorted Lists with a min heap of nodes: the state after one step. Heap positions (in pointers, compared,
+ * swapped, moved, inserted) are indexes into `heap`; the children of heap[k] are heap[2k + 1] and heap[2k + 2].
+ */
+export interface MergeKListsView {
+  /** the input lists' values (the same on every step) */
+  readonly lists: readonly (readonly number[])[];
+  /** every node, in input order, with its link as it stands after this step */
+  readonly nodes: readonly MergeKNode[];
+  /** lists[i]: the head of each input list, null for an empty list (the same on every step) */
+  readonly heads: readonly (string | null)[];
+  /** the heap array after this step, as node ids (its length is the heap's size) */
+  readonly heap: readonly string[];
+  /** build: the heads go into the heap; merge: the merging loop; done: the merged list is returned */
+  readonly phase: 'build' | 'merge' | 'done';
+  /** the function calls in progress, outermost first (the last is the one running) */
+  readonly calls: readonly string[];
+  /** the index variables that hold a heap position at this step (i, parent, l, r, smallest) */
+  readonly pointers: readonly HeapPointer[];
+  /** the build loop's i: the list whose head is looked at (null outside that loop) */
+  readonly listIndex: number | null;
+  /** pop's min: the node it took from the root, until it returns it */
+  readonly min: string | null;
+  /** the merge loop's node: the node pop returned (null before the first) */
+  readonly node: string | null;
+  /** whether the dummy node exists yet (it is created after the heads are in the heap) */
+  readonly dummy: boolean;
+  /** tail: null before it is set, 'dummy' while it points at the dummy node, else the last merged node */
+  readonly tail: string | null;
+  /** the merged list so far: the nodes reached from dummy.next, up to the one linked last */
+  readonly merged: readonly string[];
+  /** the heap positions whose values this step compares */
+  readonly compared?: readonly number[];
+  /** the two heap positions this step swapped */
+  readonly swapped?: readonly [number, number];
+  /** pop: heap[to] = heap[from] (the last node moved to the root) */
+  readonly moved?: { readonly from: number; readonly to: number };
+  /** pop: the node of the last slot, which this step removed from the heap (it was copied to the root just before) */
+  readonly removed?: string;
+  /** the heap position of the node this step stored */
+  readonly inserted?: number;
+  /** the node this step linked after the tail */
+  readonly linked?: string;
+  /** the merged list, on the last step only */
+  readonly result?: { readonly values: readonly number[]; readonly text: string };
+}
 
 /** Climbing Stairs: where the run is. start: before the base check; base: prev2 and prev1 set; loop: the loop; done */
 export type StairsStage = 'start' | 'base' | 'loop' | 'done';
@@ -1230,7 +1299,8 @@ export interface AlgorithmDefinition {
    * then carries `heap`). 'triangle' (Pascal's Triangle: every step then carries `triangle`) takes numRows from
    * inputSpec.numbers, like 'numbers', as does 'dp-row' (Pascal's Triangle II: every step then carries `dpRow`) and 'stairs' (Climbing Stairs: every step then
    * carries `stairs`). 'cells' (Move Zeroes: every step then carries `cells`) takes the array form, as does
-   * 'flag-cells' (Sort Colors: every step then carries `sortColors`). Existing
+   * 'flag-cells' (Sort Colors: every step then carries `sortColors`). 'k-lists' (Merge k Sorted Lists: every step then
+   * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

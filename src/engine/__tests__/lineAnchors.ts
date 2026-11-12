@@ -69,6 +69,69 @@ function lastStoneWeightAnchors(): Record<string, RegExp> {
   return anchors;
 }
 
+/**
+ * Merge k Sorted Lists: C writes the min heap of nodes out, so a step inside push or pop highlights its own statement
+ * there; in the other listings (library priority queues) the library call of its call site (the codeRef's `@head`, `@next` or
+ * `@node`).
+ */
+function mergeKSortedListsAnchors(): Record<string, RegExp> {
+  const C_PUSH: Record<string, RegExp> = {
+    'ins-index': /^\s*int i = \(\*size\)\+\+;$/,
+    'ins-store': /^\s*heap\[i\] = node;$/,
+    'su-loop': /^\s*while \(i > 0\) \{$/,
+    'su-parent': /^\s*int parent = \(i - 1\) \/ 2;$/,
+    'su-check': /^\s*if \(heap\[parent\]->val <= heap\[i\]->val\)$/,
+    'su-break': /^\s*break;$/,
+    'su-swap': /^\s*swap\(&heap\[parent\], &heap\[i\]\);$/,
+    'su-move': /^\s*i = parent;$/,
+  };
+  const C_POP: Record<string, RegExp> = {
+    'pop-min': /^\s*struct ListNode \*min = heap\[0\];$/,
+    'pop-move-last': /^\s*heap\[0\] = heap\[--\(\*size\)\];$/,
+    'pop-shrink': /^\s*heap\[0\] = heap\[--\(\*size\)\];$/,
+    'pop-set-i': /^\s*int i = 0;$/,
+    'sd-smallest': /^\s*int smallest = i;$/,
+    'sd-left': /^\s*int l = 2 \* i \+ 1;$/,
+    'sd-right': /^\s*int r = 2 \* i \+ 2;$/,
+    'sd-check-left': /^\s*if \(l < \*size && heap\[l\]->val < heap\[smallest\]->val\)$/,
+    'sd-take-left': /^\s*smallest = l;$/,
+    'sd-check-right': /^\s*if \(r < \*size && heap\[r\]->val < heap\[smallest\]->val\)$/,
+    'sd-take-right': /^\s*smallest = r;$/,
+    'sd-check-done': /^\s*if \(smallest == i\)$/,
+    'sd-break': /^\s*break;$/,
+    'sd-swap': /^\s*swap\(&heap\[i\], &heap\[smallest\]\);$/,
+    'sd-move': /^\s*i = smallest;$/,
+    'pop-return': /^\s*return min;$/,
+  };
+  const LIBRARY: Record<string, RegExp> = {
+    head: /^\s*(pq\.(push|add)\(lists\[i\]\);|heapq\.heappush\(heap, \(lists\[i\]\.val, i, lists\[i\]\)\))$/,
+    next: /^\s*(pq\.push\(node->next\);|pq\.add\(node\.next\);|heapq\.heappush\(heap, \(node\.next\.val, i, node\.next\)\))$/,
+    node: /^\s*(ListNode \*node = pq\.top\(\);|pq\.pop\(\);|ListNode node = pq\.poll\(\);|val, i, node = heapq\.heappop\(heap\))$/,
+  };
+  const anchors: Record<string, RegExp> = {
+    'init-heap': /^\s*(struct ListNode \*heap\[listsSize > 0 \? listsSize : 1\];|priority_queue<ListNode \*, vector<ListNode \*>, Compare> pq;|PriorityQueue<ListNode> pq =|heap = \[\])$/,
+    'set-size': /^\s*(int size = 0;|priority_queue<ListNode \*, vector<ListNode \*>, Compare> pq;|PriorityQueue<ListNode> pq =|heap = \[\])$/,
+    'build-loop': /^\s*for (\(int i = 0; i < (listsSize|\(int\)lists\.size\(\)|lists\.length); i\+\+\) \{|i in range\(len\(lists\)\):)$/,
+    'check-head': /^\s*if \(?lists\[i\] (!= (NULL|nullptr|null)|is not None)\)?( \{|:)$/,
+    'push-head': /^\s*(push\(heap, &size, lists\[i\]\);|pq\.(push|add)\(lists\[i\]\);|heapq\.heappush\(heap, \(lists\[i\]\.val, i, lists\[i\]\)\))$/,
+    'init-dummy': /^\s*(dummy\.next = NULL;|ListNode dummy\(0\);|ListNode dummy = new ListNode\(0\);|dummy = ListNode\(\))$/,
+    'init-tail': /^\s*(struct ListNode \*tail = &dummy;|ListNode \*tail = &dummy;|ListNode tail = dummy;|tail = dummy)$/,
+    'merge-loop': /^\s*while \(?(size > 0|!pq\.empty\(\)|!pq\.isEmpty\(\)|heap)\)?( \{|:)$/,
+    'pop-node': /^\s*(struct ListNode \*node = pop\(heap, &size\);|ListNode \*node = pq\.top\(\);|ListNode node = pq\.poll\(\);|val, i, node = heapq\.heappop\(heap\))$/,
+    'link-node': /^\s*tail(->|\.)next = node;?$/,
+    'advance-tail': /^\s*tail = node;?$/,
+    'check-next': /^\s*if \(?node(->|\.)next (!= (NULL|nullptr|null)|is not None)\)?( \{|:)$/,
+    'push-next': /^\s*(push\(heap, &size, node->next\);|pq\.push\(node->next\);|pq\.add\(node\.next\);|heapq\.heappush\(heap, \(node\.next\.val, i, node\.next\)\))$/,
+    'return-result': /^\s*return dummy\.next;?$/,
+  };
+  const add = (inner: Record<string, RegExp>, sites: string[]) => {
+    for (const site of sites) for (const [ref, c] of Object.entries(inner)) anchors[`${ref}@${site}`] = new RegExp(`${c.source}|${LIBRARY[site].source}`);
+  };
+  add(C_PUSH, ['head', 'next']);
+  add(C_POP, ['node']);
+  return anchors;
+}
+
 export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
   'tree-inorder': {
     'fn-entry': /\binorder_?[Tt]raversal\(/,
@@ -873,6 +936,7 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     done: /^\s*return result;?$/,
   },
   'heap-last-stone-weight': lastStoneWeightAnchors(),
+  'heap-merge-k-sorted-lists': mergeKSortedListsAnchors(),
   'dp-pascals-triangle': {
     init: /^\s*(int\*\* triangle = malloc\(numRows \* sizeof\(int\*\)\);|vector<vector<int>> triangle;|List<List<Integer>> triangle = new ArrayList<>\(\);|triangle = \[\])$/,
     'row-loop': /^\s*for (\(int i = 0; i < numRows; i\+\+\) \{|i in range\(num_rows\):)$/,

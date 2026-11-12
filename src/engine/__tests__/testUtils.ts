@@ -103,6 +103,22 @@ export const textAlgorithms = () => getAllAlgorithms().filter(d => visualKindOf(
  * the shortest inputs and the branches each algorithm has (a mismatch, an early return, a final carry…).
  */
 export const TEXT_INPUTS: Record<string, string[][]> = {
+  // Merge k Sorted Lists: the example, no lists, empty lists, one list, single nodes, ties, negatives, the limits
+  'heap-merge-k-sorted-lists': [
+    ['[[1,4,5],[1,3,4],[2,6]]'],
+    ['[]'],
+    ['[[]]'],
+    ['[[],[]]'],
+    ['[[1,2,3]]'],
+    ['[[],[1]]'],
+    ['[[5],[1],[3],[2],[4]]'],
+    ['[[2,2],[2],[2,2]]'],
+    ['[[-5,-1,3],[],[-2,0]]'],
+    ['[[7,7,7,7,7],[7,7,7,7,7],[7,7]]'],
+    ['[[1,4,7,10],[2,5,8,11],[3,6,9,12]]'],
+    ['[[5,5,5],[4,4,4],[3,3],[2,2],[1,1]]'],
+    ['[[9],[1,2,3,4,5],[8],[0,6,7]]'],
+  ],
   'roman-to-integer': [['III'], ['LVIII'], ['MCMXCIV'], ['I'], ['IV'], ['IX'], ['XL'], ['CD'], ['MMMCMXCIX'], ['DCCCXC']],
   'longest-common-prefix': [['flower, flow, flight'], ['dog, racecar, car'], ['a'], [''], ['ab, a'], ['a, ab'], ['abc, abc, abc'], [', abc'], ['abc, ']],
   'valid-parentheses': [['()'], ['()[]{}'], ['(]'], ['([])'], ['([)]'], ['(('], [')'], ['{[()()]}'], ['('], [']']],

@@ -62,8 +62,11 @@ describe('Last Stone Weight: where it is listed and how it is drawn', () => {
     expect(ALGORITHM_CATEGORIES.find(c => c.id === 'HEAP')!.label).toBe('HEAP & PRIORITY QUEUE');
     expect(order.indexOf('BIT_MANIPULATION')).toBe(order.indexOf('BACKTRACKING') + 1);
     expect(order.indexOf('FUNDAMENTALS')).toBe(order.indexOf('BIT_MANIPULATION') + 1);
-    expect(ALGORITHM_NAV.filter(a => a.category === 'HEAP').map(a => [a.id, a.name, a.implemented])).toEqual([[ID, 'Last Stone Weight', true]]);
-    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Heap & Priority Queue')!.algorithmIds).toEqual([ID]);
+    expect(ALGORITHM_NAV.filter(a => a.category === 'HEAP').map(a => [a.id, a.name, a.implemented])).toEqual([
+      [ID, 'Last Stone Weight', true],
+      ['heap-merge-k-sorted-lists', 'Merge k Sorted Lists', true],
+    ]);
+    expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Heap & Priority Queue')!.algorithmIds).toEqual([ID, 'heap-merge-k-sorted-lists']);
   });
 
   it('an independent definition drawn as a heap; Heap Sort stays a SORTING algorithm drawn as bars', () => {
