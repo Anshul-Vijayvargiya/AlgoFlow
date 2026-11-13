@@ -48,10 +48,10 @@ const EDGE: [string, number[]][] = [
 const ALL = [...EDGE.map(([, n]) => n), ...randomInputs(300)];
 
 describe('Sort Colors: where it is listed and how it is drawn', () => {
-  it('an ARRAYS algorithm right after Move Zeroes, the last of ARRAYS; not Coming Soon', () => {
+  it('an ARRAYS algorithm right after Move Zeroes, followed by Best Time to Buy and Sell Stock; not Coming Soon', () => {
     const arrays = ALGORITHM_NAV.filter(a => a.category === 'ARRAYS').map(a => a.id);
     expect(arrays.indexOf(ID)).toBe(arrays.indexOf('array-move-zeroes') + 1);
-    expect(arrays.at(-1)).toBe(ID);
+    expect(arrays.indexOf('array-buy-sell-stock')).toBe(arrays.indexOf(ID) + 1);
     expect(ALGORITHM_NAV.find(a => a.id === ID)).toMatchObject({ name: 'Sort Colors', category: 'ARRAYS', implemented: true });
     expect(getAllAlgorithms().filter(d => d.id === ID)).toHaveLength(1);
   });

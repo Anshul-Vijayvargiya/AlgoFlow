@@ -113,7 +113,8 @@ export type AlgorithmId =
   | 'array-move-zeroes'
   | 'array-sort-colors'
   | 'heap-merge-k-sorted-lists'
-  | 'dp-house-robber';
+  | 'dp-house-robber'
+  | 'array-buy-sell-stock';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -356,6 +357,13 @@ export interface ExecutionStep {
    * `state` holds the houses' money.
    */
   houseRobber?: HouseRobberView;
+
+  /**
+   * Best Time to Buy and Sell Stock only (visual: 'stock'): the prices, the loop index, minPrice, the day's profit and
+   * maxProfit, and (for display only) the day of the minimum and the buy and sell days behind maxProfit. `state` holds
+   * the prices.
+   */
+  stock?: StockView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -859,7 +867,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock';
 
 /**
  * Merge k Sorted Lists: one node of an input list. The id is stable for the whole trace (l<list>n<index>); no node is
@@ -920,6 +928,36 @@ export interface MergeKListsView {
   readonly linked?: string;
   /** the merged list, on the last step only */
   readonly result?: { readonly values: readonly number[]; readonly text: string };
+}
+
+/** Best Time to Buy and Sell Stock: what a step did. start: before the variables are set; done: the last step */
+export type StockOperation = 'start' | 'init' | 'loop' | 'check-min' | 'update-min' | 'compute-profit' | 'check-profit' | 'update-profit' | 'done';
+
+/** Best Time to Buy and Sell Stock: the state of the one-pass scan after one step. Days are positions in `prices`. */
+export interface StockView {
+  /** each day's price (the same on every step) */
+  readonly prices: readonly number[];
+  /** the loop index: the day being checked (null outside the loop; the number of days once the loop has ended) */
+  readonly i: number | null;
+  /** the lowest price so far, and the best profit so far (null before they are set) */
+  readonly minPrice: number | null;
+  readonly maxProfit: number | null;
+  /** profit = prices[i] - minPrice, from the step that computes it until the day ends (null otherwise) */
+  readonly profit: number | null;
+  readonly operation: StockOperation;
+  /** DISPLAY ONLY: the day of the current minPrice (the earliest, on a tie). The code keeps the price, not the day */
+  readonly minDay: number | null;
+  /** DISPLAY ONLY: the buy and sell days that earn maxProfit; null while maxProfit is 0 (no sale makes money) */
+  readonly buyDay: number | null;
+  readonly sellDay: number | null;
+  /** day i set a new minimum (on its update and its profit, which is then 0) */
+  readonly newMin?: boolean;
+  /** this step raised maxProfit */
+  readonly improved?: boolean;
+  /** the variable this step set */
+  readonly moved?: 'minPrice' | 'maxProfit' | 'profit';
+  /** the answer, on the last step only: no days when the profit is 0 */
+  readonly result?: { readonly profit: number; readonly buyDay: number | null; readonly sellDay: number | null; readonly text: string };
 }
 
 /** House Robber: what a step did. start: before the variables are set; rob / skip / max: the three parts of the max line */
@@ -1347,7 +1385,8 @@ export interface AlgorithmDefinition {
    * carries `stairs`). 'cells' (Move Zeroes: every step then carries `cells`) takes the array form, as does
    * 'flag-cells' (Sort Colors: every step then carries `sortColors`). 'k-lists' (Merge k Sorted Lists: every step then
    * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. 'houses' (House Robber: every step then
-   * carries `houseRobber`) takes the array form. Existing
+   * carries `houseRobber`) takes the array form, as does 'stock' (Best Time to Buy and Sell Stock: every step then
+   * carries `stock`). Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

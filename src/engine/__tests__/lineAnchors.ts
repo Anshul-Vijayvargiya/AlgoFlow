@@ -989,6 +989,18 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'shift-prev1': /^\s*prev1 = current;?$/,
     'return-result': /^\s*return prev1;?$/,
   },
+  'array-buy-sell-stock': {
+    'fn-entry': /^\s*(int maxProfit\(int\* prices, int pricesSize\) \{|int maxProfit\(vector<int>& prices\) \{|public static int maxProfit\(int\[\] prices\) \{|def max_profit\(prices\):)$/,
+    'init-min': /^\s*(int minPrice = prices\[0\];|min_price = prices\[0\])$/,
+    'init-profit': /^\s*(int maxProfit = 0;|max_profit = 0)$/,
+    'loop-condition': /^\s*for (\(int i = 1; i < (pricesSize|\(int\)prices\.size\(\)|prices\.length); i\+\+\) \{|i in range\(1, len\(prices\)\):)$/,
+    'check-min': /^\s*if \(?prices\[i\] < (minPrice|min_price)\)?( \{|:)$/,
+    'update-min': /^\s*(minPrice = prices\[i\];|min_price = prices\[i\])$/,
+    'compute-profit': /^\s*(int profit = prices\[i\] - minPrice;|profit = prices\[i\] - min_price)$/,
+    'check-profit': /^\s*if \(?profit > (maxProfit|max_profit)\)?( \{|:)$/,
+    'update-profit': /^\s*(maxProfit = profit;|max_profit = profit)$/,
+    'return-result': /^\s*return (maxProfit;|max_profit)$/,
+  },
   'array-move-zeroes': {
     // the functions return nothing: the start and the end are shown on the header
     'fn-entry': /^\s*(void moveZeroes\(int\* nums, int numsSize\) \{|void moveZeroes\(vector<int>& nums\) \{|public static void moveZeroes\(int\[\] nums\) \{|def move_zeroes\(nums\):)$/,

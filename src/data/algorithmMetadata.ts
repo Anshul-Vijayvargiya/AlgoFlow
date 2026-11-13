@@ -236,6 +236,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'Dutch National Flag: three pointers sort the 0s, 1s and 2s in place, in one pass.',
     implemented: true,
   },
+  {
+    id: 'array-buy-sell-stock',
+    name: 'Best Time to Buy and Sell Stock',
+    category: 'ARRAYS',
+    subtitle: 'One pass: keep the lowest price so far, and the best profit from selling today.',
+    implemented: true,
+  },
 
   // ─── STRINGS ────────────────────────────────────────────
   {
