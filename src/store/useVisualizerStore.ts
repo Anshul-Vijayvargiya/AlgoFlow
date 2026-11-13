@@ -265,7 +265,8 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => {
       // (Subsets takes few, distinct values, so another algorithm's array may not fit: it loads its own example too)
       // (Last Stone Weight takes at most 10 positive weights, so another algorithm's array may not fit either)
       // (Move Zeroes takes at most 10 values and Sort Colors only 0, 1 and 2: each loads its own example too)
-      const sameKindOfInput = toKind !== 'bits' && toKind !== 'decision-tree' && toKind !== 'heap' && toKind !== 'cells' && toKind !== 'flag-cells' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
+      // (House Robber takes at most 10 amounts from 0 to 400: it loads its own example too)
+      const sameKindOfInput = toKind !== 'bits' && toKind !== 'decision-tree' && toKind !== 'heap' && toKind !== 'cells' && toKind !== 'flag-cells' && toKind !== 'houses' && !takesTexts(getAlgorithmDefinition(s.selectedAlgorithm)) && (fromKind === toKind || (!fromNumbers && !takesNumbers(def)));
       // a second array is the algorithm's own: kept when switching between algorithms that take one, else its example
       const exampleSecond = spec?.secondArray ? [...spec.secondArray.defaultValue] : null;
       if (s.inputSource === 'custom' && sameKindOfInput) {

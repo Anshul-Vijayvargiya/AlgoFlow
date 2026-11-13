@@ -976,6 +976,19 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'shift-prev1': /^\s*prev1 = current;?$/,
     'loop-return': /^\s*return prev1;?$/,
   },
+  'dp-house-robber': {
+    'fn-entry': /^\s*(int rob\(int\* nums, int numsSize\) \{|int rob\(vector<int>& nums\) \{|public static int rob\(int\[\] nums\) \{|def rob\(nums\):)$/,
+    'init-prev2': /^\s*(int )?prev2 = 0;?$/,
+    'init-prev1': /^\s*(int )?prev1 = 0;?$/,
+    'loop-condition': /^\s*for (\(int i = 0; i < (numsSize|\(int\)nums\.size\(\)|nums\.length); i\+\+\) \{|i in range\(len\(nums\)\):)$/,
+    // the rob choice, the skip choice and the comparison are the three parts of one statement
+    'rob-choice': /^\s*(int )?current = (maxOf|max|Math\.max)\(prev1, nums\[i\] \+ prev2\);?$/,
+    'skip-choice': /^\s*(int )?current = (maxOf|max|Math\.max)\(prev1, nums\[i\] \+ prev2\);?$/,
+    'take-max': /^\s*(int )?current = (maxOf|max|Math\.max)\(prev1, nums\[i\] \+ prev2\);?$/,
+    'shift-prev2': /^\s*prev2 = prev1;?$/,
+    'shift-prev1': /^\s*prev1 = current;?$/,
+    'return-result': /^\s*return prev1;?$/,
+  },
   'array-move-zeroes': {
     // the functions return nothing: the start and the end are shown on the header
     'fn-entry': /^\s*(void moveZeroes\(int\* nums, int numsSize\) \{|void moveZeroes\(vector<int>& nums\) \{|public static void moveZeroes\(int\[\] nums\) \{|def move_zeroes\(nums\):)$/,

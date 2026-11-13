@@ -112,7 +112,8 @@ export type AlgorithmId =
   | 'dp-climbing-stairs'
   | 'array-move-zeroes'
   | 'array-sort-colors'
-  | 'heap-merge-k-sorted-lists';
+  | 'heap-merge-k-sorted-lists'
+  | 'dp-house-robber';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -348,6 +349,13 @@ export interface ExecutionStep {
    * taken out, the tail and the merged chain. `state` is empty: the lists are not one array.
    */
   mergeK?: MergeKListsView;
+
+  /**
+   * House Robber only (visual: 'houses'): the houses, the loop index, the three variables, the rob and skip choices of
+   * the current house, and (for display only) the best amount after each house and one set of houses that reaches it.
+   * `state` holds the houses' money.
+   */
+  houseRobber?: HouseRobberView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -851,7 +859,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses';
 
 /**
  * Merge k Sorted Lists: one node of an input list. The id is stable for the whole trace (l<list>n<index>); no node is
@@ -912,6 +920,44 @@ export interface MergeKListsView {
   readonly linked?: string;
   /** the merged list, on the last step only */
   readonly result?: { readonly values: readonly number[]; readonly text: string };
+}
+
+/** House Robber: what a step did. start: before the variables are set; rob / skip / max: the three parts of the max line */
+export type HouseRobberOperation = 'start' | 'init' | 'loop' | 'rob' | 'skip' | 'max' | 'shift' | 'done';
+
+/** House Robber: the state of the O(1)-space DP after one step. Indexes are positions of houses in the row. */
+export interface HouseRobberView {
+  /** the money in each house (the same on every step) */
+  readonly nums: readonly number[];
+  /** the loop index: the house being decided (null outside the loop; the number of houses once the loop has ended) */
+  readonly i: number | null;
+  /** the rolling variables (null before they are set): the most money up to two houses back, and up to the previous house */
+  readonly prev2: number | null;
+  readonly prev1: number | null;
+  /** current = max(prev1, nums[i] + prev2), from the step that computes it until the pass ends (null otherwise) */
+  readonly current: number | null;
+  readonly operation: HouseRobberOperation;
+  /**
+   * the two choices for house i, filled in as the max line is evaluated: rob (nums[i] + prev2) first, then skip (prev1),
+   * then the winner; a tie is 'skip'. Kept until the pass ends.
+   */
+  readonly choice?: { readonly rob: number; readonly skip?: number; readonly winner?: 'rob' | 'skip' };
+  /** on the rob choice: the house before i, which cannot be robbed together with house i */
+  readonly blocked?: number;
+  /** the variable this step set */
+  readonly moved?: 'prev2' | 'prev1';
+  /**
+   * DISPLAY ONLY: the most money after each house processed so far (every value current has had), in order. The code
+   * never stores this: it keeps only prev2 and prev1.
+   */
+  readonly best: readonly number[];
+  /**
+   * DISPLAY ONLY: one set of houses, none next to another, whose money adds up to the last value of `best` (empty before
+   * the first house is decided). Read back from `best`; the code never records which houses are robbed.
+   */
+  readonly selected: readonly number[];
+  /** the answer, on the last step only */
+  readonly result?: { readonly amount: number; readonly houses: readonly number[]; readonly text: string };
 }
 
 /** Climbing Stairs: where the run is. start: before the base check; base: prev2 and prev1 set; loop: the loop; done */
@@ -1300,7 +1346,8 @@ export interface AlgorithmDefinition {
    * inputSpec.numbers, like 'numbers', as does 'dp-row' (Pascal's Triangle II: every step then carries `dpRow`) and 'stairs' (Climbing Stairs: every step then
    * carries `stairs`). 'cells' (Move Zeroes: every step then carries `cells`) takes the array form, as does
    * 'flag-cells' (Sort Colors: every step then carries `sortColors`). 'k-lists' (Merge k Sorted Lists: every step then
-   * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. Existing
+   * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. 'houses' (House Robber: every step then
+   * carries `houseRobber`) takes the array form. Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

@@ -23,7 +23,7 @@ const binomialRow = (n: number) =>
 describe("Pascal's Triangle II: where it is listed and how it is drawn", () => {
   it("a separate DP algorithm right after Pascal's Triangle, not Coming Soon", () => {
     const dp = ALGORITHM_NAV.filter(a => a.category === 'DP');
-    expect(dp.map(a => a.id).slice(0, 4)).toEqual(['dp-pascals-triangle', ID, 'dp-climbing-stairs', 'fibonacci']);
+    expect(dp.map(a => a.id).slice(0, 5)).toEqual(['dp-pascals-triangle', ID, 'dp-climbing-stairs', 'dp-house-robber', 'fibonacci']);
     expect(dp[1]).toMatchObject({ name: "Pascal's Triangle II", implemented: true });
     expect(getAllAlgorithms().filter(d => d.id === ID)).toHaveLength(1);
     expect(getAlgorithmDefinition('dp-pascals-triangle')!.visual).toBe('triangle');

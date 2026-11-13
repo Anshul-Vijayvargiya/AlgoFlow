@@ -268,6 +268,7 @@ describe('linked-list input validation (rejected before execution)', () => {
         'backtracking-permutations': 'decision-tree',
         'dp-pascals-triangle-ii': 'dp-row',
         'dp-climbing-stairs': 'stairs',
+        'dp-house-robber': 'houses',
         'array-move-zeroes': 'cells',
         'array-sort-colors': 'flag-cells',
         // of the HEAP algorithms, Merge k Sorted Lists has its own lists, heap and merged list

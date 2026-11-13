@@ -560,6 +560,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'dp-house-robber',
+    name: 'House Robber',
+    category: 'DP',
+    subtitle: 'The most money from houses in a row without robbing two neighbours: rob or skip, kept in two rolling variables.',
+    implemented: true,
+  },
+  {
     id: 'fibonacci',
     name: 'Fibonacci (DP)',
     category: 'DP',

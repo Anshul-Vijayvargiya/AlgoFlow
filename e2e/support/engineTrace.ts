@@ -66,6 +66,8 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   // takes an array, but is drawn as indexed cells (not bars: the specs of ALGORITHMS expect bars)
   'array-move-zeroes': { id: 'array-move-zeroes', label: 'Move Zeroes', heading: 'Move Zeroes' },
   'array-sort-colors': { id: 'array-sort-colors', label: 'Sort Colors', heading: 'Sort Colors' },
+  // takes an array, but is drawn as a row of houses
+  'dp-house-robber': { id: 'dp-house-robber', label: 'House Robber', heading: 'House Robber' },
   // takes an array, but is drawn as a decision tree
   'backtracking-subsets': { id: 'backtracking-subsets', label: 'Subsets (Power Set)', heading: 'Subsets (Power Set)' },
   'backtracking-permutations': { id: 'backtracking-permutations', label: 'Find All Permutations', heading: 'Find All Permutations' },

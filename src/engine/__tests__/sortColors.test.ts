@@ -355,8 +355,11 @@ describe('Sort Colors: the input', () => {
 });
 
 describe('maxValue is optional: algorithms without it are unaffected', () => {
-  it('Sort Colors is the only algorithm that declares maxValue', () => {
-    expect(getAllAlgorithms().filter(d => d.inputSpec?.maxValue !== undefined).map(d => d.id)).toEqual([ID]);
+  it('only Sort Colors (0 to 2) and House Robber (0 to 400) declare maxValue', () => {
+    expect(getAllAlgorithms().filter(d => d.inputSpec?.maxValue !== undefined).map(d => [d.id, d.inputSpec!.maxValue])).toEqual([
+      ['dp-house-robber', 400],
+      [ID, 2],
+    ]);
   });
 
   it('Move Zeroes still takes the whole global range, -999 to 999', () => {

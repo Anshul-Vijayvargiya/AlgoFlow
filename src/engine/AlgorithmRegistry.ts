@@ -99,6 +99,7 @@ import { mergeKSortedListsDefinition } from './algorithms/heap/mergeKSortedLists
 import { pascalsTriangleDefinition } from './algorithms/dp/pascalsTriangle';
 import { pascalsTriangleIIDefinition } from './algorithms/dp/pascalsTriangleII';
 import { climbingStairsDefinition } from './algorithms/dp/climbingStairs';
+import { houseRobberDefinition } from './algorithms/dp/houseRobber';
 import { moveZeroesDefinition } from './algorithms/moveZeroes';
 import { sortColorsDefinition } from './algorithms/sortColors';
 
@@ -175,6 +176,7 @@ register(mergeKSortedListsDefinition);
 register(pascalsTriangleDefinition);
 register(pascalsTriangleIIDefinition);
 register(climbingStairsDefinition);
+register(houseRobberDefinition);
 register(moveZeroesDefinition);
 register(sortColorsDefinition);
 register(nQueensDefinition);

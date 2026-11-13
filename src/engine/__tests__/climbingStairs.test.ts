@@ -29,7 +29,9 @@ describe('Climbing Stairs: where it is listed and how it is drawn', () => {
   it("a DP algorithm right after Pascal's Triangle II, before Fibonacci; not Coming Soon", () => {
     const dp = ALGORITHM_NAV.filter(a => a.category === 'DP').map(a => a.id);
     expect(dp.indexOf(ID)).toBe(dp.indexOf('dp-pascals-triangle-ii') + 1);
-    expect(dp.indexOf('fibonacci')).toBe(dp.indexOf(ID) + 1);
+    // House Robber is listed right after it; Fibonacci (not implemented yet) follows the implemented ones
+    expect(dp.indexOf('dp-house-robber')).toBe(dp.indexOf(ID) + 1);
+    expect(dp.indexOf('fibonacci')).toBe(dp.indexOf(ID) + 2);
     expect(ALGORITHM_NAV.find(a => a.id === ID)).toMatchObject({ name: 'Climbing Stairs', category: 'DP', implemented: true });
     expect(IMPLEMENTED_TOPICS.find(t => t.topic === 'Dynamic Programming')!.algorithmIds).toContain(ID);
     expect(getAllAlgorithms().filter(d => d.id === ID)).toHaveLength(1);
