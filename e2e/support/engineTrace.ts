@@ -68,6 +68,7 @@ export const NUMBER_ALGORITHMS: Record<string, { id: AlgorithmId; label: string;
   'array-sort-colors': { id: 'array-sort-colors', label: 'Sort Colors', heading: 'Sort Colors' },
   // takes an array, but is drawn as a price chart
   'array-buy-sell-stock': { id: 'array-buy-sell-stock', label: 'Best Time to Buy and Sell Stock', heading: 'Best Time to Buy and Sell Stock' },
+  'array-buy-sell-stock-ii': { id: 'array-buy-sell-stock-ii', label: 'Best Time to Buy and Sell Stock II', heading: 'Best Time to Buy and Sell Stock II' },
   // takes an array, but is drawn as a row of houses
   'dp-house-robber': { id: 'dp-house-robber', label: 'House Robber', heading: 'House Robber' },
   // takes an array, but is drawn as a decision tree

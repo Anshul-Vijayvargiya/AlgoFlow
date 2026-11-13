@@ -114,7 +114,8 @@ export type AlgorithmId =
   | 'array-sort-colors'
   | 'heap-merge-k-sorted-lists'
   | 'dp-house-robber'
-  | 'array-buy-sell-stock';
+  | 'array-buy-sell-stock'
+  | 'array-buy-sell-stock-ii';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -364,6 +365,13 @@ export interface ExecutionStep {
    * the prices.
    */
   stock?: StockView;
+
+  /**
+   * Best Time to Buy and Sell Stock II only (visual: 'stock-ii'): the prices, the loop index, totalProfit and the pair of
+   * days being compared, and (for display only) the day-to-day changes seen, the trades completed and the run still
+   * rising. `state` holds the prices.
+   */
+  stockII?: StockIIView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -867,7 +875,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock' | 'stock-ii';
 
 /**
  * Merge k Sorted Lists: one node of an input list. The id is stable for the whole trace (l<list>n<index>); no node is
@@ -928,6 +936,41 @@ export interface MergeKListsView {
   readonly linked?: string;
   /** the merged list, on the last step only */
   readonly result?: { readonly values: readonly number[]; readonly text: string };
+}
+
+/** Best Time to Buy and Sell Stock II: what a step did. start: before totalProfit is set; done: the last step */
+export type StockIIOperation = 'start' | 'init' | 'loop' | 'check-rise' | 'add-gain' | 'done';
+
+/** Best Time to Buy and Sell Stock II: one trade, from its buy day to its sell day, and what it earns */
+export interface StockIITrade {
+  readonly buyDay: number;
+  readonly sellDay: number;
+  readonly profit: number;
+}
+
+/** Best Time to Buy and Sell Stock II: the state of the greedy pass after one step. Days are positions in `prices`. */
+export interface StockIIView {
+  /** each day's price (the same on every step) */
+  readonly prices: readonly number[];
+  /** the loop index: the later day of the pair being compared (null outside the loop; n once the loop has ended) */
+  readonly i: number | null;
+  /** the sum of the rises counted so far (null before it is set) */
+  readonly totalProfit: number | null;
+  readonly operation: StockIIOperation;
+  /** the pair being compared, on its check and its addition: prices[i - 1], prices[i] and the change between them */
+  readonly prev: number | null;
+  readonly cur: number | null;
+  readonly change: number | null;
+  /** DISPLAY ONLY: every day-to-day change seen so far, by its later day, and whether the code counted it (a rise) */
+  readonly gains: readonly { readonly day: number; readonly change: number; readonly counted: boolean }[];
+  /** DISPLAY ONLY: the trades completed so far, in order: each a run of counted rises, bought at its bottom, sold at its top */
+  readonly trades: readonly StockIITrade[];
+  /** DISPLAY ONLY: the run of rises still going, if any (it becomes a trade when a change is not a rise, or at the end) */
+  readonly open: StockIITrade | null;
+  /** the trade this step completed */
+  readonly closed?: StockIITrade;
+  /** the answer, on the last step only: no trades when the profit is 0 */
+  readonly result?: { readonly profit: number; readonly trades: readonly StockIITrade[]; readonly text: string };
 }
 
 /** Best Time to Buy and Sell Stock: what a step did. start: before the variables are set; done: the last step */
@@ -1386,7 +1429,7 @@ export interface AlgorithmDefinition {
    * 'flag-cells' (Sort Colors: every step then carries `sortColors`). 'k-lists' (Merge k Sorted Lists: every step then
    * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. 'houses' (House Robber: every step then
    * carries `houseRobber`) takes the array form, as does 'stock' (Best Time to Buy and Sell Stock: every step then
-   * carries `stock`). Existing
+   * carries `stock`), and 'stock-ii' (Best Time to Buy and Sell Stock II: every step then carries `stockII`). Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

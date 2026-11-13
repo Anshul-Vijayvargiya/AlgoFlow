@@ -103,6 +103,7 @@ import { houseRobberDefinition } from './algorithms/dp/houseRobber';
 import { moveZeroesDefinition } from './algorithms/moveZeroes';
 import { sortColorsDefinition } from './algorithms/sortColors';
 import { buySellStockDefinition } from './algorithms/buySellStock';
+import { buySellStockIIDefinition } from './algorithms/buySellStockII';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ register(houseRobberDefinition);
 register(moveZeroesDefinition);
 register(sortColorsDefinition);
 register(buySellStockDefinition);
+register(buySellStockIIDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
 register(permutationsDefinition);

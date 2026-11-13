@@ -243,6 +243,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'One pass: keep the lowest price so far, and the best profit from selling today.',
     implemented: true,
   },
+  {
+    id: 'array-buy-sell-stock-ii',
+    name: 'Best Time to Buy and Sell Stock II',
+    category: 'ARRAYS',
+    subtitle: 'As many trades as you like: add up every rise from one day to the next.',
+    implemented: true,
+  },
 
   // ─── STRINGS ────────────────────────────────────────────
   {
