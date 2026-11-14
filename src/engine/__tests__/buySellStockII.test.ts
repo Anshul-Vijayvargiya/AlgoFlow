@@ -58,10 +58,10 @@ const FIXED: number[][] = [
 const ALL_INPUTS = [...FIXED, ...RANDOM];
 
 describe('Best Time to Buy and Sell Stock II: where it is listed and how it is drawn', () => {
-  it('an ARRAYS algorithm right after Best Time to Buy and Sell Stock, the last of ARRAYS; not Coming Soon', () => {
+  it('an ARRAYS algorithm right after Best Time to Buy and Sell Stock, followed by Best Time to Buy and Sell Stock III; not Coming Soon', () => {
     const arrays = ALGORITHM_NAV.filter(a => a.category === 'ARRAYS').map(a => a.id);
     expect(arrays.indexOf(ID)).toBe(arrays.indexOf('array-buy-sell-stock') + 1);
-    expect(arrays.at(-1)).toBe(ID);
+    expect(arrays.indexOf('array-buy-sell-stock-iii')).toBe(arrays.indexOf(ID) + 1);
     expect(ALGORITHM_NAV.find(a => a.id === ID)).toMatchObject({ name: 'Best Time to Buy and Sell Stock II', category: 'ARRAYS', implemented: true, subtitle: def.subtitle });
     expect(getAllAlgorithms().filter(d => d.id === ID)).toHaveLength(1);
   });

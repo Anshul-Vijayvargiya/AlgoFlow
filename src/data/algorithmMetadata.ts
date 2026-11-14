@@ -250,6 +250,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     subtitle: 'As many trades as you like: add up every rise from one day to the next.',
     implemented: true,
   },
+  {
+    id: 'array-buy-sell-stock-iii',
+    name: 'Best Time to Buy and Sell Stock III',
+    category: 'ARRAYS',
+    subtitle: 'At most two trades: four running values for the first buy, first sale, second buy and second sale.',
+    implemented: true,
+  },
 
   // ─── STRINGS ────────────────────────────────────────────
   {

@@ -115,7 +115,8 @@ export type AlgorithmId =
   | 'heap-merge-k-sorted-lists'
   | 'dp-house-robber'
   | 'array-buy-sell-stock'
-  | 'array-buy-sell-stock-ii';
+  | 'array-buy-sell-stock-ii'
+  | 'array-buy-sell-stock-iii';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -372,6 +373,12 @@ export interface ExecutionStep {
    * rising. `state` holds the prices.
    */
   stockII?: StockIIView;
+
+  /**
+   * Best Time to Buy and Sell Stock III only (visual: 'stock-iii'): the prices, the loop index, the four running values
+   * and the update this step made, and (for display only) the trades behind each value. `state` holds the prices.
+   */
+  stockIII?: StockIIIView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -875,7 +882,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock' | 'stock-ii';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock' | 'stock-ii' | 'stock-iii';
 
 /**
  * Merge k Sorted Lists: one node of an input list. The id is stable for the whole trace (l<list>n<index>); no node is
@@ -936,6 +943,51 @@ export interface MergeKListsView {
   readonly linked?: string;
   /** the merged list, on the last step only */
   readonly result?: { readonly values: readonly number[]; readonly text: string };
+}
+
+/** Best Time to Buy and Sell Stock III: the four running values, in the order they are updated each day */
+export type StockIIIState = 'buy1' | 'sell1' | 'buy2' | 'sell2';
+
+/** Best Time to Buy and Sell Stock III: what a step did. A state's name: the update of that value */
+export type StockIIIOperation = 'start' | 'init' | 'loop' | StockIIIState | 'done';
+
+/** Best Time to Buy and Sell Stock III: one trade, a buy strictly before its sale, and what it earns */
+export interface StockIIITrade {
+  readonly buyDay: number;
+  readonly sellDay: number;
+  readonly profit: number;
+}
+
+/**
+ * Best Time to Buy and Sell Stock III, DISPLAY ONLY: the trades behind each running value, as the trace tracks them. A
+ * buy value's trades are the completed ones (`done`) and the day of the share still held (`open`); a sale value's
+ * trades are all completed. They always earn exactly the value they stand behind; no two share a day.
+ */
+export interface StockIIIWitness {
+  readonly buy1: { readonly done: readonly StockIIITrade[]; readonly open: number } | null;
+  readonly sell1: readonly StockIIITrade[];
+  readonly buy2: { readonly done: readonly StockIIITrade[]; readonly open: number } | null;
+  readonly sell2: readonly StockIIITrade[];
+}
+
+/** Best Time to Buy and Sell Stock III: the state of the four-value pass after one step. Days are positions in `prices`. */
+export interface StockIIIView {
+  /** each day's price (the same on every step) */
+  readonly prices: readonly number[];
+  /** the loop index: the day being processed (null outside the loop; n once the loop has ended) */
+  readonly i: number | null;
+  /** the four running values after this step (null before each is set) */
+  readonly buy1: number | null;
+  readonly sell1: number | null;
+  readonly buy2: number | null;
+  readonly sell2: number | null;
+  readonly operation: StockIIIOperation;
+  /** the value this step set: its old value (null when first set), the candidate, the result, and whether it changed */
+  readonly update?: { readonly state: StockIIIState; readonly old: number | null; readonly candidate: number; readonly value: number; readonly changed: boolean };
+  /** DISPLAY ONLY: the trades behind each value. Never read back into the values */
+  readonly witnesses: StockIIIWitness;
+  /** the answer, on the last step only: sell2, and the trades behind it (none when it is 0) */
+  readonly result?: { readonly profit: number; readonly trades: readonly StockIIITrade[]; readonly text: string };
 }
 
 /** Best Time to Buy and Sell Stock II: what a step did. start: before totalProfit is set; done: the last step */
@@ -1429,7 +1481,8 @@ export interface AlgorithmDefinition {
    * 'flag-cells' (Sort Colors: every step then carries `sortColors`). 'k-lists' (Merge k Sorted Lists: every step then
    * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. 'houses' (House Robber: every step then
    * carries `houseRobber`) takes the array form, as does 'stock' (Best Time to Buy and Sell Stock: every step then
-   * carries `stock`), and 'stock-ii' (Best Time to Buy and Sell Stock II: every step then carries `stockII`). Existing
+   * carries `stock`), and 'stock-ii' (Best Time to Buy and Sell Stock II: every step then carries `stockII`), and 'stock-iii' (Best Time to Buy and Sell Stock III: every step then carries `stockIII`).
+   * Existing
    * definitions omit it and are unaffected.
    */
   visual?: VisualKind;

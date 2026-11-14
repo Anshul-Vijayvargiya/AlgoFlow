@@ -273,6 +273,7 @@ describe('linked-list input validation (rejected before execution)', () => {
         'array-sort-colors': 'flag-cells',
         'array-buy-sell-stock': 'stock',
         'array-buy-sell-stock-ii': 'stock-ii',
+        'array-buy-sell-stock-iii': 'stock-iii',
         // of the HEAP algorithms, Merge k Sorted Lists has its own lists, heap and merged list
         'heap-merge-k-sorted-lists': 'k-lists',
       };
