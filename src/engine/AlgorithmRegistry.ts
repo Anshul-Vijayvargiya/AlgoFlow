@@ -105,6 +105,7 @@ import { sortColorsDefinition } from './algorithms/sortColors';
 import { buySellStockDefinition } from './algorithms/buySellStock';
 import { buySellStockIIDefinition } from './algorithms/buySellStockII';
 import { buySellStockIIIDefinition } from './algorithms/buySellStockIII';
+import { subarraySumKDefinition } from './algorithms/subarraySumK';
 
 // ─── Registry ──────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,7 @@ register(sortColorsDefinition);
 register(buySellStockDefinition);
 register(buySellStockIIDefinition);
 register(buySellStockIIIDefinition);
+register(subarraySumKDefinition);
 register(nQueensDefinition);
 register(subsetsDefinition);
 register(permutationsDefinition);

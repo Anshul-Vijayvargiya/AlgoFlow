@@ -116,7 +116,8 @@ export type AlgorithmId =
   | 'dp-house-robber'
   | 'array-buy-sell-stock'
   | 'array-buy-sell-stock-ii'
-  | 'array-buy-sell-stock-iii';
+  | 'array-buy-sell-stock-iii'
+  | 'array-subarray-sum-k';
 
 // ─── Execution Step ────────────────────────────────────────────────────────────
 // codeRef is a semantic string key (e.g. "loop-condition", "compare-target")
@@ -379,6 +380,13 @@ export interface ExecutionStep {
    * and the update this step made, and (for display only) the trades behind each value. `state` holds the prices.
    */
   stockIII?: StockIIIView;
+
+  /**
+   * Subarray Sum Equals K only (visual: 'prefix-map'): the numbers and k, the loop index, the running prefix sum, need
+   * (prefix - k), count and the map of prefix sums to how often each has occurred, with the lookup or write this step
+   * made; and (for display only) the subarrays found. `state` holds the numbers.
+   */
+  prefixMap?: PrefixMapView;
 
   /** Extra metadata */
   extraInfo?: {
@@ -882,7 +890,7 @@ export interface NumberField {
   random?: readonly [number, number];
 }
 
-export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock' | 'stock-ii' | 'stock-iii';
+export type VisualKind = 'array' | 'linked-list' | 'numbers' | 'text' | 'tree' | 'board' | 'bits' | 'decision-tree' | 'heap' | 'triangle' | 'dp-row' | 'stairs' | 'cells' | 'flag-cells' | 'k-lists' | 'houses' | 'stock' | 'stock-ii' | 'stock-iii' | 'prefix-map';
 
 /**
  * Merge k Sorted Lists: one node of an input list. The id is stable for the whole trace (l<list>n<index>); no node is
@@ -988,6 +996,52 @@ export interface StockIIIView {
   readonly witnesses: StockIIIWitness;
   /** the answer, on the last step only: sell2, and the trades behind it (none when it is 0) */
   readonly result?: { readonly profit: number; readonly trades: readonly StockIIITrade[]; readonly text: string };
+}
+
+/**
+ * Subarray Sum Equals K: what a step did. init-*: count, prefix or the map set; add-prefix: prefix += nums[i];
+ * calc-need: need = prefix - k; lookup: count += how often need has occurred; store: the map records prefix
+ */
+export type PrefixMapOperation = 'start' | 'init-count' | 'init-prefix' | 'init-map' | 'loop' | 'add-prefix' | 'calc-need' | 'lookup' | 'store' | 'done';
+
+/** Subarray Sum Equals K, DISPLAY ONLY: a subarray nums[start..end], both ends included */
+export interface PrefixMapRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+/** Subarray Sum Equals K: one entry of the map, a prefix sum and how many times it has occurred */
+export interface PrefixMapEntry {
+  readonly key: number;
+  readonly count: number;
+}
+
+/** Subarray Sum Equals K: the state of the pass after one step. Positions are indices into `nums`. */
+export interface PrefixMapView {
+  /** the numbers (the same on every step) */
+  readonly nums: readonly number[];
+  readonly k: number;
+  /** the loop index: the number being processed (null outside the loop; n once the loop has ended) */
+  readonly i: number | null;
+  /** the running values after this step (null before each is set; need before it is first computed) */
+  readonly count: number | null;
+  readonly prefix: number | null;
+  readonly need: number | null;
+  /** the map, in the order the keys were first recorded (null before it is created) */
+  readonly freq: readonly PrefixMapEntry[] | null;
+  /** how many prefix sums the map has recorded: P0 (the empty prefix) and one after each number stored */
+  readonly recorded: number;
+  readonly operation: PrefixMapOperation;
+  /** this step looked up `key`: how often it had occurred (0: not in the map) and what count became */
+  readonly lookup?: { readonly key: number; readonly found: boolean; readonly occurrences: number; readonly countBefore: number };
+  /** this step recorded `key`: a new entry, or one more occurrence of a key already in the map */
+  readonly write?: { readonly key: number; readonly kind: 'insert' | 'increment'; readonly from: number; readonly to: number };
+  /** DISPLAY ONLY: the subarrays ending at i that this step's lookup counted (none on other steps) */
+  readonly matchesHere: readonly PrefixMapRange[];
+  /** DISPLAY ONLY: every subarray counted so far, in the order counted. Never read back into count */
+  readonly matches: readonly PrefixMapRange[];
+  /** the answer, on the last step only */
+  readonly result?: { readonly count: number; readonly text: string };
 }
 
 /** Best Time to Buy and Sell Stock II: what a step did. start: before totalProfit is set; done: the last step */
@@ -1481,7 +1535,8 @@ export interface AlgorithmDefinition {
    * 'flag-cells' (Sort Colors: every step then carries `sortColors`). 'k-lists' (Merge k Sorted Lists: every step then
    * carries `mergeK`) takes its lists as one string (inputSpec.texts), like 'text'. 'houses' (House Robber: every step then
    * carries `houseRobber`) takes the array form, as does 'stock' (Best Time to Buy and Sell Stock: every step then
-   * carries `stock`), and 'stock-ii' (Best Time to Buy and Sell Stock II: every step then carries `stockII`), and 'stock-iii' (Best Time to Buy and Sell Stock III: every step then carries `stockIII`).
+   * carries `stock`), and 'stock-ii' (Best Time to Buy and Sell Stock II: every step then carries `stockII`), and 'stock-iii' (Best Time to Buy and Sell Stock III: every step then carries `stockIII`). 'prefix-map' (Subarray Sum
+   * Equals K: every step then carries `prefixMap`) takes the array form and inputSpec.target as k.
    * Existing
    * definitions omit it and are unaffected.
    */

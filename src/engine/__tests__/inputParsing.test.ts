@@ -126,9 +126,9 @@ describe('sortedness helpers', () => {
 });
 
 describe('algorithm input specs (declared on the real definitions)', () => {
-  it('exactly Linear Search, Binary Search, Two Pointer, Two Sum and 4Sum take a target', () => {
+  it('exactly Linear Search, Binary Search, Two Pointer, Two Sum, 4Sum and Subarray Sum Equals K take a target', () => {
     const withTarget = getAllAlgorithms().filter(d => d.inputSpec?.target).map(d => d.id).sort();
-    expect(withTarget).toEqual(['binary-search', 'four-sum', 'linear-search', 'two-pointer', 'two-sum']);
+    expect(withTarget).toEqual(['array-subarray-sum-k', 'binary-search', 'four-sum', 'linear-search', 'two-pointer', 'two-sum']);
   });
   it('exactly Binary Search, Two Pointer, Merge Sorted Array and Remove Duplicates require sorted input; Linear Search, Two Sum and the sorts do not', () => {
     const sortedReq = getAllAlgorithms().filter(d => d.inputSpec?.sortedRequired).map(d => d.id).sort();
@@ -274,6 +274,7 @@ describe('linked-list input validation (rejected before execution)', () => {
         'array-buy-sell-stock': 'stock',
         'array-buy-sell-stock-ii': 'stock-ii',
         'array-buy-sell-stock-iii': 'stock-iii',
+        'array-subarray-sum-k': 'prefix-map',
         // of the HEAP algorithms, Merge k Sorted Lists has its own lists, heap and merged list
         'heap-merge-k-sorted-lists': 'k-lists',
       };

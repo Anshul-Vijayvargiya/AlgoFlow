@@ -1002,6 +1002,20 @@ export const LINE_ANCHORS: Record<string, Record<string, RegExp>> = {
     'update-sell2': /^\s*sell2 = (maxOf|max|Math\.max)\(sell2, buy2 \+ prices\[i\]\);?$/,
     'return-result': /^\s*return sell2;?$/,
   },
+  'array-subarray-sum-k': {
+    'fn-entry': /^\s*(int subarraySum\(int\* nums, int numsSize, int k\) \{|int subarraySum\(vector<int>& nums, int k\) \{|public static int subarraySum\(int\[\] nums, int k\) \{|def subarray_sum\(nums, k\):)$/,
+    'init-count': /^\s*(int )?count = 0;?$/,
+    'init-prefix': /^\s*(int )?prefix = 0;?$/,
+    // the map holding P(0) = 0 once (C and Java: created on this line, P(0) recorded on the next)
+    'init-map': /^\s*(Map freq = newMap\(numsSize \+ 1\);|unordered_map<int, int> freq = \{\{0, 1\}\};|Map<Integer, Integer> freq = new HashMap<>\(\);|freq = \{0: 1\})$/,
+    'loop-condition': /^\s*for (\(int i = 0; i < (numsSize|\(int\)nums\.size\(\)|nums\.length); i\+\+\) \{|i in range\(len\(nums\)\):)$/,
+    'add-prefix': /^\s*prefix \+= nums\[i\];?$/,
+    'calc-need': /^\s*(int )?need = prefix - k;?$/,
+    // the lookup of need, adding 0 when it is not in the map (never inserting it)
+    lookup: /^\s*count \+= (get\(&freq, need\)|freq\.count\(need\) \? freq\.at\(need\) : 0|freq\.getOrDefault\(need, 0\)|freq\.get\(need, 0\));?$/,
+    store: /^\s*(add\(&freq, prefix\);|freq\[prefix\]\+\+;|freq\.put\(prefix, freq\.getOrDefault\(prefix, 0\) \+ 1\);|freq\[prefix\] = freq\.get\(prefix, 0\) \+ 1)$/,
+    'return-result': /^\s*return count;?$/,
+  },
   'array-buy-sell-stock-ii': {
     'fn-entry': /^\s*(int maxProfit\(int\* prices, int pricesSize\) \{|int maxProfit\(vector<int>& prices\) \{|public static int maxProfit\(int\[\] prices\) \{|def max_profit\(prices\):)$/,
     'init-total': /^\s*(int totalProfit = 0;|total_profit = 0)$/,

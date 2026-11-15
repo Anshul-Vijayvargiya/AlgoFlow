@@ -151,6 +151,13 @@ export const ALGORITHM_NAV: AlgorithmNavItem[] = [
     implemented: true,
   },
   {
+    id: 'array-subarray-sum-k',
+    name: 'Subarray Sum Equals K',
+    category: 'ARRAYS',
+    subtitle: 'Prefix sums and a hash map of how often each occurred: count the subarrays summing to k in one pass.',
+    implemented: true,
+  },
+  {
     id: 'majority-element',
     name: 'Majority Element',
     category: 'ARRAYS',
